@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* ====== CORES BASE (mais parecido com o exemplo) ====== */
+:root {
+  --background: #e7efe9; /* base suave */
+  --foreground: #0f172a;
+
+  /* glows (sempre BAIXA opacidade, o blur faz o resto) */
+  --glow-1: rgba(16, 185, 129, 0.18); /* emerald */
+  --glow-2: rgba(132, 204, 22, 0.14); /* lime */
+  --glow-3: rgba(2, 132, 199, 0.08);  /* azul bem leve p/ dar profundidade */
+
+  /* pontilhado / grain */
+  --dot: rgba(2, 6, 23, 0.10);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Dark mode: mantém seu comportamento */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+
+    --glow-1: rgba(16, 185, 129, 0.12);
+    --glow-2: rgba(132, 204, 22, 0.10);
+    --glow-3: rgba(2, 132, 199, 0.08);
+
+    --dot: rgba(255, 255, 255, 0.06);
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ====== FUNDO PREMIUM (camadas + profundidade) ====== */
+
+/* camada de glows + vinheta */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -40%;
+  z-index: -2;
+  pointer-events: none;
+
+  background:
+    radial-gradient(circle at 18% 22%, var(--glow-1), transparent 44%),
+    radial-gradient(circle at 84% 14%, var(--glow-2), transparent 46%),
+    radial-gradient(circle at 60% 90%, rgba(16,185,129,0.10), transparent 52%),
+    radial-gradient(circle at 25% 75%, var(--glow-3), transparent 55%);
+
+  filter: blur(130px);
+  transform: translate3d(0,0,0);
+  animation: bgFloat 20s ease-in-out infinite alternate;
+}
+
+/* animação suave (parecida com o exemplo: movimento quase imperceptível) */
+@keyframes bgFloat {
+  from { transform: translateY(-22px) scale(1.05); }
+  to   { transform: translateY(22px)  scale(1.10); }
+}
+
+/* pontilhado/grain + leve vinheta em cima */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  background:
+    radial-gradient(var(--dot) 1px, transparent 1px),
+    radial-gradient(ellipse at center, rgba(255,255,255,0.0) 55%, rgba(2,6,23,0.08) 100%);
+
+  background-size: 24px 24px, auto;
+  opacity: 0.20;
+}
+
+/* ====== utilitários p/ “integrar” cards na página ====== */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(2, 6, 23, 0.08);
+  box-shadow: 0 18px 70px rgba(2, 6, 23, 0.10);
+}
+
+.lift-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  will-change: transform;
+}
+.lift-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 30px 110px rgba(2, 6, 23, 0.16);
+  border-color: rgba(16, 185, 129, 0.22);
+}

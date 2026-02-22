@@ -1,0 +1,140 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
+export default function SellerAppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // ✅ sempre que entrar em /app/sellers/:id, salva como seller ativo
+  useEffect(() => {
+    if (!pathname) return;
+
+    // exemplos:
+    // /app/sellers/d938b1e7-e3ae-4355-8d9e-1ecf2caebc79
+    const m = pathname.match(/^\/app\/sellers\/([^\/\?]+)/);
+    if (m?.[1]) {
+      try {
+        window.localStorage.setItem("activeSellerId", m[1]);
+      } catch {}
+    }
+  }, [pathname]);
+
+  function getActiveSellerId() {
+    try {
+      return window.localStorage.getItem("activeSellerId");
+    } catch {
+      return null;
+    }
+  }
+
+  function handleConnectMl() {
+    const activeSellerId = getActiveSellerId();
+
+    if (!activeSellerId) {
+      router.push("/app/sellers");
+      return;
+    }
+
+    window.location.href = `/api/ml/connect?sellerId=${encodeURIComponent(activeSellerId)}`;
+  }
+
+  function handleGoHome(e?: React.MouseEvent) {
+    e?.preventDefault();
+
+    const activeSellerId = getActiveSellerId();
+    if (!activeSellerId) {
+      router.push("/app/sellers");
+      return;
+    }
+
+    // ✅ "Início" leva pro painel do seller ativo (não pra um /app genérico)
+    router.push(`/app/sellers/${encodeURIComponent(activeSellerId)}`);
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0f15] text-white">
+      {/* TOP BAR */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0f15]/80 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
+          {/* LOGO */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-[170px] h-[36px]">
+              <Image
+                src="/brand/suba-logo.png"
+                alt="Suba Pro Verde"
+                fill
+                sizes="170px"
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            <div className="hidden md:block leading-tight">
+              <div className="text-sm font-semibold tracking-wide">
+                SUBA <span className="text-white/30">|</span> RADAR SPV
+              </div>
+              <div className="text-xs text-white/50">Painel do seller</div>
+            </div>
+          </div>
+
+          {/* RIGHT */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleConnectMl}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-sm font-semibold text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25"
+            >
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              Acessar Mercado Livre
+            </button>
+
+            <Link
+              href="/app/account"
+              className="hidden sm:inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+            >
+              Conta
+            </Link>
+
+            <Link
+              href="/logout"
+              className="inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+            >
+              Sair
+            </Link>
+          </div>
+        </div>
+
+        {/* MENU */}
+        <div className="mx-auto max-w-7xl px-6 pb-3">
+          <nav className="flex items-center gap-2 text-sm">
+            {/* ✅ Início resolve o seller ativo */}
+            <a
+              href="/app"
+              onClick={handleGoHome}
+              className="px-3 py-2 rounded-xl text-white/80 hover:bg-white/5"
+            >
+              Início
+            </a>
+
+            <Link href="/app/account" className="px-3 py-2 rounded-xl text-white/60 hover:bg-white/5">
+              Conta
+            </Link>
+
+            <Link href="/app/reports" className="px-3 py-2 rounded-xl text-white/60 hover:bg-white/5">
+              Relatórios
+            </Link>
+
+            <Link href="/app/settings" className="px-3 py-2 rounded-xl text-white/60 hover:bg-white/5">
+              Configuração
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+    </div>
+  );
+}
