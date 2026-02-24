@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabaseClient";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
 
@@ -56,7 +57,12 @@ function MetricCard({
   } as const;
 
   return (
-    <div className={cn("rounded-2xl border px-4 py-3 shadow-[0_10px_40px_rgba(2,6,23,0.05)]", tintMap[tint])}>
+    <div
+      className={cn(
+        "rounded-2xl border px-4 py-3 shadow-[0_10px_40px_rgba(2,6,23,0.05)]",
+        tintMap[tint]
+      )}
+    >
       <div className="text-[11px] font-semibold opacity-80">{labelTop}</div>
       <div className="mt-1 text-2xl font-extrabold leading-none">{value}</div>
       <div className="mt-1 text-[12px] font-semibold opacity-90">{labelBottom}</div>
@@ -112,7 +118,15 @@ function TabButton({
   );
 }
 
-function ImpactRow({ item, selected, onSelect }: { item: ImpactItem; selected: boolean; onSelect: () => void }) {
+function ImpactRow({
+  item,
+  selected,
+  onSelect,
+}: {
+  item: ImpactItem;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const leftBorder = cn(selected ? "border-emerald-300" : "border-white/10", "border");
 
   return (
@@ -199,55 +213,30 @@ function ChatBubble({ msg }: { msg: Message }) {
   );
 }
 
-// ======= Data glue (importante) =======
-
-// tenta achar seller_id sem depender do layout
-function getSellerIdFallback(): string | null {
-  // 1) querystring
-  const sp = new URLSearchParams(window.location.search);
-  const q =
-    sp.get("seller_id") ||
-    sp.get("sellerId") ||
-    sp.get("sid") ||
-    sp.get("seller");
-  if (q) return q;
-
-  // 2) localStorage (ajuste as chaves se você usa outras)
-  const ls =
-    localStorage.getItem("seller_id") ||
-    localStorage.getItem("sellerId") ||
-    localStorage.getItem("currentSellerId");
-  if (ls) return ls;
-
-  return null;
-}
-
 // normaliza qualquer formato que sua API retornar
 function normalizeCasesResponse(json: any): ImpactItem[] {
-  // formatos comuns no seu projeto:
-  // { ok:true, cases:[...] } ou { cases:[...] } ou { items:[...] } ou [...]
-  const rawList =
-    (json?.cases as any[]) ||
-    (json?.items as any[]) ||
-    (Array.isArray(json) ? json : []);
+  const rawList = (json?.cases as any[]) || (json?.items as any[]) || (Array.isArray(json) ? json : []);
 
   return (rawList ?? []).map((c: any, idx: number) => {
     const kind = String(c?.kind ?? c?.type ?? "").toLowerCase();
 
     const type: ImpactType =
-      kind.includes("claim") ? "reclamacoes" :
-      kind.includes("delay") || kind.includes("late") ? "atrasos" :
-      kind.includes("cancel") ? "cancelamentos" :
-      kind.includes("mediation") ? "mediacoes" :
-      // fallback
-      "reclamacoes";
+      kind.includes("claim")
+        ? "reclamacoes"
+        : kind.includes("delay") || kind.includes("late")
+        ? "atrasos"
+        : kind.includes("cancel")
+        ? "cancelamentos"
+        : kind.includes("mediation")
+        ? "mediacoes"
+        : "reclamacoes";
 
     const id = String(c?.id ?? c?.external_ref ?? c?.claim_id ?? idx);
 
     return {
       id,
       type,
-      chip: c?.external_ref ? String(c.external_ref) : (c?.claim_id ? `#${c.claim_id}` : undefined),
+      chip: c?.external_ref ? String(c.external_ref) : c?.claim_id ? `#${c.claim_id}` : undefined,
       title: String(c?.title ?? c?.reason ?? c?.type ?? "Caso"),
       reason: String(c?.note ?? c?.description ?? c?.details ?? "—"),
       createdAt: String(c?.created_at ?? c?.date_created ?? "—"),
@@ -264,6 +253,7 @@ export default function CasesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ImpactItem[]>([]);
+  const [sellerId, setSellerId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     const base = { reclamacoes: 0, atrasos: 0, cancelamentos: 0, mediacoes: 0 };
@@ -275,10 +265,7 @@ export default function CasesPage() {
 
   const [selectedId, setSelectedId] = useState<string>("");
 
-  const selected = useMemo(
-    () => items.find((x) => x.id === selectedId) ?? items[0],
-    [items, selectedId]
-  );
+  const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
 
   useEffect(() => {
     let alive = true;
@@ -288,15 +275,29 @@ export default function CasesPage() {
         setLoading(true);
         setError(null);
 
-        const sellerId = getSellerIdFallback();
-        if (!sellerId) {
-          throw new Error("seller_id não encontrado. Abra /app/cases?seller_id=SEU_ID ou ajuste a chave no localStorage.");
+        // ✅ 1) pega user logado (MESMO padrão do /app)
+        const { data } = await supabaseBrowser.auth.getUser();
+        const user = data?.user;
+
+        if (!user?.id) {
+          throw new Error("Você não está logado. Volte para /login e entre novamente.");
         }
 
-        // ✅ ESTE é o mesmo padrão que o /app já usa (linha 284 no seu grep)
-        const res = await fetch(`/api/ml/cases?seller_id=${encodeURIComponent(sellerId)}`, {
-          cache: "no-store",
-        });
+        // ✅ 2) resolve sellerId a partir do userId (MESMO endpoint do /app)
+        const r = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, { cache: "no-store" });
+        const j = await r.json().catch(() => ({}));
+
+        if (!r.ok || !j?.sellerId) {
+          throw new Error("Nenhum seller conectado para este usuário. Vá em /app/sellers e conecte o Mercado Livre.");
+        }
+
+        const sid = String(j.sellerId);
+        if (!alive) return;
+
+        setSellerId(sid);
+
+        // ✅ 3) busca cases pelo seller (seu projeto já usa /api/ml/cases?seller_id=...)
+        const res = await fetch(`/api/ml/cases?seller_id=${encodeURIComponent(sid)}`, { cache: "no-store" });
 
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json?.ok === false) {
@@ -312,6 +313,7 @@ export default function CasesPage() {
         if (!alive) return;
         setError(e?.message ?? "Erro desconhecido");
         setItems([]);
+        setSellerId(null);
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -323,7 +325,7 @@ export default function CasesPage() {
     };
   }, []);
 
-  // mensagens ainda mockadas (porque você mesmo falou que falta liberar scope)
+  // mensagens ainda mockadas (porque falta liberar scope)
   const MOCK_MESSAGES: Message[] = [
     { id: "m1", from: "seller", text: "Oi! Me conta o que aconteceu para eu te ajudar rapidinho.", time: "11:49", name: "Seller" },
     { id: "m2", from: "buyer", text: "Faz 2 dias que comprei e ainda não recebi. Consegue verificar?", time: "11:52", name: "Comprador" },
@@ -346,6 +348,12 @@ export default function CasesPage() {
           <p className="mt-1 text-[13px] text-white/70">
             {loading ? "Carregando dados..." : "Visualize impactos por categoria e abra detalhes da venda + mensagens."}
           </p>
+
+          {!!sellerId && (
+            <p className="mt-1 text-[12px] text-white/45">
+              sellerId: <span className="font-mono">{sellerId}</span>
+            </p>
+          )}
 
           {error && (
             <div className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[12px] text-rose-200">
