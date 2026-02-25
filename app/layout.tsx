@@ -14,22 +14,20 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Suba Pro Verde",
-  description: "Radar inteligente de reputação para vendedores do Mercado Livre. Identifique impactos, atrasos e reclamações antes que virem prejuízo.",
+  description:
+    "Radar inteligente de reputação para vendedores do Mercado Livre.",
   openGraph: {
     title: "Suba Pro Verde",
     description:
-      "Radar inteligente de reputação para vendedores do Mercado Livre.",
+      "Proteja sua reputação antes que impactos virem prejuízo.",
     url: "https://www.subaproverde.com",
-    siteName: "Suba Pro Verde",
     images: [
       {
-        url: "https://www.subaproverde.com/og-image.png",
-        width: 1200,
-        height: 630,
+        url: "https://www.subaproverde.com/logo.png",
+        width: 512,
+        height: 512,
       },
     ],
-    locale: "pt_BR",
-    type: "website",
   },
 };
 
