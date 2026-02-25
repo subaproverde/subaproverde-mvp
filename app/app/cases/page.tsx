@@ -267,63 +267,58 @@ export default function CasesPage() {
 
   const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
 
-  useEffect(() => {
-    let alive = true;
+ useEffect(() => {
+  let alive = true;
 
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  (async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // ✅ 1) pega user logado (MESMO padrão do /app)
-        const { data } = await supabaseBrowser.auth.getUser();
-        const user = data?.user;
+      // 1) user logado
+      const { data } = await supabaseBrowser.auth.getUser();
+      const user = data?.user;
+      if (!user?.id) throw new Error("Você não está logado. Faça login novamente.");
 
-        if (!user?.id) {
-          throw new Error("Você não está logado. Volte para /login e entre novamente.");
-        }
+      // 2) sellerId do user (mesmo padrão do dashboard)
+      const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, { cache: "no-store" });
+      const jSeller = await rSeller.json().catch(() => ({}));
 
-        // ✅ 2) resolve sellerId a partir do userId (MESMO endpoint do /app)
-        const r = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, { cache: "no-store" });
-        const j = await r.json().catch(() => ({}));
-
-        if (!r.ok || !j?.sellerId) {
-          throw new Error("Nenhum seller conectado para este usuário. Vá em /app/sellers e conecte o Mercado Livre.");
-        }
-
-        const sid = String(j.sellerId);
-        if (!alive) return;
-
-        setSellerId(sid);
-
-        // ✅ 3) busca cases pelo seller (seu projeto já usa /api/ml/cases?seller_id=...)
-        const res = await fetch(`/api/ml/cases?seller_id=${encodeURIComponent(sid)}`, { cache: "no-store" });
-
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || json?.ok === false) {
-          throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
-        }
-
-        const norm = normalizeCasesResponse(json);
-        if (!alive) return;
-
-        setItems(norm);
-        setSelectedId(norm[0]?.id ?? "");
-      } catch (e: any) {
-        if (!alive) return;
-        setError(e?.message ?? "Erro desconhecido");
-        setItems([]);
-        setSellerId(null);
-      } finally {
-        if (!alive) return;
-        setLoading(false);
+      if (!rSeller.ok || !jSeller?.sellerId) {
+        throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
       }
-    })();
 
-    return () => {
-      alive = false;
-    };
-  }, []);
+      const sid = String(jSeller.sellerId);
+
+      // 3) busca cases
+     const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sellerId)}`, {
+  cache: "no-store",
+});
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
+      }
+
+      const norm = normalizeCasesResponse(json);
+      if (!alive) return;
+
+      setItems(norm);
+      setSelectedId(norm[0]?.id ?? "");
+    } catch (e: any) {
+      if (!alive) return;
+      setError(e?.message ?? "Erro desconhecido");
+      setItems([]);
+    } finally {
+      if (!alive) return;
+      setLoading(false);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, []);
 
   // mensagens ainda mockadas (porque falta liberar scope)
   const MOCK_MESSAGES: Message[] = [
