@@ -151,15 +151,14 @@ export default function AdminSellersClient() {
   }, [sellers, accountBySellerId, tokenBySellerId, q, mlFilter]);
 
   function openSellerDashboard(sellerId: string) {
-    try {
-      localStorage.setItem("activeSellerId", sellerId);
-    } catch {
-      // ignore
-    }
-
-    // ✅ DASHBOARD CORRETO DO SELLER (área /app)
-    router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
+  try {
+    localStorage.setItem("activeSellerId", sellerId);
+  } catch {
+    // ignore
   }
+
+  router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
+}
 
   return (
     <div className="p-0">

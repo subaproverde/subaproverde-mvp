@@ -289,9 +289,10 @@ export default function CasesPage() {
       }
 
       const sid = String(jSeller.sellerId);
+setSellerId(sid);
 
-      // 3) busca cases
-     const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sellerId)}`, {
+// 3) busca cases
+const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`, {
   cache: "no-store",
 });
       const json = await res.json().catch(() => ({}));

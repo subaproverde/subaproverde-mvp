@@ -1,5 +1,5 @@
 "use client";
-
+console.log("🔥🔥🔥 NOVO CODIGO /app RODANDO 🔥🔥🔥");
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabaseClient";
@@ -89,6 +89,7 @@ function panelSurface() {
 }
 
 export default function SellerDashboardPage() {
+  console.log("### PAGE /app CARREGOU ###");
   const [loading, setLoading] = useState(true);
 
   const [sellerId, setSellerId] = useState<string | null>(null);
@@ -115,29 +116,85 @@ export default function SellerDashboardPage() {
       const { data } = await supabaseBrowser.auth.getUser();
       const user = data?.user;
 
+      console.log("[/app] user =", user);
+
       if (!user) {
+        console.log("[/app] sem usuário logado");
         setSellerId(null);
+        setStoreName("—");
+        setAlerts([]);
+        setInProgress([]);
         setLoading(false);
         return;
       }
 
-      const r = await fetch(`/api/me/seller?userId=${user.id}`, { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
+      let sid: string | null = null;
 
-      if (!r.ok || !j?.sellerId) {
-        setSellerId(null);
-        setLoading(false);
-        return;
+      console.log(
+        "[/app] localStorage activeSellerId =",
+        localStorage.getItem("activeSellerId")
+      );
+
+      try {
+        sid = localStorage.getItem("activeSellerId");
+      } catch (err) {
+        console.log("[/app] erro lendo localStorage", err);
       }
 
-      const sid = String(j.sellerId);
+      if (!sid) {
+        console.log("[/app] sem activeSellerId, caindo no fallback /api/me/seller");
+
+        const r = await fetch(`/api/me/seller?userId=${user.id}`, {
+          cache: "no-store",
+        });
+
+        const j = await r.json().catch(() => ({}));
+
+        console.log("[/app] resposta /api/me/seller =", j);
+
+        if (!r.ok || !j?.sellerId) {
+          console.log("[/app] /api/me/seller não retornou seller válido");
+          setSellerId(null);
+          setStoreName("—");
+          setAlerts([]);
+          setInProgress([]);
+          setLoading(false);
+          return;
+        }
+
+        sid = String(j.sellerId);
+
+        try {
+          localStorage.setItem("activeSellerId", sid);
+          console.log("[/app] salvou activeSellerId no localStorage =", sid);
+        } catch (err) {
+          console.log("[/app] erro salvando localStorage", err);
+        }
+      }
+
+      console.log("[/app] sid final antes dos fetches =", sid);
+
       setSellerId(sid);
+      console.log("[/app] setSellerId =", sid);
 
-      const meRes = await fetch(`/api/ml/account/me?sellerId=${sid}`, { cache: "no-store" });
+      console.log("[/app] chamando /api/ml/account/me com sellerId =", sid);
+
+      const meRes = await fetch(`/api/ml/account/me?sellerId=${sid}`, {
+        cache: "no-store",
+      });
+
       const meJson = await meRes.json().catch(() => ({}));
+
+      console.log("[/app] resposta /api/ml/account/me =", meJson);
 
       if (meRes.ok && meJson?.data) {
         const d: MlMe = meJson.data;
+
+        console.log("[/app] nickname vindo da API ML =", d.nickname);
+        console.log(
+          "[/app] reputation level vindo da API ML =",
+          d.seller_reputation?.level_id
+        );
 
         setStoreName(d.nickname ?? "—");
 
@@ -149,27 +206,44 @@ export default function SellerDashboardPage() {
         const claims = Number(m?.claims?.value ?? 0);
         const delays = Number(m?.delayed_handling_time?.value ?? 0);
 
+        console.log("[/app] metrics claims =", claims);
+        console.log("[/app] metrics delays =", delays);
+
         setClaimsRecent(claims);
         setDelaysImpact(delays);
 
         setClaimsImpact(claims);
         setOrdersLate(delays);
       } else {
+        console.log("[/app] /api/ml/account/me falhou ou veio sem data");
+
         setRepLevel("amarelo");
         setRepText("Indisponível");
+        setStoreName("—");
+        setClaimsRecent(0);
+        setDelaysImpact(0);
+        setClaimsImpact(0);
+        setOrdersLate(0);
       }
 
       try {
-        const { data: comp } = await supabaseBrowser
+        console.log("[/app] consultando complaints com seller_id =", sid);
+
+        const { data: comp, error: compError } = await supabaseBrowser
           .from("complaints")
           .select("id, ml_case_id, reason, status, impact_level, synced_at")
           .eq("seller_id", sid)
           .order("synced_at", { ascending: false })
           .limit(8);
 
+        console.log("[/app] resposta complaints =", comp);
+        console.log("[/app] erro complaints =", compError);
+
         setAlerts(comp ?? []);
 
-        const { data: cs } = await supabaseBrowser
+        console.log("[/app] consultando cases com seller_id =", sid);
+
+        const { data: cs, error: csError } = await supabaseBrowser
           .from("cases")
           .select("id, status, protocol_number, created_at, complaint_id")
           .eq("seller_id", sid)
@@ -177,11 +251,17 @@ export default function SellerDashboardPage() {
           .order("created_at", { ascending: false })
           .limit(6);
 
+        console.log("[/app] resposta cases =", cs);
+        console.log("[/app] erro cases =", csError);
+
         setInProgress(cs ?? []);
-      } catch {
-        // MVP
+      } catch (err) {
+        console.log("[/app] erro geral consultando Supabase =", err);
+        setAlerts([]);
+        setInProgress([]);
       }
 
+      console.log("[/app] finalizou carregamento");
       setLoading(false);
     })();
   }, []);
@@ -189,7 +269,6 @@ export default function SellerDashboardPage() {
   const repLabel = useMemo(() => repLabelFromLevel(repLevel), [repLevel]);
   const tone = useMemo(() => toneFromLevel(repLevel), [repLevel]);
 
-  // ✅ CORREÇÃO: conectar ML usando userId (não sellerId)
   async function startConnect() {
     try {
       setConnectErr(null);
@@ -204,7 +283,6 @@ export default function SellerDashboardPage() {
         return;
       }
 
-      // ✅ agora a rota exige userId
       window.location.href = `/api/ml/connect?userId=${encodeURIComponent(user.id)}`;
     } catch (e: any) {
       setConnectErr(e?.message ?? "Falha ao iniciar conexão com Mercado Livre.");
@@ -221,32 +299,31 @@ export default function SellerDashboardPage() {
   }
 
   if (!sellerId) {
-  return (
-    <div className="p-6 space-y-3">
-      <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-      <p className="text-sm text-white/60">
-        Você não tem seller conectado nesta conta.
-      </p>
+    return (
+      <div className="p-6 space-y-3">
+        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+        <p className="text-sm text-white/60">
+          Você não tem seller conectado nesta conta.
+        </p>
 
-      <div className="flex flex-wrap gap-2">
-        <Link
-          className="inline-flex rounded-xl border border-white/10 px-4 py-2 hover:bg-white/5 text-white/80"
-          href="/login"
-        >
-          Voltar ao login
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex rounded-xl border border-white/10 px-4 py-2 hover:bg-white/5 text-white/80"
+            href="/login"
+          >
+            Voltar ao login
+          </Link>
 
-        <Link
-          className="inline-flex rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25"
-          href="/app/sellers"
-        >
-          Conectar Mercado Livre
-        </Link>
+          <Link
+            className="inline-flex rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25"
+            href="/app/sellers"
+          >
+            Conectar Mercado Livre
+          </Link>
+        </div>
       </div>
-    </div>
-  );
-}
-
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -332,12 +409,13 @@ export default function SellerDashboardPage() {
               </div>
             </div>
 
-            {/* MAIN GRID */}
             <div className="px-4 pb-4">
               <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-3 items-stretch">
                 <div className={["rounded-2xl", panelSurface(), "overflow-hidden"].join(" ")}>
                   <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <div className="text-sm font-semibold text-white/90">Reputação do seller</div>
+                    <div className="text-sm font-semibold text-white/90">
+                      Reputação do seller
+                    </div>
                     <div className="text-xs text-white/45 rounded-full border border-white/10 bg-white/5 px-3 py-1">
                       Score —
                     </div>
@@ -345,7 +423,11 @@ export default function SellerDashboardPage() {
 
                   <div className="p-4 flex items-center justify-center">
                     <div className="w-full flex justify-center origin-top scale-[0.90]">
-                      <ReputationThermometer level={repLevel} label={repLabel} subtitle={repText} />
+                      <ReputationThermometer
+                        level={repLevel}
+                        label={repLabel}
+                        subtitle={repText}
+                      />
                     </div>
                   </div>
                 </div>
@@ -365,7 +447,9 @@ export default function SellerDashboardPage() {
                     <div className="px-4 py-3 border-b border-white/10">
                       <div className="flex items-center gap-2">
                         <span className="text-yellow-300">⚠️</span>
-                        <div className="text-sm font-semibold text-white/90">ALERTA DETECTADO HOJE:</div>
+                        <div className="text-sm font-semibold text-white/90">
+                          ALERTA DETECTADO HOJE:
+                        </div>
                       </div>
                     </div>
 
@@ -412,19 +496,42 @@ export default function SellerDashboardPage() {
                 </div>
               </div>
 
-              {/* KPIs */}
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <KpiCardDark n="1" title="Reclamação" subtitle="Impactante" value={claimsImpact} hint="Em espaço de impacto" />
-                <KpiCardDark n="2" title="Atrasos Flex" subtitle="Impactantes" value={delaysImpact} hint="Encaminhados" badge="RISCO" />
-                <KpiCardDark n="6" title="Reclamações" subtitle="Recentes" value={claimsRecent} hint="Desde semana retrasada" />
-                <KpiCardDark n="9" title="Pedidos" subtitle="Atrasados" value={ordersLate} hint="Ainda não enviados" />
+                <KpiCardDark
+                  n="1"
+                  title="Reclamação"
+                  subtitle="Impactante"
+                  value={claimsImpact}
+                  hint="Em espaço de impacto"
+                />
+                <KpiCardDark
+                  n="2"
+                  title="Atrasos Flex"
+                  subtitle="Impactantes"
+                  value={delaysImpact}
+                  hint="Encaminhados"
+                  badge="RISCO"
+                />
+                <KpiCardDark
+                  n="6"
+                  title="Reclamações"
+                  subtitle="Recentes"
+                  value={claimsRecent}
+                  hint="Desde semana retrasada"
+                />
+                <KpiCardDark
+                  n="9"
+                  title="Pedidos"
+                  subtitle="Atrasados"
+                  value={ordersLate}
+                  hint="Ainda não enviados"
+                />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* resto da página igual por enquanto */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
           <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
@@ -447,7 +554,9 @@ export default function SellerDashboardPage() {
                   className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 mb-2"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-white/90">{a.reason ?? "Reclamação"}</div>
+                    <div className="text-sm font-semibold truncate text-white/90">
+                      {a.reason ?? "Reclamação"}
+                    </div>
                     <div className="text-xs text-white/50">
                       Caso ML: <span className="font-mono">{a.ml_case_id}</span>
                     </div>
@@ -548,4 +657,4 @@ function KpiCardDark({
       {hint ? <div className="mt-1 text-xs text-white/45">{hint}</div> : null}
     </div>
   );
-}
+} 

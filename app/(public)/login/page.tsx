@@ -45,7 +45,7 @@ export default function LoginPage() {
 
     // 🚀 REDIRECT INTELIGENTE
     if (profile.role === "admin") {
-      router.replace("/dashboard");
+      router.replace("/app");
     } else {
       router.replace("/app");
     }

@@ -101,14 +101,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {isAdmin ? (
               <>
                 <Link
-                  href="/dashboard/sellers"
+                  href="/app/sellers"
                   className={navLinkClass(pathname?.startsWith("/dashboard/sellers"))}
                 >
                   Sellers
                 </Link>
 
                 <Link
-                  href="/dashboard/influencers"
+                  href="/app/influencers"
                   className={navLinkClass(pathname?.startsWith("/dashboard/influencers"))}
                 >
                   Influencers
