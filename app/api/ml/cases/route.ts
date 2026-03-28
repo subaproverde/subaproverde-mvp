@@ -78,9 +78,12 @@ function orderIsCancelled(o: any) {
 }
 
 function shipmentLooksDelayed(sh: any) {
+  const status = String(sh?.status ?? "").toLowerCase();
+  const substatus = String(sh?.substatus ?? "").toLowerCase();
+
   const raw = [
-    sh?.status,
-    sh?.substatus,
+    status,
+    substatus,
     sh?.substatus_history?.map((x: any) => x?.substatus).join(" "),
     sh?.tracking_status,
     sh?.tracking?.status,
@@ -98,13 +101,14 @@ function shipmentLooksDelayed(sh: any) {
     return true;
   }
 
-  const shipmentStatus = String(sh?.status ?? "").toLowerCase();
-  if (["delivered", "cancelled"].includes(shipmentStatus)) return false;
-
-  const created = new Date(sh?.date_created ?? sh?.last_updated ?? 0).getTime();
+  const created = new Date(sh?.date_created ?? 0).getTime();
   if (!Number.isNaN(created)) {
     const ageDays = (Date.now() - created) / (1000 * 60 * 60 * 24);
-    if (ageDays >= 5 && ["ready_to_ship", "pending", "handling"].includes(shipmentStatus)) {
+
+    if (
+      ageDays >= 2 &&
+      ["ready_to_ship", "pending", "handling", "shipped"].includes(status)
+    ) {
       return true;
     }
   }
