@@ -319,9 +319,9 @@ export default function CasesPage() {
 
         setSellerId(sid);
 
-        const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`, {
-          cache: "no-store",
-        });
+       const res = await fetch(`/api/ml/cases?sellerId=${encodeURIComponent(sid)}`, {
+  cache: "no-store",
+});
 
         const json = await res.json().catch(() => ({}));
 
