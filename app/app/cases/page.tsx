@@ -212,39 +212,68 @@ function ChatBubble({ msg }: { msg: Message }) {
 }
 
 function normalizeCasesResponse(json: any): ImpactItem[] {
-  const rawList = (json?.cases as any[]) || (json?.items as any[]) || (Array.isArray(json) ? json : []);
+  const rawList =
+    (json?.cases as any[]) ||
+    (json?.items as any[]) ||
+    (Array.isArray(json) ? json : []);
 
   return (rawList ?? []).map((c: any, idx: number) => {
     const kind = String(c?.kind ?? c?.type ?? "").toLowerCase();
 
-    const type: ImpactType =
+    let type: ImpactType = "reclamacoes";
+
+    if (
+      kind.includes("reclamacoes") ||
+      kind.includes("reclamação") ||
+      kind.includes("reclamacao") ||
       kind.includes("claim")
-        ? "reclamacoes"
-        : kind.includes("delay") || kind.includes("late")
-        ? "atrasos"
-        : kind.includes("cancel")
-        ? "cancelamentos"
-        : kind.includes("mediation")
-        ? "mediacoes"
-        : "reclamacoes";
+    ) {
+      type = "reclamacoes";
+    } else if (
+      kind.includes("atrasos") ||
+      kind.includes("atraso") ||
+      kind.includes("delay") ||
+      kind.includes("late")
+    ) {
+      type = "atrasos";
+    } else if (
+      kind.includes("cancelamentos") ||
+      kind.includes("cancelamento") ||
+      kind.includes("cancel")
+    ) {
+      type = "cancelamentos";
+    } else if (
+      kind.includes("mediacoes") ||
+      kind.includes("mediações") ||
+      kind.includes("mediacao") ||
+      kind.includes("mediação") ||
+      kind.includes("mediation")
+    ) {
+      type = "mediacoes";
+    }
 
     const id = String(c?.id ?? c?.external_ref ?? c?.claim_id ?? idx);
 
     return {
       id,
       type,
-      chip: c?.external_ref ? String(c.external_ref) : c?.claim_id ? `#${c.claim_id}` : undefined,
+      chip: c?.external_ref
+        ? String(c.external_ref)
+        : c?.claim_id
+        ? `#${c.claim_id}`
+        : c?.chip
+        ? String(c.chip)
+        : undefined,
       title: String(c?.title ?? c?.reason ?? c?.type ?? "Caso"),
-      reason: String(c?.note ?? c?.description ?? c?.details ?? "—"),
-      createdAt: String(c?.created_at ?? c?.date_created ?? "—"),
-      updatedAt: String(c?.updated_at ?? c?.last_updated ?? "—"),
+      reason: String(c?.note ?? c?.description ?? c?.details ?? c?.reason ?? "—"),
+      createdAt: String(c?.createdAt ?? c?.created_at ?? c?.date_created ?? "—"),
+      updatedAt: String(c?.updatedAt ?? c?.updated_at ?? c?.last_updated ?? "—"),
       ageLabel: String(c?.ageLabel ?? c?.age_label ?? c?.time_ago ?? "—"),
       buyerName: String(c?.buyerName ?? c?.buyer_name ?? c?.buyer?.nickname ?? "Comprador"),
-      statusPill: String(c?.status ?? c?.statusPill ?? c?.status_pill ?? "—"),
+      statusPill: String(c?.statusPill ?? c?.status ?? c?.status_pill ?? "—"),
     };
   });
 }
-
 export default function CasesPage() {
   const [activeTab, setActiveTab] = useState<ImpactType>("reclamacoes");
   const [loading, setLoading] = useState(true);
