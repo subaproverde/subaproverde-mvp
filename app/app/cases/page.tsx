@@ -1,4 +1,10 @@
 // app/app/cases/page.tsx
+const [apiCounts, setApiCounts] = useState<{
+  reclamacoes: number;
+  atrasos: number;
+  cancelamentos: number;
+  mediacoes: number;
+} | null>(null);
 "use client";
 
 import Link from "next/link";
@@ -281,11 +287,20 @@ export default function CasesPage() {
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
 
-  const counts = useMemo(() => {
-    const base = { reclamacoes: 0, atrasos: 0, cancelamentos: 0, mediacoes: 0 };
-    for (const it of items) base[it.type] = (base[it.type] ?? 0) + 1;
-    return base;
-  }, [items]);
+  const [apiCounts, setApiCounts] = useState<{
+  reclamacoes: number;
+  atrasos: number;
+  cancelamentos: number;
+  mediacoes: number;
+} | null>(null);
+
+const counts = useMemo(() => {
+  if (apiCounts) return apiCounts;
+
+  const base = { reclamacoes: 0, atrasos: 0, cancelamentos: 0, mediacoes: 0 };
+  for (const it of items) base[it.type] = (base[it.type] ?? 0) + 1;
+  return base;
+}, [items, apiCounts]);
 
   const filtered = useMemo(() => items.filter((x) => x.type === activeTab), [items, activeTab]);
 
@@ -353,7 +368,14 @@ export default function CasesPage() {
 });
 
         const json = await res.json().catch(() => ({}));
-
+if (json?.counts) {
+  setApiCounts({
+    reclamacoes: Number(json.counts.reclamacoes ?? 0),
+    atrasos: Number(json.counts.atrasos ?? 0),
+    cancelamentos: Number(json.counts.cancelamentos ?? 0),
+    mediacoes: Number(json.counts.mediacoes ?? 0),
+  });
+}
         console.log("[cases] resposta /api/ml/cases/list =", json);
 
         if (!res.ok || json?.ok === false) {

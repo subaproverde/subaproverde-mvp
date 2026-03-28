@@ -349,20 +349,21 @@ const fallbackDelayedItems =
         sellerId,
         mlUserId,
         nickname,
-        counts: {
+      counts: {
   orders: orders.length,
   claimsAttempt1: claims1.length,
   claimsAttempt2: claims2.length,
-  officialClaimsCount,
-  officialDelayCount,
-  officialCancelCount,
-  reclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
-  mediacoes: items.filter((x: any) => x.type === "mediacoes").length,
-  cancelamentos: items.filter((x: any) => x.type === "cancelamentos").length,
-  atrasos: Math.max(
-    items.filter((x: any) => x.type === "atrasos").length,
-    officialDelayCount
-  ),
+
+  reclamacoes: officialClaimsCount,
+  atrasos: officialDelayCount,
+  cancelamentos: officialCancelCount,
+  mediacoes: 0,
+
+  detectedReclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
+  detectedMediacoes: items.filter((x: any) => x.type === "mediacoes").length,
+  detectedCancelamentos: items.filter((x: any) => x.type === "cancelamentos").length,
+  detectedAtrasos: items.filter((x: any) => x.type === "atrasos").length,
+
   items: items.length,
 },
         items,
