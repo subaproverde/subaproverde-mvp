@@ -30,7 +30,7 @@ type MlAccountMeResp =
   | {
       ok: true;
       sellerId: string;
-      data: any; // resposta do /users/me (vem grande)
+      data: any;
     }
   | { ok?: false; error: string; details?: string };
 
@@ -61,19 +61,32 @@ export default function DashboardHome() {
   const [mlMe, setMlMe] = useState<any>(null);
 
   async function loadAll(currentSellerId: string) {
+    console.log("[dashboard] loadAll currentSellerId =", currentSellerId);
+
     setLoading(true);
     try {
-      // 1) CASES (para total/abertos/SLA/andamento + listas)
       const url = new URL(`/api/ml/cases/list`, window.location.origin);
       url.searchParams.set("sellerId", currentSellerId);
       url.searchParams.set("limit", "500");
+
+      console.log("[dashboard] chamando cases/list =", url.toString());
+
       const rCases = await fetch(url.toString(), { cache: "no-store" });
       const jCases = await rCases.json().catch(() => ({}));
+
+      console.log("[dashboard] resposta cases/list =", jCases);
+
       setCases(jCases.items ?? []);
 
-      // 2) /users/me (para contadores oficiais impactando)
-      const rMe = await fetch(`/api/ml/account/me?sellerId=${currentSellerId}`, { cache: "no-store" });
+      console.log("[dashboard] chamando /api/ml/account/me com sellerId =", currentSellerId);
+
+      const rMe = await fetch(`/api/ml/account/me?sellerId=${currentSellerId}`, {
+        cache: "no-store",
+      });
       const jMe = (await rMe.json().catch(() => ({}))) as MlAccountMeResp;
+
+      console.log("[dashboard] resposta /api/ml/account/me =", jMe);
+
       if (rMe.ok && "data" in jMe) setMlMe(jMe.data ?? null);
       else setMlMe(null);
     } finally {
@@ -81,13 +94,15 @@ export default function DashboardHome() {
     }
   }
 
-  // pega user + sellerId vinculado
   useEffect(() => {
     (async () => {
+      console.log("🔥 DASHBOARD /shell/dashboard/page RODANDO 🔥");
       setLoading(true);
 
       const { data } = await supabaseBrowser.auth.getUser();
       const user = data?.user;
+
+      console.log("[dashboard] user =", user);
 
       if (!user) {
         setUserId("");
@@ -101,22 +116,77 @@ export default function DashboardHome() {
 
       setUserId(user.id);
 
-      const r = await fetch(`/api/me/seller?userId=${user.id}`, { cache: "no-store" });
-      const j = (await r.json().catch(() => ({}))) as MeSellerResp;
+      let sid = "";
 
-      if (!r.ok || !("sellerId" in j) || !j.sellerId) {
-        setSellerId("");
-        setNickname("");
-        setCases([]);
-        setMlMe(null);
-        setLoading(false);
+      console.log(
+        "[dashboard] localStorage activeSellerId =",
+        localStorage.getItem("activeSellerId")
+      );
+
+      try {
+        sid = localStorage.getItem("activeSellerId") ?? "";
+      } catch (err) {
+        console.log("[dashboard] erro lendo localStorage =", err);
+      }
+
+      if (!sid) {
+        console.log("[dashboard] sem activeSellerId, usando fallback /api/me/seller");
+
+        const r = await fetch(`/api/me/seller?userId=${user.id}`, {
+          cache: "no-store",
+        });
+        const j = (await r.json().catch(() => ({}))) as MeSellerResp;
+
+        console.log("[dashboard] resposta /api/me/seller =", j);
+
+        if (!r.ok || !("sellerId" in j) || !j.sellerId) {
+          setSellerId("");
+          setNickname("");
+          setCases([]);
+          setMlMe(null);
+          setLoading(false);
+          return;
+        }
+
+        sid = j.sellerId;
+
+        try {
+          localStorage.setItem("activeSellerId", sid);
+          console.log("[dashboard] salvou activeSellerId fallback =", sid);
+        } catch (err) {
+          console.log("[dashboard] erro salvando localStorage =", err);
+        }
+
+        setSellerId(sid);
+        setNickname(j.nickname ?? "");
+
+        await loadAll(sid);
         return;
       }
 
-      setSellerId(j.sellerId);
-      setNickname(j.nickname ?? "");
+      console.log("[dashboard] usando activeSellerId do localStorage =", sid);
 
-      await loadAll(j.sellerId);
+      setSellerId(sid);
+
+      try {
+        const r = await fetch(`/api/ml/account/me?sellerId=${sid}`, {
+          cache: "no-store",
+        });
+        const j = (await r.json().catch(() => ({}))) as MlAccountMeResp;
+
+        console.log("[dashboard] nickname preload /api/ml/account/me =", j);
+
+        if (r.ok && "data" in j) {
+          setNickname(j.data?.nickname ?? "");
+        } else {
+          setNickname("");
+        }
+      } catch (err) {
+        console.log("[dashboard] erro preload nickname =", err);
+        setNickname("");
+      }
+
+      await loadAll(sid);
     })();
   }, []);
 
@@ -124,12 +194,10 @@ export default function DashboardHome() {
     const total = cases.length;
     const open = cases.filter((c) => ACTIVE.includes(c.status)).length;
 
-    // ✅ oficiais (do /users/me)
     const claimsImpact = Number(mlMe?.seller_reputation?.metrics?.claims?.value ?? 0);
     const delaysImpact = Number(mlMe?.seller_reputation?.metrics?.delayed_handling_time?.value ?? 0);
     const cancImpact = Number(mlMe?.seller_reputation?.metrics?.cancellations?.value ?? 0);
 
-    // operacionais (nossos cases)
     const overdue = cases.filter((c) => ACTIVE.includes(c.status) && isOverdue(c.due_date)).length;
 
     const inProgress = cases.filter(
@@ -148,7 +216,6 @@ export default function DashboardHome() {
   }, [cases, mlMe]);
 
   const alerts = useMemo(() => {
-    // mostra só impactos operacionais (evita aparecer coisa aleatória)
     const allowed = new Set(["impact_claims", "delayed_handling_time", "cancellations"]);
     return cases
       .filter((c) => ACTIVE.includes(c.status))
@@ -160,7 +227,6 @@ export default function DashboardHome() {
     return cases.filter((c) => c.status === "chamado_aberto").slice(0, 6);
   }, [cases]);
 
-  // não logado
   if (!userId) {
     return (
       <div className="p-6 space-y-3">
@@ -176,7 +242,6 @@ export default function DashboardHome() {
     );
   }
 
-  // sem seller
   if (!sellerId) {
     return (
       <div className="p-6 space-y-2">
@@ -188,7 +253,6 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Início</h1>
@@ -214,7 +278,6 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* ALERTA PRINCIPAL */}
       <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -254,7 +317,6 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* KPI CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {[
           { label: "Total de cases (operação)", value: stats.total },
@@ -275,16 +337,17 @@ export default function DashboardHome() {
         ))}
       </div>
 
-      {/* GRID PRINCIPAL */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* ALERTAS */}
         <div className="rounded-3xl bg-white shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <div className="font-semibold text-gray-900">Alertas — ação necessária</div>
               <div className="text-xs text-gray-500">Impactos em aberto na operação</div>
             </div>
-            <Link href={`/dashboard/cases?sellerId=${sellerId}`} className="text-sm text-green-700 hover:underline">
+            <Link
+              href={`/dashboard/cases?sellerId=${sellerId}`}
+              className="text-sm text-green-700 hover:underline"
+            >
               Ver todos →
             </Link>
           </div>
@@ -309,14 +372,16 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* CHAMADOS EM ANDAMENTO */}
         <div className="rounded-3xl bg-white shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <div className="font-semibold text-gray-900">Chamados em andamento</div>
               <div className="text-xs text-gray-500">Cases com protocolo / em análise do ML</div>
             </div>
-            <Link href={`/dashboard/cases?sellerId=${sellerId}`} className="text-sm text-green-700 hover:underline">
+            <Link
+              href={`/dashboard/cases?sellerId=${sellerId}`}
+              className="text-sm text-green-700 hover:underline"
+            >
               Operar →
             </Link>
           </div>
@@ -328,7 +393,7 @@ export default function DashboardHome() {
                   <div className="text-sm font-medium text-gray-900">{niceKind(c.kind)}</div>
                   <div className="text-xs text-gray-500 line-clamp-1">{c.title}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Protocolo: <span className="font-mono">{(c.protocol ?? "—")}</span>
+                    Protocolo: <span className="font-mono">{c.protocol ?? "—"}</span>
                   </div>
                 </div>
 
