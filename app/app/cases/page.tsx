@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
@@ -300,7 +300,18 @@ export default function CasesPage() {
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
+  const detailsRef = useRef<HTMLDivElement | null>(null);
 
+  function openDetails(itemId: string) {
+  setSelectedId(itemId);
+
+  setTimeout(() => {
+    detailsRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 50);
+}
   const [apiCounts, setApiCounts] = useState<{
     reclamacoes: number;
     atrasos: number;
@@ -584,13 +595,13 @@ export default function CasesPage() {
               key={it.id}
               item={it}
               selected={it.id === selectedId}
-              onSelect={() => setSelectedId(it.id)}
+              onSelect={() => openDetails(it.id)}
             />
           ))}
         </div>
       </section>
 
-      <section className="mt-6 grid grid-cols-12 gap-4">
+      <section ref={detailsRef} className="mt-6 grid grid-cols-12 gap-4">
         <div className="col-span-12 lg:col-span-4">
           <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
             <div className="flex items-center justify-between gap-3">
