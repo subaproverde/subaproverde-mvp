@@ -1,10 +1,3 @@
-// app/app/cases/page.tsx
-const [apiCounts, setApiCounts] = useState<{
-  reclamacoes: number;
-  atrasos: number;
-  cancelamentos: number;
-  mediacoes: number;
-} | null>(null);
 "use client";
 
 import Link from "next/link";
@@ -280,31 +273,31 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
     };
   });
 }
+
 export default function CasesPage() {
   const [activeTab, setActiveTab] = useState<ImpactType>("reclamacoes");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string>("");
 
   const [apiCounts, setApiCounts] = useState<{
-  reclamacoes: number;
-  atrasos: number;
-  cancelamentos: number;
-  mediacoes: number;
-} | null>(null);
+    reclamacoes: number;
+    atrasos: number;
+    cancelamentos: number;
+    mediacoes: number;
+  } | null>(null);
 
-const counts = useMemo(() => {
-  if (apiCounts) return apiCounts;
+  const counts = useMemo(() => {
+    if (apiCounts) return apiCounts;
 
-  const base = { reclamacoes: 0, atrasos: 0, cancelamentos: 0, mediacoes: 0 };
-  for (const it of items) base[it.type] = (base[it.type] ?? 0) + 1;
-  return base;
-}, [items, apiCounts]);
+    const base = { reclamacoes: 0, atrasos: 0, cancelamentos: 0, mediacoes: 0 };
+    for (const it of items) base[it.type] = (base[it.type] ?? 0) + 1;
+    return base;
+  }, [items, apiCounts]);
 
   const filtered = useMemo(() => items.filter((x) => x.type === activeTab), [items, activeTab]);
-
-  const [selectedId, setSelectedId] = useState<string>("");
 
   const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
 
@@ -363,20 +356,22 @@ const counts = useMemo(() => {
 
         setSellerId(sid);
 
-       const res = await fetch(`/api/ml/cases?sellerId=${encodeURIComponent(sid)}`, {
-  cache: "no-store",
-});
+        const res = await fetch(`/api/ml/cases?sellerId=${encodeURIComponent(sid)}`, {
+          cache: "no-store",
+        });
 
         const json = await res.json().catch(() => ({}));
-if (json?.counts) {
-  setApiCounts({
-    reclamacoes: Number(json.counts.reclamacoes ?? 0),
-    atrasos: Number(json.counts.atrasos ?? 0),
-    cancelamentos: Number(json.counts.cancelamentos ?? 0),
-    mediacoes: Number(json.counts.mediacoes ?? 0),
-  });
-}
-        console.log("[cases] resposta /api/ml/cases/list =", json);
+
+        if (json?.counts) {
+          setApiCounts({
+            reclamacoes: Number(json.counts.reclamacoes ?? 0),
+            atrasos: Number(json.counts.atrasos ?? 0),
+            cancelamentos: Number(json.counts.cancelamentos ?? 0),
+            mediacoes: Number(json.counts.mediacoes ?? 0),
+          });
+        }
+
+        console.log("[cases] resposta /api/ml/cases =", json);
 
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
@@ -405,8 +400,20 @@ if (json?.counts) {
   }, []);
 
   const MOCK_MESSAGES: Message[] = [
-    { id: "m1", from: "seller", text: "Oi! Me conta o que aconteceu para eu te ajudar rapidinho.", time: "11:49", name: "Seller" },
-    { id: "m2", from: "buyer", text: "Faz 2 dias que comprei e ainda não recebi. Consegue verificar?", time: "11:52", name: "Comprador" },
+    {
+      id: "m1",
+      from: "seller",
+      text: "Oi! Me conta o que aconteceu para eu te ajudar rapidinho.",
+      time: "11:49",
+      name: "Seller",
+    },
+    {
+      id: "m2",
+      from: "buyer",
+      text: "Faz 2 dias que comprei e ainda não recebi. Consegue verificar?",
+      time: "11:52",
+      name: "Comprador",
+    },
   ];
 
   return (
@@ -421,10 +428,14 @@ if (json?.counts) {
             Voltar ao Dashboard
           </Link>
 
-          <h1 className="mt-2 text-[34px] leading-tight font-extrabold text-white">Casos e Reclamações</h1>
+          <h1 className="mt-2 text-[34px] leading-tight font-extrabold text-white">
+            Casos e Reclamações
+          </h1>
 
           <p className="mt-1 text-[13px] text-white/70">
-            {loading ? "Carregando dados..." : "Visualize impactos por categoria e abra detalhes da venda + mensagens."}
+            {loading
+              ? "Carregando dados..."
+              : "Visualize impactos por categoria e abra detalhes da venda + mensagens."}
           </p>
 
           {!!sellerId && (
@@ -444,17 +455,39 @@ if (json?.counts) {
           <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10" />
           <div className="leading-tight">
             <div className="text-[13px] font-extrabold text-white">Marcela Lima</div>
-            <div className="text-[11px] text-emerald-200/90 font-semibold">Reputação • ações & sugestões</div>
+            <div className="text-[11px] text-emerald-200/90 font-semibold">
+              Reputação • ações & sugestões
+            </div>
           </div>
         </div>
       </div>
 
       <section className="mt-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MetricCard labelTop="Reclamações" value={counts.reclamacoes} labelBottom="impactos" tint="green" />
-          <MetricCard labelTop="Atrasos" value={counts.atrasos} labelBottom="impactos" tint="amber" />
-          <MetricCard labelTop="Cancelamentos" value={counts.cancelamentos} labelBottom="impactos" tint="rose" />
-          <MetricCard labelTop="Mediações" value={counts.mediacoes} labelBottom="impactos" tint="sky" />
+          <MetricCard
+            labelTop="Reclamações"
+            value={counts.reclamacoes}
+            labelBottom="impactos"
+            tint="green"
+          />
+          <MetricCard
+            labelTop="Atrasos"
+            value={counts.atrasos}
+            labelBottom="impactos"
+            tint="amber"
+          />
+          <MetricCard
+            labelTop="Cancelamentos"
+            value={counts.cancelamentos}
+            labelBottom="impactos"
+            tint="rose"
+          />
+          <MetricCard
+            labelTop="Mediações"
+            value={counts.mediacoes}
+            labelBottom="impactos"
+            tint="sky"
+          />
         </div>
       </section>
 
@@ -484,7 +517,12 @@ if (json?.counts) {
           )}
 
           {filtered.map((it) => (
-            <ImpactRow key={it.id} item={it} selected={it.id === selectedId} onSelect={() => setSelectedId(it.id)} />
+            <ImpactRow
+              key={it.id}
+              item={it}
+              selected={it.id === selectedId}
+              onSelect={() => setSelectedId(it.id)}
+            />
           ))}
         </div>
       </section>
@@ -538,8 +576,12 @@ if (json?.counts) {
               <div className="flex items-start gap-3">
                 <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10" />
                 <div className="leading-tight">
-                  <div className="text-[13px] font-extrabold text-white">{selected?.buyerName ?? "Comprador"}</div>
-                  <div className="mt-0.5 text-[11px] text-white/60 font-semibold">Histórico de mensagens</div>
+                  <div className="text-[13px] font-extrabold text-white">
+                    {selected?.buyerName ?? "Comprador"}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-white/60 font-semibold">
+                    Histórico de mensagens
+                  </div>
                 </div>
               </div>
 
