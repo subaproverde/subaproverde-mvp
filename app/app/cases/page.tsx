@@ -17,6 +17,10 @@ type ImpactItem = {
   buyerName: string;
   statusPill?: string;
   chip?: string;
+  source?: string;
+  claimId?: string | null;
+  orderId?: string | null;
+  shipmentId?: string | null;
 };
 
 type Message = {
@@ -170,10 +174,19 @@ function ImpactRow({
         </div>
 
         <div className="shrink-0 flex flex-col items-end gap-2">
-          <button className="rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_14px_50px_rgba(16,185,129,0.18)] hover:from-emerald-700 hover:to-emerald-800">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className="rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_14px_50px_rgba(16,185,129,0.18)] hover:from-emerald-700 hover:to-emerald-800"
+          >
             Ver detalhes
           </button>
-          <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-semibold text-white/85 hover:bg-white/10">
+          <button
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-semibold text-white/85 hover:bg-white/10"
+          >
             WhatsApp
           </button>
         </div>
@@ -184,6 +197,7 @@ function ImpactRow({
 
 function ChatBubble({ msg }: { msg: Message }) {
   const isSeller = msg.from === "seller";
+
   return (
     <div className={cn("flex", isSeller ? "justify-end" : "justify-start")}>
       <div className={cn("max-w-[78%] flex items-end gap-2", isSeller ? "flex-row-reverse" : "flex-row")}>
@@ -270,6 +284,10 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
       ageLabel: String(c?.ageLabel ?? c?.age_label ?? c?.time_ago ?? "—"),
       buyerName: String(c?.buyerName ?? c?.buyer_name ?? c?.buyer?.nickname ?? "Comprador"),
       statusPill: String(c?.statusPill ?? c?.status ?? c?.status_pill ?? "—"),
+      source: c?.source ? String(c.source) : undefined,
+      claimId: c?.claimId ? String(c.claimId) : null,
+      orderId: c?.orderId ? String(c.orderId) : null,
+      shipmentId: c?.shipmentId ? String(c.shipmentId) : null,
     };
   });
 }
@@ -277,6 +295,7 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
 export default function CasesPage() {
   const [activeTab, setActiveTab] = useState<ImpactType>("reclamacoes");
   const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
@@ -288,6 +307,8 @@ export default function CasesPage() {
     cancelamentos: number;
     mediacoes: number;
   } | null>(null);
+
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const counts = useMemo(() => {
     if (apiCounts) return apiCounts;
@@ -399,22 +420,64 @@ export default function CasesPage() {
     };
   }, []);
 
-  const MOCK_MESSAGES: Message[] = [
-    {
-      id: "m1",
-      from: "seller",
-      text: "Oi! Me conta o que aconteceu para eu te ajudar rapidinho.",
-      time: "11:49",
-      name: "Seller",
-    },
-    {
-      id: "m2",
-      from: "buyer",
-      text: "Faz 2 dias que comprei e ainda não recebi. Consegue verificar?",
-      time: "11:52",
-      name: "Comprador",
-    },
-  ];
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      if (!sellerId || !selected?.claimId) {
+        setMessages([]);
+        return;
+      }
+
+      try {
+        setLoadingMessages(true);
+
+        const res = await fetch(
+          `/api/ml/cases/messages?caseId=${encodeURIComponent(selected.claimId)}&sellerId=${encodeURIComponent(
+            sellerId
+          )}`,
+          { cache: "no-store" }
+        );
+
+        const json = await res.json().catch(() => ({}));
+
+        console.log("[cases] resposta /api/ml/cases/messages =", json);
+
+        if (!alive) return;
+
+        if (!res.ok || json?.ok === false) {
+          setMessages([]);
+          return;
+        }
+
+        const msgs: Message[] = (json?.messages ?? []).map((m: any, i: number) => ({
+          id: String(m?.id ?? i),
+          from: String(m?.from ?? "").toLowerCase().includes("seller") ? "seller" : "buyer",
+          text: String(m?.message ?? m?.text ?? "—"),
+          time: m?.date_created
+            ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "--:--",
+          name: String(m?.from ?? "").toLowerCase().includes("seller") ? "Você" : "Comprador",
+        }));
+
+        setMessages(msgs);
+      } catch (err) {
+        console.log("[cases] erro carregando mensagens =", err);
+        if (!alive) return;
+        setMessages([]);
+      } finally {
+        if (!alive) return;
+        setLoadingMessages(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [sellerId, selected?.claimId]);
 
   return (
     <div className="mx-auto max-w-[1120px] px-6 lg:px-8 py-8">
@@ -531,15 +594,16 @@ export default function CasesPage() {
         <div className="col-span-12 lg:col-span-4">
           <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-[12px] font-extrabold text-white">Venda</div>
-              <SmallPill>API (parcial)</SmallPill>
+              <div className="text-[12px] font-extrabold text-white">Detalhes do caso</div>
+              <SmallPill>{selected?.source ? `Fonte: ${selected.source}` : "API (parcial)"}</SmallPill>
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
               <div className="mt-1 text-[13px] font-bold text-white">{selected?.title ?? "-"}</div>
+              <div className="mt-2 text-[12px] text-white/65">{selected?.reason ?? "-"}</div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-white/65">
+              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-white/65">
                 <div>
                   <div className="opacity-75">Criada</div>
                   <div className="font-semibold text-white/80">{selected?.createdAt ?? "-"}</div>
@@ -556,6 +620,26 @@ export default function CasesPage() {
                   <div className="opacity-75">Idade</div>
                   <div className="font-semibold text-white/80">{selected?.ageLabel ?? "-"}</div>
                 </div>
+                <div>
+                  <div className="opacity-75">Comprador</div>
+                  <div className="font-semibold text-white/80">{selected?.buyerName ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="opacity-75">Tipo</div>
+                  <div className="font-semibold text-white/80 capitalize">{selected?.type ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="opacity-75">Claim ID</div>
+                  <div className="font-semibold text-white/80">{selected?.claimId ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="opacity-75">Order ID</div>
+                  <div className="font-semibold text-white/80">{selected?.orderId ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="opacity-75">Shipment ID</div>
+                  <div className="font-semibold text-white/80">{selected?.shipmentId ?? "-"}</div>
+                </div>
               </div>
             </div>
 
@@ -565,7 +649,7 @@ export default function CasesPage() {
             </div>
 
             <div className="mt-4 text-[11px] text-white/60 leading-relaxed">
-              Mensagens reais vão entrar quando liberarmos o escopo de “messages/post-sale” no app do ML.
+              Agora o painel já está preparado para receber detalhes reais do caso selecionado e mensagens reais da claim.
             </div>
           </div>
         </div>
@@ -586,14 +670,26 @@ export default function CasesPage() {
               </div>
 
               <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-extrabold text-white/80">
-                Mensagens (mock)
+                {selected?.claimId ? "Mensagens reais" : "Sem claim para mensagens"}
               </span>
             </div>
 
             <div className="mt-5 space-y-3">
-              {MOCK_MESSAGES.map((m) => (
-                <ChatBubble key={m.id} msg={m} />
-              ))}
+              {loadingMessages ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                  Carregando mensagens...
+                </div>
+              ) : !selected?.claimId ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                  Este item não possui claim vinculada para carregar mensagens.
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                  Nenhuma mensagem encontrada para este caso.
+                </div>
+              ) : (
+                messages.map((m) => <ChatBubble key={m.id} msg={m} />)
+              )}
             </div>
           </div>
         </div>
