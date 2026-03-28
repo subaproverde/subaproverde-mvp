@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
@@ -79,17 +79,35 @@ function SmallPill({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ButtonPrimary({ children }: { children: React.ReactNode }) {
+function ButtonPrimary({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
-    <button className="inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_55px_rgba(16,185,129,0.22)] hover:from-emerald-700 hover:to-emerald-800">
+    <button
+      onClick={onClick}
+      className="inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_55px_rgba(16,185,129,0.22)] hover:from-emerald-700 hover:to-emerald-800"
+    >
       {children}
     </button>
   );
 }
 
-function ButtonGhost({ children }: { children: React.ReactNode }) {
+function ButtonGhost({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
-    <button className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/10">
+    <button
+      onClick={onClick}
+      className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/10"
+    >
       {children}
     </button>
   );
@@ -300,18 +318,8 @@ export default function CasesPage() {
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
-  const detailsRef = useRef<HTMLDivElement | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  function openDetails(itemId: string) {
-  setSelectedId(itemId);
-
-  setTimeout(() => {
-    detailsRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 50);
-}
   const [apiCounts, setApiCounts] = useState<{
     reclamacoes: number;
     atrasos: number;
@@ -320,6 +328,15 @@ export default function CasesPage() {
   } | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
+
+  function openDetails(itemId: string) {
+    setSelectedId(itemId);
+    setDetailsOpen(true);
+  }
+
+  function closeDetails() {
+    setDetailsOpen(false);
+  }
 
   const counts = useMemo(() => {
     if (apiCounts) return apiCounts;
@@ -435,7 +452,7 @@ export default function CasesPage() {
     let alive = true;
 
     (async () => {
-      if (!sellerId || !selected?.claimId) {
+      if (!sellerId || !selected?.claimId || !detailsOpen) {
         setMessages([]);
         return;
       }
@@ -488,7 +505,25 @@ export default function CasesPage() {
     return () => {
       alive = false;
     };
-  }, [sellerId, selected?.claimId]);
+  }, [sellerId, selected?.claimId, detailsOpen]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setDetailsOpen(false);
+      }
+    }
+
+    if (detailsOpen) {
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", onKeyDown);
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [detailsOpen]);
 
   return (
     <div className="mx-auto max-w-[1120px] px-6 lg:px-8 py-8">
@@ -601,110 +636,136 @@ export default function CasesPage() {
         </div>
       </section>
 
-      <section ref={detailsRef} className="mt-6 grid grid-cols-12 gap-4">
-        <div className="col-span-12 lg:col-span-4">
-          <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-[12px] font-extrabold text-white">Detalhes do caso</div>
-              <SmallPill>{selected?.source ? `Fonte: ${selected.source}` : "API (parcial)"}</SmallPill>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
-              <div className="mt-1 text-[13px] font-bold text-white">{selected?.title ?? "-"}</div>
-              <div className="mt-2 text-[12px] text-white/65">{selected?.reason ?? "-"}</div>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-white/65">
-                <div>
-                  <div className="opacity-75">Criada</div>
-                  <div className="font-semibold text-white/80">{selected?.createdAt ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Status</div>
-                  <div className="font-semibold text-white/80">{selected?.statusPill ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Atualização</div>
-                  <div className="font-semibold text-white/80">{selected?.updatedAt ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Idade</div>
-                  <div className="font-semibold text-white/80">{selected?.ageLabel ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Comprador</div>
-                  <div className="font-semibold text-white/80">{selected?.buyerName ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Tipo</div>
-                  <div className="font-semibold text-white/80 capitalize">{selected?.type ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Claim ID</div>
-                  <div className="font-semibold text-white/80">{selected?.claimId ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Order ID</div>
-                  <div className="font-semibold text-white/80">{selected?.orderId ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="opacity-75">Shipment ID</div>
-                  <div className="font-semibold text-white/80">{selected?.shipmentId ?? "-"}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <ButtonGhost>Suporte</ButtonGhost>
-              <ButtonPrimary>Ação sugerida</ButtonPrimary>
-            </div>
-
-            <div className="mt-4 text-[11px] text-white/60 leading-relaxed">
-              Agora o painel já está preparado para receber detalhes reais do caso selecionado e mensagens reais da claim.
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-12 lg:col-span-8">
-          <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10" />
-                <div className="leading-tight">
-                  <div className="text-[13px] font-extrabold text-white">
-                    {selected?.buyerName ?? "Comprador"}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-white/60 font-semibold">
-                    Histórico de mensagens
-                  </div>
+      {detailsOpen && selected && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={closeDetails}
+        >
+          <div
+            className="w-full max-w-6xl max-h-[90vh] overflow-auto rounded-[28px] border border-white/10 bg-[#0e1622] shadow-[0_30px_120px_rgba(0,0,0,0.55)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-[#0e1622]/95 backdrop-blur px-5 py-4">
+              <div>
+                <div className="text-[18px] font-extrabold text-white">Detalhes do caso</div>
+                <div className="mt-1 text-[12px] text-white/60">
+                  {selected.title} {selected.chip ? `• ${selected.chip}` : ""}
                 </div>
               </div>
 
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-extrabold text-white/80">
-                {selected?.claimId ? "Mensagens reais" : "Sem claim para mensagens"}
-              </span>
+              <div className="flex items-center gap-2">
+                <SmallPill>{selected?.source ? `Fonte: ${selected.source}` : "API (parcial)"}</SmallPill>
+                <ButtonGhost onClick={closeDetails}>Fechar</ButtonGhost>
+              </div>
             </div>
 
-            <div className="mt-5 space-y-3">
-              {loadingMessages ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
-                  Carregando mensagens...
+            <div className="grid grid-cols-12 gap-4 p-5">
+              <div className="col-span-12 lg:col-span-4">
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[12px] font-extrabold text-white">Detalhes do caso</div>
+                    <SmallPill>{selected?.source ? `Fonte: ${selected.source}` : "API (parcial)"}</SmallPill>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
+                    <div className="mt-1 text-[13px] font-bold text-white">{selected?.title ?? "-"}</div>
+                    <div className="mt-2 text-[12px] text-white/65">{selected?.reason ?? "-"}</div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-white/65">
+                      <div>
+                        <div className="opacity-75">Criada</div>
+                        <div className="font-semibold text-white/80">{selected?.createdAt ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Status</div>
+                        <div className="font-semibold text-white/80">{selected?.statusPill ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Atualização</div>
+                        <div className="font-semibold text-white/80">{selected?.updatedAt ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Idade</div>
+                        <div className="font-semibold text-white/80">{selected?.ageLabel ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Comprador</div>
+                        <div className="font-semibold text-white/80">{selected?.buyerName ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Tipo</div>
+                        <div className="font-semibold text-white/80 capitalize">{selected?.type ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Claim ID</div>
+                        <div className="font-semibold text-white/80">{selected?.claimId ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Order ID</div>
+                        <div className="font-semibold text-white/80">{selected?.orderId ?? "-"}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Shipment ID</div>
+                        <div className="font-semibold text-white/80">{selected?.shipmentId ?? "-"}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <ButtonGhost>Suporte</ButtonGhost>
+                    <ButtonPrimary>Ação sugerida</ButtonPrimary>
+                  </div>
+
+                  <div className="mt-4 text-[11px] text-white/60 leading-relaxed">
+                    Agora o painel já está preparado para receber detalhes reais do caso selecionado e mensagens reais da claim.
+                  </div>
                 </div>
-              ) : !selected?.claimId ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
-                  Este item não possui claim vinculada para carregar mensagens.
+              </div>
+
+              <div className="col-span-12 lg:col-span-8">
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10" />
+                      <div className="leading-tight">
+                        <div className="text-[13px] font-extrabold text-white">
+                          {selected?.buyerName ?? "Comprador"}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-white/60 font-semibold">
+                          Histórico de mensagens
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-extrabold text-white/80">
+                      {selected?.claimId ? "Mensagens reais" : "Sem claim para mensagens"}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    {loadingMessages ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                        Carregando mensagens...
+                      </div>
+                    ) : !selected?.claimId ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                        Este item não possui claim vinculada para carregar mensagens.
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                        Nenhuma mensagem encontrada para este caso.
+                      </div>
+                    ) : (
+                      messages.map((m) => <ChatBubble key={m.id} msg={m} />)
+                    )}
+                  </div>
                 </div>
-              ) : messages.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
-                  Nenhuma mensagem encontrada para este caso.
-                </div>
-              ) : (
-                messages.map((m) => <ChatBubble key={m.id} msg={m} />)
-              )}
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      )}
     </div>
   );
 }
