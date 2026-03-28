@@ -171,7 +171,17 @@ export async function GET(req: NextRequest) {
 
     const mlUserId = String(meJson.id);
     const nickname = meJson?.nickname ?? null;
+const officialClaimsCount = Number(
+  meJson?.seller_reputation?.metrics?.claims?.value ?? 0
+);
 
+const officialDelayCount = Number(
+  meJson?.seller_reputation?.metrics?.delayed_handling_time?.value ?? 0
+);
+
+const officialCancelCount = Number(
+  meJson?.seller_reputation?.metrics?.cancellations?.value ?? 0
+);
     // 2) Orders
     const ordersUrl = `https://api.mercadolibre.com/orders/search?seller=${encodeURIComponent(
       mlUserId
@@ -303,12 +313,35 @@ export async function GET(req: NextRequest) {
         };
       })
       .filter(Boolean);
-
+const fallbackDelayedItems =
+  normalizedDelayedOrders.length === 0 && officialDelayCount > 0
+    ? Array.from({ length: officialDelayCount }).map((_, i) => ({
+        id: `delay-metric-${i + 1}`,
+        type: "atrasos" as ImpactType,
+        title: "Atraso impactando reputação",
+        reason: "Item vindo da métrica oficial do Mercado Livre (delayed_handling_time).",
+        createdAt: "—",
+        updatedAt: "—",
+        ageLabel: "métrica ML",
+        buyerName: "Comprador",
+        statusPill: "impactando",
+        chip: `ML-${i + 1}`,
+        source: "metric",
+        claimId: null,
+        orderId: null,
+        shipmentId: null,
+        raw: {
+          metric: "delayed_handling_time",
+          officialDelayCount,
+        },
+      }))
+    : [];
     const items = [
-      ...normalizedClaims,
-      ...normalizedCancelledOrders,
-      ...normalizedDelayedOrders,
-    ];
+  ...normalizedClaims,
+  ...normalizedCancelledOrders,
+  ...normalizedDelayedOrders,
+  ...fallbackDelayedItems,
+];
 
     return NextResponse.json(
       {
@@ -317,15 +350,21 @@ export async function GET(req: NextRequest) {
         mlUserId,
         nickname,
         counts: {
-          orders: orders.length,
-          claimsAttempt1: claims1.length,
-          claimsAttempt2: claims2.length,
-          reclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
-          mediacoes: items.filter((x: any) => x.type === "mediacoes").length,
-          cancelamentos: items.filter((x: any) => x.type === "cancelamentos").length,
-          atrasos: items.filter((x: any) => x.type === "atrasos").length,
-          items: items.length,
-        },
+  orders: orders.length,
+  claimsAttempt1: claims1.length,
+  claimsAttempt2: claims2.length,
+  officialClaimsCount,
+  officialDelayCount,
+  officialCancelCount,
+  reclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
+  mediacoes: items.filter((x: any) => x.type === "mediacoes").length,
+  cancelamentos: items.filter((x: any) => x.type === "cancelamentos").length,
+  atrasos: Math.max(
+    items.filter((x: any) => x.type === "atrasos").length,
+    officialDelayCount
+  ),
+  items: items.length,
+},
         items,
         debug: {
           ordersStatus: ordersRes.status,
