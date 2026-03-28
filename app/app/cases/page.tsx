@@ -36,8 +36,6 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-// ======= UI helpers (mantive os seus componentes) =======
-
 function MetricCard({
   labelTop,
   value,
@@ -213,7 +211,6 @@ function ChatBubble({ msg }: { msg: Message }) {
   );
 }
 
-// normaliza qualquer formato que sua API retornar
 function normalizeCasesResponse(json: any): ImpactItem[] {
   const rawList = (json?.cases as any[]) || (json?.items as any[]) || (Array.isArray(json) ? json : []);
 
@@ -267,61 +264,95 @@ export default function CasesPage() {
 
   const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
 
- useEffect(() => {
-  let alive = true;
+  useEffect(() => {
+    let alive = true;
 
-  (async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    (async () => {
+      try {
+        console.log("🔥 CASES /app/cases/page RODANDO 🔥");
+        setLoading(true);
+        setError(null);
 
-      // 1) user logado
-      const { data } = await supabaseBrowser.auth.getUser();
-      const user = data?.user;
-      if (!user?.id) throw new Error("Você não está logado. Faça login novamente.");
+        const { data } = await supabaseBrowser.auth.getUser();
+        const user = data?.user;
 
-      // 2) sellerId do user (mesmo padrão do dashboard)
-      const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, { cache: "no-store" });
-      const jSeller = await rSeller.json().catch(() => ({}));
+        console.log("[cases] user =", user);
 
-      if (!rSeller.ok || !jSeller?.sellerId) {
-        throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
+        if (!user?.id) throw new Error("Você não está logado. Faça login novamente.");
+
+        let sid: string | null = null;
+
+        console.log("[cases] localStorage activeSellerId =", localStorage.getItem("activeSellerId"));
+
+        try {
+          sid = localStorage.getItem("activeSellerId");
+        } catch (err) {
+          console.log("[cases] erro lendo localStorage =", err);
+        }
+
+        if (!sid) {
+          console.log("[cases] sem activeSellerId, fallback /api/me/seller");
+
+          const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+            cache: "no-store",
+          });
+
+          const jSeller = await rSeller.json().catch(() => ({}));
+
+          console.log("[cases] resposta /api/me/seller =", jSeller);
+
+          if (!rSeller.ok || !jSeller?.sellerId) {
+            throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
+          }
+
+          sid = String(jSeller.sellerId);
+
+          try {
+            localStorage.setItem("activeSellerId", sid);
+            console.log("[cases] salvou activeSellerId fallback =", sid);
+          } catch (err) {
+            console.log("[cases] erro salvando localStorage =", err);
+          }
+        }
+
+        console.log("[cases] usando sellerId =", sid);
+
+        setSellerId(sid);
+
+        const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`, {
+          cache: "no-store",
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        console.log("[cases] resposta /api/ml/cases/list =", json);
+
+        if (!res.ok || json?.ok === false) {
+          throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
+        }
+
+        const norm = normalizeCasesResponse(json);
+
+        if (!alive) return;
+
+        setItems(norm);
+        setSelectedId(norm[0]?.id ?? "");
+      } catch (e: any) {
+        if (!alive) return;
+        console.log("[cases] erro =", e);
+        setError(e?.message ?? "Erro desconhecido");
+        setItems([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
       }
+    })();
 
-      const sid = String(jSeller.sellerId);
-setSellerId(sid);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-// 3) busca cases
-const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`, {
-  cache: "no-store",
-});
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok || json?.ok === false) {
-        throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
-      }
-
-      const norm = normalizeCasesResponse(json);
-      if (!alive) return;
-
-      setItems(norm);
-      setSelectedId(norm[0]?.id ?? "");
-    } catch (e: any) {
-      if (!alive) return;
-      setError(e?.message ?? "Erro desconhecido");
-      setItems([]);
-    } finally {
-      if (!alive) return;
-      setLoading(false);
-    }
-  })();
-
-  return () => {
-    alive = false;
-  };
-}, []);
-
-  // mensagens ainda mockadas (porque falta liberar scope)
   const MOCK_MESSAGES: Message[] = [
     { id: "m1", from: "seller", text: "Oi! Me conta o que aconteceu para eu te ajudar rapidinho.", time: "11:49", name: "Seller" },
     { id: "m2", from: "buyer", text: "Faz 2 dias que comprei e ainda não recebi. Consegue verificar?", time: "11:52", name: "Comprador" },
@@ -367,7 +398,6 @@ const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`
         </div>
       </div>
 
-      {/* TOP CARDS */}
       <section className="mt-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <MetricCard labelTop="Reclamações" value={counts.reclamacoes} labelBottom="impactos" tint="green" />
@@ -377,7 +407,6 @@ const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`
         </div>
       </section>
 
-      {/* LIST */}
       <section className="mt-6 rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_24px_100px_rgba(0,0,0,0.35)] overflow-hidden">
         <div className="px-5 pt-4">
           <div className="flex items-center gap-2">
@@ -409,7 +438,6 @@ const res = await fetch(`/api/ml/cases/list?sellerId=${encodeURIComponent(sid)}`
         </div>
       </section>
 
-      {/* DETAILS + MESSAGES (mensagens mock por enquanto) */}
       <section className="mt-6 grid grid-cols-12 gap-4">
         <div className="col-span-12 lg:col-span-4">
           <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
