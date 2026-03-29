@@ -61,31 +61,55 @@ export async function GET(req: NextRequest) {
     let shipment: any = null;
     let claim: any = null;
 
-    // 1) Claim detail
+    // =========================
+    // 1) CLAIM
+    // =========================
     if (claimId) {
       const { res, json } = await fetchJson(
-        `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}`,
+        `https://api.mercadolibre.com/post-purchase/v1/claims/${claimId}`,
         accessToken
       );
 
-      if (res.ok) {
-        claim = json;
-      }
+      if (res.ok) claim = json;
     }
 
-    // 2) Order detail
-    if (orderId) {
+    // =========================
+    // 2) ORDER (principal)
+    // =========================
+    let resolvedOrderId = orderId;
+
+    if (!resolvedOrderId && claim) {
+      resolvedOrderId =
+        claim?.resource_id ||
+        claim?.order_id ||
+        claim?.resource?.id ||
+        "";
+    }
+
+    if (resolvedOrderId) {
       const { res, json } = await fetchJson(
-        `https://api.mercadolibre.com/orders/${encodeURIComponent(orderId)}`,
+        `https://api.mercadolibre.com/orders/${resolvedOrderId}`,
         accessToken
       );
 
-      if (res.ok) {
+      if (res.ok && json?.id) {
         order = json;
+      } else {
+        // 🔥 FALLBACK CRÍTICO
+        const { res: resSearch, json: jsonSearch } = await fetchJson(
+          `https://api.mercadolibre.com/orders/search?seller=${sellerId}&q=${resolvedOrderId}`,
+          accessToken
+        );
+
+        if (resSearch.ok && jsonSearch?.results?.length) {
+          order = jsonSearch.results[0];
+        }
       }
     }
 
-    // 3) Shipment detail
+    // =========================
+    // 3) SHIPMENT
+    // =========================
     const resolvedShipmentId =
       shipmentId ||
       order?.shipping?.id ||
@@ -95,35 +119,16 @@ export async function GET(req: NextRequest) {
 
     if (resolvedShipmentId) {
       const { res, json } = await fetchJson(
-        `https://api.mercadolibre.com/shipments/${encodeURIComponent(String(resolvedShipmentId))}`,
+        `https://api.mercadolibre.com/shipments/${resolvedShipmentId}`,
         accessToken
       );
 
-      if (res.ok) {
-        shipment = json;
-      }
+      if (res.ok) shipment = json;
     }
 
-    // 4) Tenta enriquecer order via claim, se orderId não veio
-    if (!order && claim) {
-      const resolvedOrderId =
-        claim?.resource_id ||
-        claim?.order_id ||
-        claim?.resource?.id ||
-        "";
-
-      if (resolvedOrderId) {
-        const { res, json } = await fetchJson(
-          `https://api.mercadolibre.com/orders/${encodeURIComponent(String(resolvedOrderId))}`,
-          accessToken
-        );
-
-        if (res.ok) {
-          order = json;
-        }
-      }
-    }
-
+    // =========================
+    // NORMALIZAÇÃO
+    // =========================
     const orderItem = order?.order_items?.[0] ?? {};
     const item = orderItem?.item ?? {};
     const buyer = order?.buyer ?? {};
@@ -132,81 +137,63 @@ export async function GET(req: NextRequest) {
     const details = {
       claim: {
         id: claim?.id ? String(claim.id) : claimId || null,
-        type: safeStr(claim?.type, "—"),
-        stage: safeStr(claim?.stage, "—"),
-        reason: safeStr(claim?.reason, "—"),
-        status: safeStr(claim?.status, "—"),
-        resolution: safeStr(claim?.resolution, "—"),
-        description: safeStr(claim?.description, "—"),
-        players: claim?.players ?? null,
+        type: safeStr(claim?.type),
+        stage: safeStr(claim?.stage),
+        reason: safeStr(claim?.reason),
+        status: safeStr(claim?.status),
+        resolution: safeStr(claim?.resolution),
+        description: safeStr(claim?.description),
         dateCreated: toIsoOrDash(claim?.date_created),
         lastUpdated: toIsoOrDash(claim?.last_updated),
       },
 
       order: {
-        id: order?.id ? String(order.id) : orderId || null,
+        id: order?.id ? String(order.id) : resolvedOrderId || null,
         packId: order?.pack_id ? String(order.pack_id) : null,
-        status: safeStr(order?.status, "—"),
-        statusDetail: safeStr(order?.status_detail, "—"),
-        dateCreated: toIsoOrDash(order?.date_created),
-        dateClosed: toIsoOrDash(order?.date_closed),
-        totalAmount: safeNum(order?.total_amount, 0),
-        paidAmount: safeNum(order?.paid_amount, 0),
+        status: safeStr(order?.status),
+        statusDetail: safeStr(order?.status_detail),
+        totalAmount: safeNum(order?.total_amount),
+        paidAmount: safeNum(order?.paid_amount),
         currencyId: safeStr(order?.currency_id, "BRL"),
-        tags: Array.isArray(order?.tags) ? order.tags : [],
       },
 
       item: {
-        title: safeStr(item?.title, "—"),
+        title: safeStr(item?.title),
         itemId: item?.id ? String(item.id) : null,
         variationId: item?.variation_id ? String(item.variation_id) : null,
-        categoryId: item?.category_id ? String(item.category_id) : null,
-        quantity: safeNum(orderItem?.quantity, 0),
-        unitPrice: safeNum(orderItem?.unit_price, 0),
-        fullUnitPrice: safeNum(orderItem?.full_unit_price, 0),
-        thumbnail: safeStr(item?.thumbnail, "—"),
+        quantity: safeNum(orderItem?.quantity),
+        unitPrice: safeNum(orderItem?.unit_price),
+        thumbnail: safeStr(item?.thumbnail),
       },
 
       buyer: {
-        id: buyer?.id ? String(buyer.id) : null,
         nickname: safeStr(buyer?.nickname, "Comprador"),
-        firstName: safeStr(buyer?.first_name, "—"),
-        lastName: safeStr(buyer?.last_name, "—"),
-        email: safeStr(buyer?.email, "—"),
-        phone: safeStr(phone, "—"),
-        docType: safeStr(buyer?.billing_info?.doc_type, "—"),
-        docNumber: safeStr(buyer?.billing_info?.doc_number, "—"),
+        name: `${safeStr(buyer?.first_name, "")} ${safeStr(
+          buyer?.last_name,
+          ""
+        )}`,
+        email: safeStr(buyer?.email),
+        phone: safeStr(phone),
       },
 
       shipment: {
         id: shipment?.id ? String(shipment.id) : resolvedShipmentId || null,
-        status: safeStr(shipment?.status, "—"),
-        substatus: safeStr(shipment?.substatus, "—"),
-        shippingMode: safeStr(shipment?.shipping_mode, "—"),
-        logisticType: safeStr(shipment?.logistic_type, "—"),
-        trackingNumber: safeStr(
-          shipment?.tracking_number ?? shipment?.tracking?.id,
-          "—"
+        status: safeStr(shipment?.status),
+        substatus: safeStr(shipment?.substatus),
+        tracking: safeStr(
+          shipment?.tracking_number ?? shipment?.tracking?.id
         ),
-        trackingMethod: safeStr(shipment?.tracking_method, "—"),
-        lastUpdated: toIsoOrDash(shipment?.last_updated),
-        dateCreated: toIsoOrDash(shipment?.date_created),
-        dateShipped: toIsoOrDash(shipment?.date_shipped),
-        dateDelivered: toIsoOrDash(
-          shipment?.date_delivered ?? shipment?.tracking?.date_delivered
-        ),
-        estimatedDelivery: toIsoOrDash(
-          shipment?.estimated_delivery_time?.date ??
-            shipment?.estimated_delivery_limit?.date
-        ),
-        receiverAddress: shipment?.receiver_address ?? null,
-        senderAddress: shipment?.sender_address ?? null,
       },
     };
 
     return NextResponse.json({
       ok: true,
       details,
+      debug: {
+        orderRaw: order,
+        shipmentRaw: shipment,
+        claimRaw: claim,
+      },
     });
   } catch (e: any) {
     return NextResponse.json(
