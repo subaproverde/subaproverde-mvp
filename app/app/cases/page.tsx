@@ -21,6 +21,31 @@ type ImpactItem = {
   claimId?: string | null;
   orderId?: string | null;
   shipmentId?: string | null;
+
+  itemTitle?: string;
+  itemId?: string | null;
+  variationId?: string | null;
+  quantity?: number;
+  unitPrice?: number;
+  currencyId?: string;
+  thumbnail?: string;
+
+  buyerNickname?: string;
+  buyerFirstName?: string;
+  buyerLastName?: string;
+  buyerPhone?: string;
+  buyerEmail?: string;
+
+  orderStatus?: string;
+  packId?: string | null;
+
+  shippingMode?: string;
+  trackingNumber?: string;
+  shippingStatus?: string;
+  shippingSubstatus?: string;
+  dateDelivered?: string;
+  dateEstimatedDelivery?: string;
+  dateShipped?: string;
 };
 
 type Message = {
@@ -37,6 +62,26 @@ const ROUTES = {
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function displayText(v: any, fallback = "-") {
+  if (v === null || v === undefined || v === "" || v === "—") return fallback;
+  return String(v);
+}
+
+function displayMoney(value?: number, currencyId?: string) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+  const n = Number(value);
+
+  try {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: currencyId || "BRL",
+      maximumFractionDigits: 2,
+    }).format(n);
+  } catch {
+    return `${currencyId || "R$"} ${n.toFixed(2)}`;
+  }
 }
 
 function MetricCard({
@@ -306,6 +351,31 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
       claimId: c?.claimId ? String(c.claimId) : null,
       orderId: c?.orderId ? String(c.orderId) : null,
       shipmentId: c?.shipmentId ? String(c.shipmentId) : null,
+
+      itemTitle: c?.itemTitle ? String(c.itemTitle) : "—",
+      itemId: c?.itemId ? String(c.itemId) : null,
+      variationId: c?.variationId ? String(c.variationId) : null,
+      quantity: Number(c?.quantity ?? 0),
+      unitPrice: Number(c?.unitPrice ?? 0),
+      currencyId: c?.currencyId ? String(c.currencyId) : "BRL",
+      thumbnail: c?.thumbnail ? String(c.thumbnail) : "—",
+
+      buyerNickname: c?.buyerNickname ? String(c.buyerNickname) : "Comprador",
+      buyerFirstName: c?.buyerFirstName ? String(c.buyerFirstName) : "—",
+      buyerLastName: c?.buyerLastName ? String(c.buyerLastName) : "—",
+      buyerPhone: c?.buyerPhone ? String(c.buyerPhone) : "—",
+      buyerEmail: c?.buyerEmail ? String(c.buyerEmail) : "—",
+
+      orderStatus: c?.orderStatus ? String(c.orderStatus) : "—",
+      packId: c?.packId ? String(c.packId) : null,
+
+      shippingMode: c?.shippingMode ? String(c.shippingMode) : "—",
+      trackingNumber: c?.trackingNumber ? String(c.trackingNumber) : "—",
+      shippingStatus: c?.shippingStatus ? String(c.shippingStatus) : "—",
+      shippingSubstatus: c?.shippingSubstatus ? String(c.shippingSubstatus) : "—",
+      dateDelivered: c?.dateDelivered ? String(c.dateDelivered) : "—",
+      dateEstimatedDelivery: c?.dateEstimatedDelivery ? String(c.dateEstimatedDelivery) : "—",
+      dateShipped: c?.dateShipped ? String(c.dateShipped) : "—",
     };
   });
 }
@@ -355,37 +425,26 @@ export default function CasesPage() {
 
     (async () => {
       try {
-        console.log("🔥 CASES /app/cases/page RODANDO 🔥");
         setLoading(true);
         setError(null);
 
         const { data } = await supabaseBrowser.auth.getUser();
         const user = data?.user;
 
-        console.log("[cases] user =", user);
-
         if (!user?.id) throw new Error("Você não está logado. Faça login novamente.");
 
         let sid: string | null = null;
 
-        console.log("[cases] localStorage activeSellerId =", localStorage.getItem("activeSellerId"));
-
         try {
           sid = localStorage.getItem("activeSellerId");
-        } catch (err) {
-          console.log("[cases] erro lendo localStorage =", err);
-        }
+        } catch {}
 
         if (!sid) {
-          console.log("[cases] sem activeSellerId, fallback /api/me/seller");
-
           const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
             cache: "no-store",
           });
 
           const jSeller = await rSeller.json().catch(() => ({}));
-
-          console.log("[cases] resposta /api/me/seller =", jSeller);
 
           if (!rSeller.ok || !jSeller?.sellerId) {
             throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
@@ -395,13 +454,8 @@ export default function CasesPage() {
 
           try {
             localStorage.setItem("activeSellerId", sid);
-            console.log("[cases] salvou activeSellerId fallback =", sid);
-          } catch (err) {
-            console.log("[cases] erro salvando localStorage =", err);
-          }
+          } catch {}
         }
-
-        console.log("[cases] usando sellerId =", sid);
 
         setSellerId(sid);
 
@@ -420,8 +474,6 @@ export default function CasesPage() {
           });
         }
 
-        console.log("[cases] resposta /api/ml/cases =", json);
-
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
         }
@@ -434,7 +486,6 @@ export default function CasesPage() {
         setSelectedId(norm[0]?.id ?? "");
       } catch (e: any) {
         if (!alive) return;
-        console.log("[cases] erro =", e);
         setError(e?.message ?? "Erro desconhecido");
         setItems([]);
       } finally {
@@ -469,8 +520,6 @@ export default function CasesPage() {
 
         const json = await res.json().catch(() => ({}));
 
-        console.log("[cases] resposta /api/ml/cases/messages =", json);
-
         if (!alive) return;
 
         if (!res.ok || json?.ok === false) {
@@ -492,8 +541,7 @@ export default function CasesPage() {
         }));
 
         setMessages(msgs);
-      } catch (err) {
-        console.log("[cases] erro carregando mensagens =", err);
+      } catch {
         if (!alive) return;
         setMessages([]);
       } finally {
@@ -573,30 +621,10 @@ export default function CasesPage() {
 
       <section className="mt-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MetricCard
-            labelTop="Reclamações"
-            value={counts.reclamacoes}
-            labelBottom="impactos"
-            tint="green"
-          />
-          <MetricCard
-            labelTop="Atrasos"
-            value={counts.atrasos}
-            labelBottom="impactos"
-            tint="amber"
-          />
-          <MetricCard
-            labelTop="Cancelamentos"
-            value={counts.cancelamentos}
-            labelBottom="impactos"
-            tint="rose"
-          />
-          <MetricCard
-            labelTop="Mediações"
-            value={counts.mediacoes}
-            labelBottom="impactos"
-            tint="sky"
-          />
+          <MetricCard labelTop="Reclamações" value={counts.reclamacoes} labelBottom="impactos" tint="green" />
+          <MetricCard labelTop="Atrasos" value={counts.atrasos} labelBottom="impactos" tint="amber" />
+          <MetricCard labelTop="Cancelamentos" value={counts.cancelamentos} labelBottom="impactos" tint="rose" />
+          <MetricCard labelTop="Mediações" value={counts.mediacoes} labelBottom="impactos" tint="sky" />
         </div>
       </section>
 
@@ -663,51 +691,63 @@ export default function CasesPage() {
               <div className="col-span-12 lg:col-span-4">
                 <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-[12px] font-extrabold text-white">Detalhes do caso</div>
-                    <SmallPill>{selected?.source ? `Fonte: ${selected.source}` : "API (parcial)"}</SmallPill>
+                    <div className="text-[12px] font-extrabold text-white">Resumo do caso</div>
+                    <SmallPill>{selected?.type ?? "-"}</SmallPill>
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
-                    <div className="mt-1 text-[13px] font-bold text-white">{selected?.title ?? "-"}</div>
-                    <div className="mt-2 text-[12px] text-white/65">{selected?.reason ?? "-"}</div>
+                    <div className="flex items-start gap-3">
+                      {selected?.thumbnail && selected.thumbnail !== "—" ? (
+                        <img
+                          src={selected.thumbnail}
+                          alt={selected.itemTitle || selected.title}
+                          className="h-16 w-16 rounded-xl object-cover border border-white/10"
+                        />
+                      ) : (
+                        <div className="h-16 w-16 rounded-xl bg-white/5 border border-white/10" />
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
+                        <div className="mt-1 text-[14px] font-bold text-white">
+                          {displayText(selected?.itemTitle, selected?.title ?? "-")}
+                        </div>
+                        <div className="mt-1 text-[12px] text-white/65">{selected?.reason ?? "-"}</div>
+                      </div>
+                    </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-white/65">
                       <div>
                         <div className="opacity-75">Criada</div>
-                        <div className="font-semibold text-white/80">{selected?.createdAt ?? "-"}</div>
-                      </div>
-                      <div>
-                        <div className="opacity-75">Status</div>
-                        <div className="font-semibold text-white/80">{selected?.statusPill ?? "-"}</div>
+                        <div className="font-semibold text-white/80">{displayText(selected?.createdAt)}</div>
                       </div>
                       <div>
                         <div className="opacity-75">Atualização</div>
-                        <div className="font-semibold text-white/80">{selected?.updatedAt ?? "-"}</div>
+                        <div className="font-semibold text-white/80">{displayText(selected?.updatedAt)}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Status</div>
+                        <div className="font-semibold text-white/80">{displayText(selected?.statusPill)}</div>
                       </div>
                       <div>
                         <div className="opacity-75">Idade</div>
-                        <div className="font-semibold text-white/80">{selected?.ageLabel ?? "-"}</div>
-                      </div>
-                      <div>
-                        <div className="opacity-75">Comprador</div>
-                        <div className="font-semibold text-white/80">{selected?.buyerName ?? "-"}</div>
-                      </div>
-                      <div>
-                        <div className="opacity-75">Tipo</div>
-                        <div className="font-semibold text-white/80 capitalize">{selected?.type ?? "-"}</div>
+                        <div className="font-semibold text-white/80">{displayText(selected?.ageLabel)}</div>
                       </div>
                       <div>
                         <div className="opacity-75">Claim ID</div>
-                        <div className="font-semibold text-white/80">{selected?.claimId ?? "-"}</div>
+                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.claimId)}</div>
                       </div>
                       <div>
                         <div className="opacity-75">Order ID</div>
-                        <div className="font-semibold text-white/80">{selected?.orderId ?? "-"}</div>
+                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.orderId)}</div>
                       </div>
                       <div>
                         <div className="opacity-75">Shipment ID</div>
-                        <div className="font-semibold text-white/80">{selected?.shipmentId ?? "-"}</div>
+                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.shipmentId)}</div>
+                      </div>
+                      <div>
+                        <div className="opacity-75">Pack ID</div>
+                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.packId)}</div>
                       </div>
                     </div>
                   </div>
@@ -716,14 +756,103 @@ export default function CasesPage() {
                     <ButtonGhost>Suporte</ButtonGhost>
                     <ButtonPrimary>Ação sugerida</ButtonPrimary>
                   </div>
-
-                  <div className="mt-4 text-[11px] text-white/60 leading-relaxed">
-                    Agora o painel já está preparado para receber detalhes reais do caso selecionado e mensagens reais da claim.
-                  </div>
                 </div>
               </div>
 
-              <div className="col-span-12 lg:col-span-8">
+              <div className="col-span-12 lg:col-span-8 space-y-4">
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="text-[12px] font-extrabold text-white">Dados da venda</div>
+
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Produto</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.itemTitle)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Item ID</div>
+                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.itemId)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Variação</div>
+                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.variationId)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Quantidade</div>
+                      <div className="mt-1 font-semibold text-white">{selected?.quantity ?? "-"}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Valor unitário</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayMoney(selected?.unitPrice, selected?.currencyId)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Status do pedido</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.orderStatus)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="text-[12px] font-extrabold text-white">Comprador</div>
+
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Nickname</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.buyerNickname, selected?.buyerName)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Nome</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {`${displayText(selected?.buyerFirstName, "")} ${displayText(selected?.buyerLastName, "")}`.trim() || "-"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Telefone</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.buyerPhone)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 md:col-span-2">
+                      <div className="text-white/50">Email</div>
+                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.buyerEmail)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="text-[12px] font-extrabold text-white">Envio e rastreio</div>
+
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Modo de envio</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.shippingMode)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Tracking</div>
+                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.trackingNumber)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Status do envio</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.shippingStatus)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Substatus</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.shippingSubstatus)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Data de envio</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.dateShipped)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Entrega estimada</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.dateEstimatedDelivery)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Data entregue</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(selected?.dateDelivered)}</div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
