@@ -56,6 +56,69 @@ type Message = {
   name?: string;
 };
 
+type CaseDetails = {
+  claim?: {
+    id?: string | null;
+    type?: string;
+    stage?: string;
+    reason?: string;
+    status?: string;
+    resolution?: string;
+    description?: string;
+    players?: any;
+    dateCreated?: string;
+    lastUpdated?: string;
+  };
+  order?: {
+    id?: string | null;
+    packId?: string | null;
+    status?: string;
+    statusDetail?: string;
+    dateCreated?: string;
+    dateClosed?: string;
+    totalAmount?: number;
+    paidAmount?: number;
+    currencyId?: string;
+    tags?: string[];
+  };
+  item?: {
+    title?: string;
+    itemId?: string | null;
+    variationId?: string | null;
+    categoryId?: string | null;
+    quantity?: number;
+    unitPrice?: number;
+    fullUnitPrice?: number;
+    thumbnail?: string;
+  };
+  buyer?: {
+    id?: string | null;
+    nickname?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    docType?: string;
+    docNumber?: string;
+  };
+  shipment?: {
+    id?: string | null;
+    status?: string;
+    substatus?: string;
+    shippingMode?: string;
+    logisticType?: string;
+    trackingNumber?: string;
+    trackingMethod?: string;
+    lastUpdated?: string;
+    dateCreated?: string;
+    dateShipped?: string;
+    dateDelivered?: string;
+    estimatedDelivery?: string;
+    receiverAddress?: any;
+    senderAddress?: any;
+  };
+};
+
 const ROUTES = {
   dashboard: "/app",
 };
@@ -82,6 +145,12 @@ function displayMoney(value?: number, currencyId?: string) {
   } catch {
     return `${currencyId || "R$"} ${n.toFixed(2)}`;
   }
+}
+
+function joinName(first?: string, last?: string) {
+  const a = displayText(first, "").trim();
+  const b = displayText(last, "").trim();
+  return `${a} ${b}`.trim() || "-";
 }
 
 function MetricCard({
@@ -213,7 +282,9 @@ function ImpactRow({
             <span className="text-[12px] text-white/60">{item.ageLabel}</span>
           </div>
 
-          <div className="mt-2 text-[15px] font-bold text-white leading-snug">{item.title}</div>
+          <div className="mt-2 text-[15px] font-bold text-white leading-snug">
+            {displayText(item.itemTitle, item.title)}
+          </div>
           <div className="mt-1 text-[12px] text-white/70 leading-relaxed line-clamp-2">{item.reason}</div>
 
           <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-white/60">
@@ -231,7 +302,9 @@ function ImpactRow({
             </div>
             <div className="flex items-center gap-2">
               <span className="opacity-70">Comprador:</span>
-              <span className="font-semibold text-white/75 truncate">{item.buyerName}</span>
+              <span className="font-semibold text-white/75 truncate">
+                {displayText(item.buyerNickname, item.buyerName)}
+              </span>
             </div>
           </div>
         </div>
@@ -384,6 +457,7 @@ export default function CasesPage() {
   const [activeTab, setActiveTab] = useState<ImpactType>("reclamacoes");
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
@@ -398,6 +472,7 @@ export default function CasesPage() {
   } | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [details, setDetails] = useState<CaseDetails | null>(null);
 
   function openDetails(itemId: string) {
     setSelectedId(itemId);
@@ -503,6 +578,53 @@ export default function CasesPage() {
     let alive = true;
 
     (async () => {
+      if (!sellerId || !selected || !detailsOpen) {
+        setDetails(null);
+        return;
+      }
+
+      try {
+        setLoadingDetails(true);
+
+        const params = new URLSearchParams();
+        params.set("sellerId", sellerId);
+
+        if (selected.orderId) params.set("orderId", selected.orderId);
+        if (selected.shipmentId) params.set("shipmentId", selected.shipmentId);
+        if (selected.claimId) params.set("claimId", selected.claimId);
+
+        const res = await fetch(`/api/ml/cases/details?${params.toString()}`, {
+          cache: "no-store",
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!alive) return;
+
+        if (!res.ok || json?.ok === false) {
+          setDetails(null);
+          return;
+        }
+
+        setDetails(json?.details ?? null);
+      } catch {
+        if (!alive) return;
+        setDetails(null);
+      } finally {
+        if (!alive) return;
+        setLoadingDetails(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [sellerId, selected, detailsOpen]);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
       if (!sellerId || !selected?.claimId || !detailsOpen) {
         setMessages([]);
         return;
@@ -572,6 +694,14 @@ export default function CasesPage() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [detailsOpen]);
+
+  const detailItemTitle = displayText(details?.item?.title, selected?.itemTitle || selected?.title || "-");
+  const detailThumbnail = displayText(details?.item?.thumbnail, selected?.thumbnail);
+  const detailBuyerNickname = displayText(details?.buyer?.nickname, selected?.buyerNickname || selected?.buyerName);
+  const detailBuyerName = joinName(
+    details?.buyer?.firstName ?? selected?.buyerFirstName,
+    details?.buyer?.lastName ?? selected?.buyerLastName
+  );
 
   return (
     <div className="mx-auto max-w-[1120px] px-6 lg:px-8 py-8">
@@ -697,10 +827,10 @@ export default function CasesPage() {
 
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="flex items-start gap-3">
-                      {selected?.thumbnail && selected.thumbnail !== "—" ? (
+                      {detailThumbnail && detailThumbnail !== "-" ? (
                         <img
-                          src={selected.thumbnail}
-                          alt={selected.itemTitle || selected.title}
+                          src={detailThumbnail}
+                          alt={detailItemTitle}
                           className="h-16 w-16 rounded-xl object-cover border border-white/10"
                         />
                       ) : (
@@ -709,25 +839,31 @@ export default function CasesPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
-                        <div className="mt-1 text-[14px] font-bold text-white">
-                          {displayText(selected?.itemTitle, selected?.title ?? "-")}
+                        <div className="mt-1 text-[14px] font-bold text-white">{detailItemTitle}</div>
+                        <div className="mt-1 text-[12px] text-white/65">
+                          {displayText(details?.claim?.description, selected?.reason)}
                         </div>
-                        <div className="mt-1 text-[12px] text-white/65">{selected?.reason ?? "-"}</div>
                       </div>
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-white/65">
                       <div>
                         <div className="opacity-75">Criada</div>
-                        <div className="font-semibold text-white/80">{displayText(selected?.createdAt)}</div>
+                        <div className="font-semibold text-white/80">
+                          {displayText(details?.claim?.dateCreated, selected?.createdAt)}
+                        </div>
                       </div>
                       <div>
                         <div className="opacity-75">Atualização</div>
-                        <div className="font-semibold text-white/80">{displayText(selected?.updatedAt)}</div>
+                        <div className="font-semibold text-white/80">
+                          {displayText(details?.claim?.lastUpdated, selected?.updatedAt)}
+                        </div>
                       </div>
                       <div>
                         <div className="opacity-75">Status</div>
-                        <div className="font-semibold text-white/80">{displayText(selected?.statusPill)}</div>
+                        <div className="font-semibold text-white/80">
+                          {displayText(details?.claim?.status, selected?.statusPill)}
+                        </div>
                       </div>
                       <div>
                         <div className="opacity-75">Idade</div>
@@ -735,19 +871,27 @@ export default function CasesPage() {
                       </div>
                       <div>
                         <div className="opacity-75">Claim ID</div>
-                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.claimId)}</div>
+                        <div className="font-semibold text-white/80 break-all">
+                          {displayText(details?.claim?.id, selected?.claimId)}
+                        </div>
                       </div>
                       <div>
                         <div className="opacity-75">Order ID</div>
-                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.orderId)}</div>
+                        <div className="font-semibold text-white/80 break-all">
+                          {displayText(details?.order?.id, selected?.orderId)}
+                        </div>
                       </div>
                       <div>
                         <div className="opacity-75">Shipment ID</div>
-                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.shipmentId)}</div>
+                        <div className="font-semibold text-white/80 break-all">
+                          {displayText(details?.shipment?.id, selected?.shipmentId)}
+                        </div>
                       </div>
                       <div>
                         <div className="opacity-75">Pack ID</div>
-                        <div className="font-semibold text-white/80 break-all">{displayText(selected?.packId)}</div>
+                        <div className="font-semibold text-white/80 break-all">
+                          {displayText(details?.order?.packId, selected?.packId)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -756,6 +900,12 @@ export default function CasesPage() {
                     <ButtonGhost>Suporte</ButtonGhost>
                     <ButtonPrimary>Ação sugerida</ButtonPrimary>
                   </div>
+
+                  {loadingDetails && (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-[12px] text-white/70">
+                      Carregando detalhes completos...
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -766,29 +916,58 @@ export default function CasesPage() {
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Produto</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.itemTitle)}</div>
+                      <div className="mt-1 font-semibold text-white">{detailItemTitle}</div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Item ID</div>
-                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.itemId)}</div>
+                      <div className="mt-1 font-semibold text-white break-all">
+                        {displayText(details?.item?.itemId, selected?.itemId)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Variação</div>
-                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.variationId)}</div>
+                      <div className="mt-1 font-semibold text-white break-all">
+                        {displayText(details?.item?.variationId, selected?.variationId)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Quantidade</div>
-                      <div className="mt-1 font-semibold text-white">{selected?.quantity ?? "-"}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {details?.item?.quantity ?? selected?.quantity ?? "-"}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Valor unitário</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayMoney(selected?.unitPrice, selected?.currencyId)}
+                        {displayMoney(
+                          details?.item?.unitPrice ?? selected?.unitPrice,
+                          details?.order?.currencyId ?? selected?.currencyId
+                        )}
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Status do pedido</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.orderStatus)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.order?.status, selected?.orderStatus)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Valor total</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayMoney(details?.order?.totalAmount, details?.order?.currencyId)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Valor pago</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayMoney(details?.order?.paidAmount, details?.order?.currencyId)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Detalhe do status</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.order?.statusDetail)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -799,21 +978,29 @@ export default function CasesPage() {
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Nickname</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.buyerNickname, selected?.buyerName)}</div>
+                      <div className="mt-1 font-semibold text-white">{detailBuyerNickname}</div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Nome</div>
-                      <div className="mt-1 font-semibold text-white">
-                        {`${displayText(selected?.buyerFirstName, "")} ${displayText(selected?.buyerLastName, "")}`.trim() || "-"}
-                      </div>
+                      <div className="mt-1 font-semibold text-white">{detailBuyerName}</div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Telefone</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.buyerPhone)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.buyer?.phone, selected?.buyerPhone)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3 md:col-span-2">
                       <div className="text-white/50">Email</div>
-                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.buyerEmail)}</div>
+                      <div className="mt-1 font-semibold text-white break-all">
+                        {displayText(details?.buyer?.email, selected?.buyerEmail)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Documento</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.buyer?.docType)} {displayText(details?.buyer?.docNumber, "")}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -824,31 +1011,82 @@ export default function CasesPage() {
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Modo de envio</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.shippingMode)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.shippingMode, selected?.shippingMode)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Tracking</div>
-                      <div className="mt-1 font-semibold text-white break-all">{displayText(selected?.trackingNumber)}</div>
+                      <div className="mt-1 font-semibold text-white break-all">
+                        {displayText(details?.shipment?.trackingNumber, selected?.trackingNumber)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Status do envio</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.shippingStatus)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.status, selected?.shippingStatus)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Substatus</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.shippingSubstatus)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.substatus, selected?.shippingSubstatus)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Logística</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.logisticType)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Método tracking</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.trackingMethod)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Data de envio</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.dateShipped)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.dateShipped, selected?.dateShipped)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Entrega estimada</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.dateEstimatedDelivery)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.estimatedDelivery, selected?.dateEstimatedDelivery)}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Data entregue</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(selected?.dateDelivered)}</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.dateDelivered, selected?.dateDelivered)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="text-[12px] font-extrabold text-white">Claim</div>
+
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Tipo</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(details?.claim?.type)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Stage</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(details?.claim?.stage)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Resolution</div>
+                      <div className="mt-1 font-semibold text-white">{displayText(details?.claim?.resolution)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 md:col-span-3">
+                      <div className="text-white/50">Descrição detalhada</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.claim?.description, selected?.reason)}
+                      </div>
                     </div>
                   </div>
                 </div>
