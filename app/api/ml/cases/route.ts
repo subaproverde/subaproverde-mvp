@@ -16,6 +16,11 @@ function safeStr(v: any, fallback = "—") {
   return String(v);
 }
 
+function safeNum(v: any, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function toIsoOrDash(v: any) {
   if (!v) return "—";
   return String(v);
@@ -126,6 +131,55 @@ async function fetchJson(url: string, accessToken: string) {
   return { res, json };
 }
 
+function normalizeBuyer(order: any) {
+  return {
+    buyerNickname: safeStr(order?.buyer?.nickname, "Comprador"),
+    buyerFirstName: safeStr(order?.buyer?.first_name, "—"),
+    buyerLastName: safeStr(order?.buyer?.last_name, "—"),
+    buyerPhone: safeStr(
+      order?.buyer?.phone?.number ?? order?.buyer?.billing_info?.doc_number,
+      "—"
+    ),
+    buyerEmail: safeStr(order?.buyer?.email, "—"),
+  };
+}
+
+function normalizeItem(order: any) {
+  const orderItem = order?.order_items?.[0] ?? {};
+  const item = orderItem?.item ?? {};
+
+  return {
+    itemTitle: safeStr(item?.title, "—"),
+    itemId: item?.id ? String(item.id) : null,
+    variationId: item?.variation_id ? String(item.variation_id) : null,
+    quantity: safeNum(orderItem?.quantity, 0),
+    unitPrice: safeNum(orderItem?.unit_price, 0),
+    currencyId: safeStr(order?.currency_id, "—"),
+    thumbnail: safeStr(item?.thumbnail, "—"),
+  };
+}
+
+function normalizeShipment(shipment: any) {
+  return {
+    shippingStatus: safeStr(shipment?.status, "—"),
+    shippingSubstatus: safeStr(shipment?.substatus, "—"),
+    shippingMode: safeStr(shipment?.shipping_mode, "—"),
+    trackingNumber: safeStr(
+      shipment?.tracking_number ?? shipment?.tracking?.id,
+      "—"
+    ),
+    dateDelivered: toIsoOrDash(
+      shipment?.date_delivered ??
+        shipment?.tracking?.date_delivered
+    ),
+    dateEstimatedDelivery: toIsoOrDash(
+      shipment?.estimated_delivery_time?.date ??
+        shipment?.estimated_delivery_limit?.date
+    ),
+    dateShipped: toIsoOrDash(shipment?.date_shipped),
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -142,18 +196,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log("[cases] sellerId interno =", sellerId);
-
     const { accessToken } = await getValidMlAccessToken(sellerId);
 
-    // 1) Base confiável: /users/me
     const { res: meRes, json: meJson } = await fetchJson(
       "https://api.mercadolibre.com/users/me",
       accessToken
     );
-
-    console.log("[cases] /users/me status =", meRes.status);
-    console.log("[cases] /users/me body =", meJson);
 
     if (!meRes.ok || !meJson?.id) {
       return NextResponse.json(
@@ -171,54 +219,53 @@ export async function GET(req: NextRequest) {
 
     const mlUserId = String(meJson.id);
     const nickname = meJson?.nickname ?? null;
-const officialClaimsCount = Number(
-  meJson?.seller_reputation?.metrics?.claims?.value ?? 0
-);
 
-const officialDelayCount = Number(
-  meJson?.seller_reputation?.metrics?.delayed_handling_time?.value ?? 0
-);
+    const officialClaimsCount = Number(
+      meJson?.seller_reputation?.metrics?.claims?.value ?? 0
+    );
 
-const officialCancelCount = Number(
-  meJson?.seller_reputation?.metrics?.cancellations?.value ?? 0
-);
-    // 2) Orders
+    const officialDelayCount = Number(
+      meJson?.seller_reputation?.metrics?.delayed_handling_time?.value ?? 0
+    );
+
+    const officialCancelCount = Number(
+      meJson?.seller_reputation?.metrics?.cancellations?.value ?? 0
+    );
+
     const ordersUrl = `https://api.mercadolibre.com/orders/search?seller=${encodeURIComponent(
       mlUserId
     )}&limit=50&sort=date_desc`;
 
-    const { res: ordersRes, json: ordersJson } = await fetchJson(ordersUrl, accessToken);
-
-    console.log("[cases] /orders/search status =", ordersRes.status);
-    console.log("[cases] /orders/search body =", ordersJson);
+    const { res: ordersRes, json: ordersJson } = await fetchJson(
+      ordersUrl,
+      accessToken
+    );
 
     const orders = asArray(ordersJson);
 
-    // 3) Claims
     const claimsUrl1 = `https://api.mercadolibre.com/post-purchase/v1/claims/search?seller_id=${encodeURIComponent(
       mlUserId
     )}`;
 
-    const { res: claimsRes1, json: claimsJson1 } = await fetchJson(claimsUrl1, accessToken);
-
-    console.log("[cases] claims attempt 1 status =", claimsRes1.status);
-    console.log("[cases] claims attempt 1 body =", claimsJson1);
+    const { res: claimsRes1, json: claimsJson1 } = await fetchJson(
+      claimsUrl1,
+      accessToken
+    );
 
     const claims1 = asArray(claimsJson1);
 
     const claimsUrl2 =
       "https://api.mercadolibre.com/post-purchase/v1/claims/search?stage=claim&limit=50";
 
-    const { res: claimsRes2, json: claimsJson2 } = await fetchJson(claimsUrl2, accessToken);
-
-    console.log("[cases] claims attempt 2 status =", claimsRes2.status);
-    console.log("[cases] claims attempt 2 body =", claimsJson2);
+    const { res: claimsRes2, json: claimsJson2 } = await fetchJson(
+      claimsUrl2,
+      accessToken
+    );
 
     const claims2 = asArray(claimsJson2);
 
     const claims = claims1.length > 0 ? claims1 : claims2;
 
-    // 4) Shipments dos orders
     const shipmentIds = Array.from(
       new Set(
         orders
@@ -231,17 +278,28 @@ const officialCancelCount = Number(
       shipmentIds.slice(0, 50).map(async (shipmentId: any) => {
         const shipmentUrl = `https://api.mercadolibre.com/shipments/${shipmentId}`;
         const { res, json } = await fetchJson(shipmentUrl, accessToken);
-
-        console.log("[cases] shipment status =", shipmentId, res.status);
         return [String(shipmentId), res.ok ? json : null] as const;
       })
     );
 
     const shipmentMap = new Map<string, any>(shipmentEntries);
 
-    // 5) Normalização de claims
+    const orderMap = new Map<string, any>(
+      orders.map((o: any) => [String(o.id), o])
+    );
+
     const normalizedClaims = claims.map((c: any) => {
       const type = claimTypeOf(c);
+      const orderId =
+        c?.resource_id ?? c?.order_id ?? c?.resource?.id ?? null;
+
+      const order = orderId ? orderMap.get(String(orderId)) : null;
+      const shipmentId = order?.shipping?.id ? String(order.shipping.id) : null;
+      const shipment = shipmentId ? shipmentMap.get(shipmentId) : null;
+
+      const buyer = normalizeBuyer(order ?? {});
+      const item = normalizeItem(order ?? {});
+      const shipping = normalizeShipment(shipment ?? {});
 
       return {
         id: `claim-${c.id ?? c.resource_id ?? Math.random().toString(36).slice(2)}`,
@@ -251,39 +309,88 @@ const officialCancelCount = Number(
         createdAt: toIsoOrDash(c?.date_created),
         updatedAt: toIsoOrDash(c?.last_updated),
         ageLabel: timeAgo(c?.last_updated ?? c?.date_created),
-        buyerName: safeStr(c?.buyer?.nickname, "Comprador"),
+        buyerName: buyer.buyerNickname,
         statusPill: safeStr(c?.status),
         chip: c?.id ? `#${c.id}` : undefined,
         source: "claim",
-        claimId: c?.id ?? null,
-        orderId: c?.resource_id ?? c?.order_id ?? null,
-        shipmentId: null,
+        claimId: c?.id ? String(c.id) : null,
+        orderId: orderId ? String(orderId) : null,
+        shipmentId,
+        itemTitle: item.itemTitle,
+        itemId: item.itemId,
+        variationId: item.variationId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        currencyId: item.currencyId,
+        thumbnail: item.thumbnail,
+        buyerNickname: buyer.buyerNickname,
+        buyerFirstName: buyer.buyerFirstName,
+        buyerLastName: buyer.buyerLastName,
+        buyerPhone: buyer.buyerPhone,
+        buyerEmail: buyer.buyerEmail,
+        orderStatus: safeStr(order?.status, "—"),
+        packId: order?.pack_id ? String(order.pack_id) : null,
+        shippingMode: shipping.shippingMode,
+        trackingNumber: shipping.trackingNumber,
+        shippingStatus: shipping.shippingStatus,
+        shippingSubstatus: shipping.shippingSubstatus,
+        dateDelivered: shipping.dateDelivered,
+        dateEstimatedDelivery: shipping.dateEstimatedDelivery,
+        dateShipped: shipping.dateShipped,
         raw: c,
       };
     });
 
-    // 6) Normalização de cancelamentos por orders
     const normalizedCancelledOrders = orders
       .filter((o: any) => orderIsCancelled(o))
-      .map((o: any) => ({
-        id: `order-cancel-${o.id}`,
-        type: "cancelamentos" as ImpactType,
-        title: safeStr(o?.order_items?.[0]?.item?.title, "Pedido cancelado"),
-        reason: `Pedido ${safeStr(o?.status)}`,
-        createdAt: toIsoOrDash(o?.date_created),
-        updatedAt: toIsoOrDash(o?.last_updated),
-        ageLabel: timeAgo(o?.last_updated ?? o?.date_created),
-        buyerName: safeStr(o?.buyer?.nickname, "Comprador"),
-        statusPill: safeStr(o?.status),
-        chip: `#${o.id}`,
-        source: "order",
-        claimId: null,
-        orderId: o?.id ?? null,
-        shipmentId: o?.shipping?.id ?? null,
-        raw: o,
-      }));
+      .map((o: any) => {
+        const shipmentId = o?.shipping?.id ? String(o.shipping.id) : null;
+        const shipment = shipmentId ? shipmentMap.get(shipmentId) : null;
 
-    // 7) Normalização de atrasos por shipment
+        const buyer = normalizeBuyer(o);
+        const item = normalizeItem(o);
+        const shipping = normalizeShipment(shipment ?? {});
+
+        return {
+          id: `order-cancel-${o.id}`,
+          type: "cancelamentos" as ImpactType,
+          title: item.itemTitle !== "—" ? item.itemTitle : "Pedido cancelado",
+          reason: `Pedido ${safeStr(o?.status)}`,
+          createdAt: toIsoOrDash(o?.date_created),
+          updatedAt: toIsoOrDash(o?.last_updated),
+          ageLabel: timeAgo(o?.last_updated ?? o?.date_created),
+          buyerName: buyer.buyerNickname,
+          statusPill: safeStr(o?.status),
+          chip: `#${o.id}`,
+          source: "order",
+          claimId: null,
+          orderId: String(o?.id ?? ""),
+          shipmentId,
+          itemTitle: item.itemTitle,
+          itemId: item.itemId,
+          variationId: item.variationId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          currencyId: item.currencyId,
+          thumbnail: item.thumbnail,
+          buyerNickname: buyer.buyerNickname,
+          buyerFirstName: buyer.buyerFirstName,
+          buyerLastName: buyer.buyerLastName,
+          buyerPhone: buyer.buyerPhone,
+          buyerEmail: buyer.buyerEmail,
+          orderStatus: safeStr(o?.status, "—"),
+          packId: o?.pack_id ? String(o.pack_id) : null,
+          shippingMode: shipping.shippingMode,
+          trackingNumber: shipping.trackingNumber,
+          shippingStatus: shipping.shippingStatus,
+          shippingSubstatus: shipping.shippingSubstatus,
+          dateDelivered: shipping.dateDelivered,
+          dateEstimatedDelivery: shipping.dateEstimatedDelivery,
+          dateShipped: shipping.dateShipped,
+          raw: o,
+        };
+      });
+
     const normalizedDelayedOrders = orders
       .map((o: any) => {
         const shipmentId = o?.shipping?.id ? String(o.shipping.id) : null;
@@ -291,21 +398,48 @@ const officialCancelCount = Number(
 
         if (!shipment || !shipmentLooksDelayed(shipment)) return null;
 
+        const buyer = normalizeBuyer(o);
+        const item = normalizeItem(o);
+        const shipping = normalizeShipment(shipment);
+
         return {
           id: `order-delay-${o.id}`,
           type: "atrasos" as ImpactType,
-          title: safeStr(o?.order_items?.[0]?.item?.title, "Pedido com atraso"),
-          reason: `Envio ${safeStr(shipment?.status)}${shipment?.substatus ? ` / ${shipment.substatus}` : ""}`,
+          title: item.itemTitle !== "—" ? item.itemTitle : "Pedido com atraso",
+          reason: `Envio ${safeStr(shipment?.status)}${
+            shipment?.substatus ? ` / ${shipment.substatus}` : ""
+          }`,
           createdAt: toIsoOrDash(o?.date_created),
           updatedAt: toIsoOrDash(shipment?.last_updated ?? o?.last_updated),
           ageLabel: timeAgo(shipment?.last_updated ?? o?.last_updated ?? o?.date_created),
-          buyerName: safeStr(o?.buyer?.nickname, "Comprador"),
+          buyerName: buyer.buyerNickname,
           statusPill: safeStr(shipment?.status ?? o?.status),
           chip: `#${o.id}`,
           source: "shipment",
           claimId: null,
-          orderId: o?.id ?? null,
+          orderId: String(o?.id ?? ""),
           shipmentId,
+          itemTitle: item.itemTitle,
+          itemId: item.itemId,
+          variationId: item.variationId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          currencyId: item.currencyId,
+          thumbnail: item.thumbnail,
+          buyerNickname: buyer.buyerNickname,
+          buyerFirstName: buyer.buyerFirstName,
+          buyerLastName: buyer.buyerLastName,
+          buyerPhone: buyer.buyerPhone,
+          buyerEmail: buyer.buyerEmail,
+          orderStatus: safeStr(o?.status, "—"),
+          packId: o?.pack_id ? String(o.pack_id) : null,
+          shippingMode: shipping.shippingMode,
+          trackingNumber: shipping.trackingNumber,
+          shippingStatus: shipping.shippingStatus,
+          shippingSubstatus: shipping.shippingSubstatus,
+          dateDelivered: shipping.dateDelivered,
+          dateEstimatedDelivery: shipping.dateEstimatedDelivery,
+          dateShipped: shipping.dateShipped,
           raw: {
             order: o,
             shipment,
@@ -313,35 +447,58 @@ const officialCancelCount = Number(
         };
       })
       .filter(Boolean);
-const fallbackDelayedItems =
-  normalizedDelayedOrders.length === 0 && officialDelayCount > 0
-    ? Array.from({ length: officialDelayCount }).map((_, i) => ({
-        id: `delay-metric-${i + 1}`,
-        type: "atrasos" as ImpactType,
-        title: "Atraso impactando reputação",
-        reason: "Item vindo da métrica oficial do Mercado Livre (delayed_handling_time).",
-        createdAt: "—",
-        updatedAt: "—",
-        ageLabel: "métrica ML",
-        buyerName: "Comprador",
-        statusPill: "impactando",
-        chip: `ML-${i + 1}`,
-        source: "metric",
-        claimId: null,
-        orderId: null,
-        shipmentId: null,
-        raw: {
-          metric: "delayed_handling_time",
-          officialDelayCount,
-        },
-      }))
-    : [];
+
+    const fallbackDelayedItems =
+      normalizedDelayedOrders.length === 0 && officialDelayCount > 0
+        ? Array.from({ length: officialDelayCount }).map((_, i) => ({
+            id: `delay-metric-${i + 1}`,
+            type: "atrasos" as ImpactType,
+            title: "Atraso impactando reputação",
+            reason: "Item vindo da métrica oficial do Mercado Livre (delayed_handling_time).",
+            createdAt: "—",
+            updatedAt: "—",
+            ageLabel: "métrica ML",
+            buyerName: "Comprador",
+            statusPill: "impactando",
+            chip: `ML-${i + 1}`,
+            source: "metric",
+            claimId: null,
+            orderId: null,
+            shipmentId: null,
+            itemTitle: "—",
+            itemId: null,
+            variationId: null,
+            quantity: 0,
+            unitPrice: 0,
+            currencyId: "—",
+            thumbnail: "—",
+            buyerNickname: "Comprador",
+            buyerFirstName: "—",
+            buyerLastName: "—",
+            buyerPhone: "—",
+            buyerEmail: "—",
+            orderStatus: "—",
+            packId: null,
+            shippingMode: "—",
+            trackingNumber: "—",
+            shippingStatus: "impactando",
+            shippingSubstatus: "—",
+            dateDelivered: "—",
+            dateEstimatedDelivery: "—",
+            dateShipped: "—",
+            raw: {
+              metric: "delayed_handling_time",
+              officialDelayCount,
+            },
+          }))
+        : [];
+
     const items = [
-  ...normalizedClaims,
-  ...normalizedCancelledOrders,
-  ...normalizedDelayedOrders,
-  ...fallbackDelayedItems,
-];
+      ...normalizedClaims,
+      ...normalizedCancelledOrders,
+      ...normalizedDelayedOrders,
+      ...fallbackDelayedItems,
+    ];
 
     return NextResponse.json(
       {
@@ -349,23 +506,20 @@ const fallbackDelayedItems =
         sellerId,
         mlUserId,
         nickname,
-      counts: {
-  orders: orders.length,
-  claimsAttempt1: claims1.length,
-  claimsAttempt2: claims2.length,
-
-  reclamacoes: officialClaimsCount,
-  atrasos: officialDelayCount,
-  cancelamentos: officialCancelCount,
-  mediacoes: 0,
-
-  detectedReclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
-  detectedMediacoes: items.filter((x: any) => x.type === "mediacoes").length,
-  detectedCancelamentos: items.filter((x: any) => x.type === "cancelamentos").length,
-  detectedAtrasos: items.filter((x: any) => x.type === "atrasos").length,
-
-  items: items.length,
-},
+        counts: {
+          orders: orders.length,
+          claimsAttempt1: claims1.length,
+          claimsAttempt2: claims2.length,
+          reclamacoes: officialClaimsCount,
+          atrasos: officialDelayCount,
+          cancelamentos: officialCancelCount,
+          mediacoes: 0,
+          detectedReclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
+          detectedMediacoes: items.filter((x: any) => x.type === "mediacoes").length,
+          detectedCancelamentos: items.filter((x: any) => x.type === "cancelamentos").length,
+          detectedAtrasos: items.filter((x: any) => x.type === "atrasos").length,
+          items: items.length,
+        },
         items,
         debug: {
           ordersStatus: ordersRes.status,
@@ -375,9 +529,6 @@ const fallbackDelayedItems =
           ordersUrl,
           claimsUrl1,
           claimsUrl2,
-          ordersRaw: ordersJson,
-          claimsRaw1: claimsJson1,
-          claimsRaw2: claimsJson2,
         },
       },
       { status: 200 }
