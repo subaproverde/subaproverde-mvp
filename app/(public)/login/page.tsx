@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +31,6 @@ export default function LoginPage() {
 
     const userId = data.user.id;
 
-    // 🔐 busca role do usuário
     const { data: profile, error: roleError } = await supabase
       .from("profiles")
       .select("role")
@@ -43,7 +43,6 @@ export default function LoginPage() {
       return setMsg("Falha ao identificar perfil do usuário.");
     }
 
-    // 🚀 REDIRECT INTELIGENTE
     if (profile.role === "admin") {
       router.replace("/app");
     } else {
@@ -51,10 +50,37 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    setMsg(null);
+
+    if (!email.trim()) {
+      setMsg("Digite seu e-mail para receber o link de redefinição.");
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: "https://www.subaproverde.com/reset-password",
+      });
+
+      if (error) {
+        setMsg(error.message ?? "Não foi possível enviar o email de redefinição.");
+        return;
+      }
+
+      setMsg("Enviamos um link de redefinição de senha para o seu e-mail.");
+    } catch (err: any) {
+      setMsg(err?.message ?? "Erro ao solicitar redefinição de senha.");
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-[#0a0f15] flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-[#0f1620] border border-white/10 rounded-2xl p-8 shadow-xl">
-        {/* LOGO */}
         <div className="flex justify-center mb-8">
           <Image
             src="/brand/suba-logo.png"
@@ -85,6 +111,17 @@ export default function LoginPage() {
             className="w-full rounded-xl bg-[#0a0f15] border border-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none focus:border-white/30"
           />
 
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={resetLoading}
+              className="text-sm text-emerald-300 hover:text-emerald-200 transition disabled:opacity-60"
+            >
+              {resetLoading ? "Enviando..." : "Esqueci minha senha"}
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -94,7 +131,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {msg && <div className="mt-4 text-sm text-red-400 text-center">{msg}</div>}
+        {msg && (
+          <div className="mt-4 text-sm text-center text-red-400">
+            {msg}
+          </div>
+        )}
 
         <div className="text-center text-xs text-white/40 mt-6">
           Suba Pro Verde © {new Date().getFullYear()}
