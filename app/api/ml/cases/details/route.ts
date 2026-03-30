@@ -57,7 +57,6 @@ export async function GET(req: NextRequest) {
 
     const { accessToken } = await getValidMlAccessToken(sellerId);
 
-    // 1) Descobre o user real do ML
     const { res: meRes, json: meJson } = await fetchJson(
       "https://api.mercadolibre.com/users/me",
       accessToken
@@ -83,7 +82,16 @@ export async function GET(req: NextRequest) {
     let shipment: any = null;
     let claim: any = null;
 
-    // 2) Claim
+    let orderDirectStatus: number | null = null;
+    let orderDirectBody: any = null;
+
+    let orderSearchStatus: number | null = null;
+    let orderSearchBody: any = null;
+
+    let shipmentStatus: number | null = null;
+    let shipmentBody: any = null;
+
+    // 1) Claim
     if (claimId) {
       const { res, json } = await fetchJson(
         `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}`,
@@ -95,7 +103,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3) Resolve orderId
+    // 2) Resolve orderId
     let resolvedOrderId = orderId;
 
     if (!resolvedOrderId && claim) {
@@ -106,23 +114,29 @@ export async function GET(req: NextRequest) {
         "";
     }
 
-    // 4) Tenta order detail direto
+    // 3) Tenta /orders/{id}
     if (resolvedOrderId) {
       const { res, json } = await fetchJson(
         `https://api.mercadolibre.com/orders/${encodeURIComponent(resolvedOrderId)}`,
         accessToken
       );
 
+      orderDirectStatus = res.status;
+      orderDirectBody = json;
+
       if (res.ok && json?.id) {
         order = json;
       } else {
-        // 5) Fallback correto: search usando ML USER ID, não sellerId interno
+        // 4) Fallback /orders/search
         const { res: resSearch, json: jsonSearch } = await fetchJson(
           `https://api.mercadolibre.com/orders/search?seller=${encodeURIComponent(
             mlUserId
           )}&q=${encodeURIComponent(resolvedOrderId)}&limit=10`,
           accessToken
         );
+
+        orderSearchStatus = resSearch.status;
+        orderSearchBody = jsonSearch;
 
         if (resSearch.ok && Array.isArray(jsonSearch?.results) && jsonSearch.results.length > 0) {
           const exact =
@@ -134,7 +148,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 6) Resolve shipment
+    // 5) Resolve shipment
     const resolvedShipmentId =
       shipmentId ||
       order?.shipping?.id ||
@@ -147,6 +161,9 @@ export async function GET(req: NextRequest) {
         `https://api.mercadolibre.com/shipments/${encodeURIComponent(String(resolvedShipmentId))}`,
         accessToken
       );
+
+      shipmentStatus = res.status;
+      shipmentBody = json;
 
       if (res.ok) {
         shipment = json;
@@ -240,6 +257,16 @@ export async function GET(req: NextRequest) {
         mlUserId,
         resolvedOrderId,
         resolvedShipmentId,
+
+        orderDirectStatus,
+        orderDirectBody,
+
+        orderSearchStatus,
+        orderSearchBody,
+
+        shipmentStatus,
+        shipmentBody,
+
         orderRaw: order,
         shipmentRaw: shipment,
         claimRaw: claim,
