@@ -150,7 +150,7 @@ export default function AdminSellersClient() {
     });
   }, [sellers, accountBySellerId, tokenBySellerId, q, mlFilter]);
 
-  async function openSellerDashboard(sellerId: string) {
+  async function setActiveSeller(sellerId: string) {
     try {
       localStorage.setItem("activeSellerId", sellerId);
     } catch {
@@ -177,8 +177,16 @@ export default function AdminSellersClient() {
     } catch {
       // ignore - não bloqueia navegação
     }
+  }
 
+  async function openSellerDashboard(sellerId: string) {
+    await setActiveSeller(sellerId);
     router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
+  }
+
+  async function goToCases(sellerId: string) {
+    await setActiveSeller(sellerId);
+    router.push(`/app/cases?sellerId=${encodeURIComponent(sellerId)}`);
   }
 
   return (
@@ -350,12 +358,13 @@ export default function AdminSellersClient() {
                     </div>
 
                     <div className="mt-4 flex gap-2 flex-wrap">
-                      <Link
-                        href={`/app/cases?sellerId=${encodeURIComponent(s.id)}`}
+                      <button
+                        type="button"
+                        onClick={() => goToCases(s.id)}
                         className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85 hover:bg-white/10"
                       >
                         Ver cases →
-                      </Link>
+                      </button>
 
                       <button
                         type="button"
