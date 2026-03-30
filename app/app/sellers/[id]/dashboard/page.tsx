@@ -189,9 +189,13 @@ export default function SellerDashboardPage() {
   const tone = useMemo(() => toneFromLevel(repLevel), [repLevel]);
 
   function startConnect() {
-    if (!sellerId) return;
-    window.location.href = `/api/ml/connect?sellerId=${encodeURIComponent(sellerId)}`;
-  }
+  supabaseBrowser.auth.getUser().then(({ data }) => {
+    const user = data?.user;
+    if (!user?.id) return;
+
+    window.location.href = `/api/ml/connect?userId=${encodeURIComponent(user.id)}`;
+  });
+}
 
   if (loading) {
     return (
