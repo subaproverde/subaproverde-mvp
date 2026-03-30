@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const userId = sp.get("userId");
 
-  // ✅ No seu setup (ngrok + auth no browser/localStorage), o jeito correto é mandar userId
   if (!userId) {
     return Response.json(
       { error: "userId obrigatório neste MVP (use /api/me/seller?userId=...)" },
@@ -18,6 +17,43 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // 1) Primeiro tenta seller ativo salvo em user_settings
+  const { data: settingsRow, error: settingsErr } = await supabaseAdmin
+    .from("user_settings")
+    .select("active_seller_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (settingsErr) {
+    return Response.json(
+      { error: "Falha ao buscar user_settings", details: settingsErr.message },
+      { status: 500 }
+    );
+  }
+
+  if (settingsRow?.active_seller_id) {
+    const sellerId = String(settingsRow.active_seller_id);
+
+    // tenta enriquecer com seller_account, se existir
+    const { data: accountRow } = await supabaseAdmin
+      .from("seller_accounts")
+      .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
+      .eq("owner_user_id", userId)
+      .eq("seller_id", sellerId)
+      .maybeSingle();
+
+    return Response.json({
+      ok: true,
+      userId,
+      sellerId,
+      sellerAccountId: accountRow?.id ?? null,
+      ml_user_id: accountRow?.ml_user_id ?? null,
+      nickname: accountRow?.nickname ?? null,
+      source: "user_settings",
+    });
+  }
+
+  // 2) Fallback: seller_accounts
   const { data, error } = await supabaseAdmin
     .from("seller_accounts")
     .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
@@ -33,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   if (!data) {
     return Response.json(
-      { error: "seller_accounts não encontrado para este usuário" },
+      { error: "Nenhum seller encontrado para este usuário" },
       { status: 404 }
     );
   }
@@ -52,5 +88,6 @@ export async function GET(req: NextRequest) {
     sellerAccountId: data.id,
     ml_user_id: data.ml_user_id,
     nickname: data.nickname,
+    source: "seller_accounts",
   });
 }
