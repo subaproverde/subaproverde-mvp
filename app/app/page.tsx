@@ -128,49 +128,50 @@ export default function SellerDashboardPage() {
         return;
       }
 
-      let sid: string | null = null;
-
       console.log(
-        "[/app] localStorage activeSellerId =",
+        "[/app] localStorage activeSellerId (antes) =",
         localStorage.getItem("activeSellerId")
       );
 
+      // 🔥 SEMPRE busca do backend a fonte da verdade
+      const r = await fetch(`/api/me/seller?userId=${user.id}`, {
+        cache: "no-store",
+      });
+
+      const j = await r.json().catch(() => ({}));
+
+      console.log("[/app] resposta /api/me/seller =", j);
+
+      if (!r.ok || !j?.sellerId) {
+        console.log("[/app] /api/me/seller não retornou seller válido");
+        setSellerId(null);
+        setStoreName("—");
+        setAlerts([]);
+        setInProgress([]);
+        setLoading(false);
+        return;
+      }
+
+      const sidBackend = String(j.sellerId);
+      let sidLocal: string | null = null;
+
       try {
-        sid = localStorage.getItem("activeSellerId");
+        sidLocal = localStorage.getItem("activeSellerId");
       } catch (err) {
         console.log("[/app] erro lendo localStorage", err);
       }
 
-      if (!sid) {
-        console.log("[/app] sem activeSellerId, caindo no fallback /api/me/seller");
-
-        const r = await fetch(`/api/me/seller?userId=${user.id}`, {
-          cache: "no-store",
-        });
-
-        const j = await r.json().catch(() => ({}));
-
-        console.log("[/app] resposta /api/me/seller =", j);
-
-        if (!r.ok || !j?.sellerId) {
-          console.log("[/app] /api/me/seller não retornou seller válido");
-          setSellerId(null);
-          setStoreName("—");
-          setAlerts([]);
-          setInProgress([]);
-          setLoading(false);
-          return;
-        }
-
-        sid = String(j.sellerId);
-
+      // 🔥 mantém o localStorage só como cache sincronizado
+      if (sidLocal !== sidBackend) {
         try {
-          localStorage.setItem("activeSellerId", sid);
-          console.log("[/app] salvou activeSellerId no localStorage =", sid);
+          localStorage.setItem("activeSellerId", sidBackend);
+          console.log("[/app] localStorage corrigido para =", sidBackend);
         } catch (err) {
           console.log("[/app] erro salvando localStorage", err);
         }
       }
+
+      const sid = sidBackend;
 
       console.log("[/app] sid final antes dos fetches =", sid);
 
@@ -657,4 +658,4 @@ function KpiCardDark({
       {hint ? <div className="mt-1 text-xs text-white/45">{hint}</div> : null}
     </div>
   );
-} 
+}

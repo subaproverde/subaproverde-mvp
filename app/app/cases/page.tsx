@@ -508,29 +508,27 @@ export default function CasesPage() {
 
         if (!user?.id) throw new Error("Você não está logado. Faça login novamente.");
 
-        let sid: string | null = null;
+        const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+          cache: "no-store",
+        });
+
+        const jSeller = await rSeller.json().catch(() => ({}));
+
+        if (!rSeller.ok || !jSeller?.sellerId) {
+          throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
+        }
+
+        const sidBackend = String(jSeller.sellerId);
 
         try {
-          sid = localStorage.getItem("activeSellerId");
+          const sidLocal = localStorage.getItem("activeSellerId");
+
+          if (sidLocal !== sidBackend) {
+            localStorage.setItem("activeSellerId", sidBackend);
+          }
         } catch {}
 
-        if (!sid) {
-          const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
-            cache: "no-store",
-          });
-
-          const jSeller = await rSeller.json().catch(() => ({}));
-
-          if (!rSeller.ok || !jSeller?.sellerId) {
-            throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
-          }
-
-          sid = String(jSeller.sellerId);
-
-          try {
-            localStorage.setItem("activeSellerId", sid);
-          } catch {}
-        }
+        const sid = sidBackend;
 
         setSellerId(sid);
 

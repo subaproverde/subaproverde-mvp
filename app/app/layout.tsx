@@ -13,81 +13,127 @@ function navLinkClass(active: boolean) {
   ].join(" ");
 }
 
+type MeSellerResp =
+  | {
+      ok: true;
+      userId: string;
+      sellerId: string;
+      sellerAccountId?: string | null;
+      ml_user_id?: string | null;
+      nickname?: string | null;
+      source?: string;
+    }
+  | { ok?: false; error: string; details?: string };
+
 export default function SellerAppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [activeSellerId, setActiveSellerId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
 
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        if (alive) setIsAdmin(false);
+      const user = userData?.user;
+
+      if (!user) {
+        if (!alive) return;
+        setCurrentUserId("");
+        setActiveSellerId(null);
+        setIsAdmin(false);
         return;
       }
+
+      if (!alive) return;
+      setCurrentUserId(user.id);
 
       const { data, error } = await supabase.rpc("is_admin");
       if (!alive) return;
 
       if (error) {
         setIsAdmin(false);
-        return;
+      } else {
+        setIsAdmin(!!data);
       }
 
-      setIsAdmin(!!data);
+      let localSellerId: string | null = null;
+
+      try {
+        localSellerId =
+          typeof window !== "undefined"
+            ? window.localStorage.getItem("activeSellerId")
+            : null;
+      } catch {
+        localSellerId = null;
+      }
+
+      try {
+        const r = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+          cache: "no-store",
+        });
+
+        const j = (await r.json().catch(() => ({}))) as MeSellerResp;
+
+        if (alive && r.ok && "sellerId" in j && j.sellerId) {
+          const sellerId = String(j.sellerId);
+
+          if (localSellerId !== sellerId) {
+            try {
+              if (typeof window !== "undefined") {
+                window.localStorage.setItem("activeSellerId", sellerId);
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          setActiveSellerId(sellerId);
+          return;
+        }
+      } catch {
+        // ignore fallback abaixo
+      }
+
+      if (alive) {
+        setActiveSellerId(localSellerId);
+      }
     })();
 
     return () => {
       alive = false;
     };
-  }, []);
-
-  const activeSellerId = useMemo(() => {
-    try {
-      return typeof window !== "undefined" ? window.localStorage.getItem("activeSellerId") : null;
-    } catch {
-      return null;
-    }
   }, [pathname]);
+
+  const hasActiveSeller = useMemo(() => !!activeSellerId, [activeSellerId]);
 
   function goHome(e: React.MouseEvent) {
     e.preventDefault();
 
-    // ✅ Início sempre leva pro dashboard do seller ativo
-    if (activeSellerId) {
+    if (hasActiveSeller && activeSellerId) {
       router.push(`/app/sellers/${encodeURIComponent(activeSellerId)}/dashboard`);
       return;
     }
 
-    // sem seller ativo:
     router.push(isAdmin ? "/dashboard/sellers" : "/app");
   }
 
   function handleConnectMl() {
-    const sid = (() => {
-      try {
-        return typeof window !== "undefined" ? window.localStorage.getItem("activeSellerId") : null;
-      } catch {
-        return null;
-      }
-    })();
-
-    if (!sid) {
-      window.location.href = isAdmin ? "/dashboard/sellers" : "/app";
+    if (!currentUserId) {
+      window.location.href = "/login";
       return;
     }
 
-    window.location.href = `/api/ml/connect?sellerId=${encodeURIComponent(sid)}`;
+    window.location.href = `/api/ml/connect?userId=${encodeURIComponent(currentUserId)}`;
   }
 
   return (
     <div className="min-h-screen bg-[#0a0f15] text-white">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0f15]/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-          {/* LOGO */}
           <div className="flex items-center gap-3">
             <Link href="/app" className="relative w-[170px] h-[36px]">
               <Image
@@ -108,7 +154,6 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          {/* RIGHT */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleConnectMl}
@@ -134,41 +179,39 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* MENU */}
         <div className="mx-auto max-w-7xl px-6 pb-3">
           <nav className="flex items-center gap-2">
             <a href="#" onClick={goHome} className={navLinkClass(false)}>
               Início
             </a>
 
-            {/* ✅ ADMIN ONLY */}
             {isAdmin ? (
               <>
                 <Link
                   href="/dashboard/sellers"
-                  className={navLinkClass(pathname?.startsWith("/dashboard/sellers"))}
+                  className={navLinkClass(!!pathname?.startsWith("/dashboard/sellers"))}
                 >
                   Sellers
                 </Link>
 
                 <Link
                   href="/dashboard/influencers"
-                  className={navLinkClass(pathname?.startsWith("/dashboard/influencers"))}
+                  className={navLinkClass(!!pathname?.startsWith("/dashboard/influencers"))}
                 >
                   Influencers
                 </Link>
               </>
             ) : null}
 
-            <Link href="/app/account" className={navLinkClass(pathname?.startsWith("/app/account"))}>
+            <Link href="/app/account" className={navLinkClass(!!pathname?.startsWith("/app/account"))}>
               Conta
             </Link>
 
-            <Link href="/app/reports" className={navLinkClass(pathname?.startsWith("/app/reports"))}>
+            <Link href="/app/reports" className={navLinkClass(!!pathname?.startsWith("/app/reports"))}>
               Relatórios
             </Link>
 
-            <Link href="/app/settings" className={navLinkClass(pathname?.startsWith("/app/settings"))}>
+            <Link href="/app/settings" className={navLinkClass(!!pathname?.startsWith("/app/settings"))}>
               Configuração
             </Link>
           </nav>

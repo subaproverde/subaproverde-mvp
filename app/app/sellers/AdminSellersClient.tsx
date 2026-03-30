@@ -150,15 +150,36 @@ export default function AdminSellersClient() {
     });
   }, [sellers, accountBySellerId, tokenBySellerId, q, mlFilter]);
 
-  function openSellerDashboard(sellerId: string) {
-  try {
-    localStorage.setItem("activeSellerId", sellerId);
-  } catch {
-    // ignore
-  }
+  async function openSellerDashboard(sellerId: string) {
+    try {
+      localStorage.setItem("activeSellerId", sellerId);
+    } catch {
+      // ignore
+    }
 
-  router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
-}
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const accessToken = session?.access_token;
+
+      if (accessToken) {
+        await fetch("/api/seller/set", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ sellerId }),
+        });
+      }
+    } catch {
+      // ignore - não bloqueia navegação
+    }
+
+    router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
+  }
 
   return (
     <div className="p-0">
@@ -336,7 +357,6 @@ export default function AdminSellersClient() {
                         Ver cases →
                       </Link>
 
-                      {/* ✅ AGORA: seta seller ativo e manda pra dashboard REAL do seller */}
                       <button
                         type="button"
                         onClick={() => openSellerDashboard(s.id)}
