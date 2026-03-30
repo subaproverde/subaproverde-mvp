@@ -27,14 +27,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // origin robusto (ngrok/proxy)
-    const forwardedHost = req.headers.get("x-forwarded-host");
-    const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
-    const origin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : req.nextUrl.origin;
+    const redirectUri = process.env.ML_REDIRECT_URI;
 
-    const redirectUri = `${origin}/api/ml/callback`;
+    if (!redirectUri) {
+      return NextResponse.json(
+        { error: "ML_REDIRECT_URI não configurado no ambiente" },
+        { status: 500 }
+      );
+    }
 
-    // limpa states antigos do usuário
     await supabaseAdmin.from("oauth_states").delete().eq("user_id", userId);
 
     const state = crypto.randomUUID();
