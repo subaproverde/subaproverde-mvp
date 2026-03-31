@@ -1,4 +1,5 @@
 "use client";
+console.log("VERSAO NOVA");
 console.log("🔥🔥🔥 NOVO CODIGO /app RODANDO 🔥🔥🔥");
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -342,7 +343,7 @@ export default function SellerDashboardPage() {
           <div className="pointer-events-none absolute -inset-20 bg-[radial-gradient(ellipse_at_top_left,rgba(90,255,140,0.10),transparent_55%),radial-gradient(ellipse_at_top_right,rgba(255,210,90,0.10),transparent_55%)]" />
           <div className="relative">
             <div className="px-4 py-3">
-              <div className={["rounded-xl", panelSurface(), "overflow-hidden"].join(" ")}>
+              <div className={["rounded-xl", panelSurface(), "overflow-visible"].join(" ")}>
                 <div className={`h-1.5 bg-gradient-to-r ${toneLine(tone)}`} />
                 <div className="px-3 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
