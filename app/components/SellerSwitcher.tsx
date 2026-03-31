@@ -183,7 +183,7 @@ export default function SellerSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#0f1620] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+        <div className="absolute right-0 z-999 mt-2 w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#0f1620] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
           <div className="border-b border-white/10 px-4 py-3">
             <div className="text-sm font-semibold text-white">Selecionar seller</div>
             <div className="text-xs text-white/50">
