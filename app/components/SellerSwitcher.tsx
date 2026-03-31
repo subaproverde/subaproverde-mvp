@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
 type SellerItem = {
@@ -20,7 +21,15 @@ export default function SellerSwitcher() {
   const [activeSellerId, setActiveSellerId] = useState<string>("");
   const [items, setItems] = useState<SellerItem[]>([]);
 
+  const [mounted, setMounted] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -77,10 +86,43 @@ export default function SellerSwitcher() {
     };
   }, []);
 
+  function updateMenuPosition() {
+    if (!buttonRef.current) return;
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    const width = 320;
+    const gap = 8;
+
+    let left = rect.right - width;
+    if (left < 12) left = 12;
+
+    const top = rect.bottom + gap;
+
+    setMenuStyle({
+      position: "fixed",
+      top,
+      left,
+      width,
+      zIndex: 999999,
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+  }, [open]);
+
   useEffect(() => {
+    if (!open) return;
+
     function handleClickOutside(e: MouseEvent) {
-      if (!wrapRef.current) return;
-      if (!wrapRef.current.contains(e.target as Node)) {
+      const target = e.target as Node | null;
+      if (!target) return;
+
+      const clickedButton = buttonRef.current?.contains(target);
+      const clickedWrap = wrapRef.current?.contains(target);
+
+      if (!clickedButton && !clickedWrap) {
         setOpen(false);
       }
     }
@@ -89,14 +131,22 @@ export default function SellerSwitcher() {
       if (e.key === "Escape") setOpen(false);
     }
 
+    function handleReposition() {
+      updateMenuPosition();
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
     window.addEventListener("keydown", handleEsc);
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener("keydown", handleEsc);
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
     };
-  }, []);
+  }, [open]);
 
   const activeSeller =
     items.find((x) => x.sellerId === activeSellerId) ?? items[0] ?? null;
@@ -116,9 +166,7 @@ export default function SellerSwitcher() {
 
       const accessToken = session?.access_token;
 
-      if (!accessToken) {
-        return;
-      }
+      if (!accessToken) return;
 
       const r = await fetch("/api/seller/set", {
         method: "POST",
@@ -131,9 +179,7 @@ export default function SellerSwitcher() {
 
       const j = await r.json().catch(() => ({}));
 
-      if (!r.ok || j?.ok === false) {
-        return;
-      }
+      if (!r.ok || j?.ok === false) return;
 
       try {
         localStorage.setItem("activeSellerId", sellerId);
@@ -141,7 +187,6 @@ export default function SellerSwitcher() {
 
       setActiveSellerId(sellerId);
       setOpen(false);
-
       window.location.reload();
     } finally {
       setSwitching(false);
@@ -165,8 +210,9 @@ export default function SellerSwitcher() {
   }
 
   return (
-    <div className="relative" ref={wrapRef}>
+    <>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={switching}
@@ -182,58 +228,65 @@ export default function SellerSwitcher() {
         <div className="shrink-0 text-white/50">{switching ? "..." : "▾"}</div>
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-999 mt-2 w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#0f1620] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-          <div className="border-b border-white/10 px-4 py-3">
-            <div className="text-sm font-semibold text-white">Selecionar seller</div>
-            <div className="text-xs text-white/50">
-              Escolha qual operação deseja visualizar
-            </div>
-          </div>
+      {mounted && open
+        ? createPortal(
+            <div
+              ref={wrapRef}
+              style={menuStyle}
+              className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f1620] shadow-[0_20px_80px_rgba(0,0,0,0.45)]"
+            >
+              <div className="border-b border-white/10 px-4 py-3">
+                <div className="text-sm font-semibold text-white">Selecionar seller</div>
+                <div className="text-xs text-white/50">
+                  Escolha qual operação deseja visualizar
+                </div>
+              </div>
 
-          <div className="max-h-[320px] overflow-auto p-2">
-            {items.map((item) => {
-              const active = item.sellerId === activeSellerId;
+              <div className="max-h-[320px] overflow-auto p-2">
+                {items.map((item) => {
+                  const active = item.sellerId === activeSellerId;
 
-              return (
-                <button
-                  key={`${item.sellerAccountId}-${item.sellerId}`}
-                  type="button"
-                  onClick={() => handleSelectSeller(item.sellerId)}
-                  className={[
-                    "mb-2 w-full rounded-xl border px-3 py-3 text-left transition",
-                    active
-                      ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
-                      : "border-white/10 bg-white/5 text-white/85 hover:bg-white/10",
-                  ].join(" ")}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">
-                        {item.nickname || "Seller sem nickname"}
-                      </div>
-                      <div className="mt-1 truncate text-[11px] text-white/50">
-                        sellerId: {item.sellerId}
-                      </div>
-                      {item.ml_user_id ? (
-                        <div className="truncate text-[11px] text-white/40">
-                          ml_user_id: {item.ml_user_id}
+                  return (
+                    <button
+                      key={`${item.sellerAccountId}-${item.sellerId}`}
+                      type="button"
+                      onClick={() => handleSelectSeller(item.sellerId)}
+                      className={[
+                        "mb-2 w-full rounded-xl border px-3 py-3 text-left transition",
+                        active
+                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                          : "border-white/10 bg-white/5 text-white/85 hover:bg-white/10",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold">
+                            {item.nickname || "Seller sem nickname"}
+                          </div>
+                          <div className="mt-1 truncate text-[11px] text-white/50">
+                            sellerId: {item.sellerId}
+                          </div>
+                          {item.ml_user_id ? (
+                            <div className="truncate text-[11px] text-white/40">
+                              ml_user_id: {item.ml_user_id}
+                            </div>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </div>
 
-                    {active ? (
-                      <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-emerald-100">
-                        ATIVO
-                      </span>
-                    ) : null}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+                        {active ? (
+                          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-emerald-100">
+                            ATIVO
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }
