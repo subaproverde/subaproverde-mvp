@@ -113,14 +113,8 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
   function goHome(e: React.MouseEvent) {
     e.preventDefault();
 
-    if (hasActiveSeller && activeSellerId) {
-      router.push(`/app/sellers/${encodeURIComponent(activeSellerId)}/dashboard`);
-      return;
-    }
-
-    router.push(isAdmin ? "/dashboard/sellers" : "/app");
-  }
-
+router.push(isAdmin ? "/dashboard/sellers" : "/app");
+}
   function handleConnectMl() {
     if (!currentUserId) {
       window.location.href = "/login";
