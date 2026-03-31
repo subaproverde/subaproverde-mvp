@@ -386,7 +386,9 @@ export default function SellerDashboardPage() {
                     </div>
                   </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+  <SellerSwitcher />
+
   <button
     onClick={startConnect}
     disabled={connecting}
