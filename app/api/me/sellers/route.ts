@@ -8,10 +8,10 @@ const ML_API = "https://api.mercadolibre.com";
 type SellerAccountRow = {
   id: string;
   owner_user_id: string;
-  seller_id: string;          // seu UUID interno
-  ml_user_id: string | null;  // id numérico do ML (se tiver)
+  seller_id: string;
+  ml_user_id: string | null;
   nickname: string | null;
-  created_at?: string;
+  created_at?: string | null;
 };
 
 function norm(s: any) {
@@ -41,13 +41,11 @@ export async function GET(req: Request) {
       auth: { persistSession: false },
     });
 
-    // 1) pega o seller vinculado (se tiver mais de 1, pega o mais recente)
     const { data: accs, error: accErr } = await supabase
       .from("seller_accounts")
       .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
       .eq("owner_user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .order("created_at", { ascending: false });
 
     if (accErr) {
       return NextResponse.json(
@@ -56,117 +54,80 @@ export async function GET(req: Request) {
       );
     }
 
-    const acc = (accs?.[0] ?? null) as SellerAccountRow | null;
+    const rows = (accs ?? []) as SellerAccountRow[];
 
-    if (!acc?.seller_id) {
-      return NextResponse.json({ ok: false, error: "No seller linked" }, { status: 404 });
+    if (!rows.length) {
+      return NextResponse.json({ ok: true, items: [] });
     }
 
-    let nickname = norm(acc.nickname);
+    const items = [];
 
-    // DEBUG
-    const debug: any = {
-      sellerAccountFound: true,
-      sellerAccountId: acc.id,
-      sellerIdInternal: acc.seller_id,
-      hadNicknameAlready: !!nickname,
-      tokenFound: false,
-      tokenMatchField: null as null | string,
-      mlUsersMe: null as any,
-      savedNickname: false,
-    };
+    for (const acc of rows) {
+      let nickname = norm(acc.nickname);
+      let mlUserId = norm(acc.ml_user_id);
 
-    // 2) se nickname vazio -> tenta achar token no ml_tokens
-    if (!nickname) {
-      // IMPORTANTÍSSIMO:
-      // Em muitos projetos, ml_tokens NÃO guarda seller_id interno.
-      // Pode guardar seller_account_id OU ml_user_id OU user_id.
-      // Abaixo eu tento os 3 jeitos, na ordem.
+      if (!nickname) {
+        let tokenRow: any = null;
 
-      let tokenRow: any = null;
+        if (acc.seller_id) {
+          const tBySeller = await supabase
+            .from("ml_tokens")
+            .select("access_token, ml_user_id, created_at")
+            .eq("seller_id", acc.seller_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-      // 2.1) tenta por seller_account_id (se existir essa coluna)
-      const t1 = await supabase
-        .from("ml_tokens")
-        .select("access_token, refresh_token, expires_at, seller_account_id, seller_id, ml_user_id, created_at")
-        .eq("seller_account_id", acc.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+          if (tBySeller?.data?.access_token) {
+            tokenRow = tBySeller.data;
+          }
+        }
 
-      if (t1?.data?.access_token) {
-        tokenRow = t1.data;
-        debug.tokenFound = true;
-        debug.tokenMatchField = "seller_account_id";
-      }
+        if (!tokenRow && acc.ml_user_id) {
+          const tByMlUser = await supabase
+            .from("ml_tokens")
+            .select("access_token, ml_user_id, created_at")
+            .eq("ml_user_id", acc.ml_user_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-      // 2.2) tenta por seller_id (se existir e bater)
-      if (!tokenRow) {
-        const t2 = await supabase
-          .from("ml_tokens")
-          .select("access_token, refresh_token, expires_at, seller_account_id, seller_id, ml_user_id, created_at")
-          .eq("seller_id", acc.seller_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          if (tByMlUser?.data?.access_token) {
+            tokenRow = tByMlUser.data;
+          }
+        }
 
-        if (t2?.data?.access_token) {
-          tokenRow = t2.data;
-          debug.tokenFound = true;
-          debug.tokenMatchField = "seller_id";
+        if (tokenRow?.access_token) {
+          const me = await fetchMe(tokenRow.access_token);
+          const mlNick = norm(me.body?.nickname);
+          const mlId = norm(me.body?.id);
+
+          if (mlNick) nickname = mlNick;
+          if (mlId) mlUserId = mlId;
+
+          if (mlNick || mlId) {
+            const upd: any = {};
+            if (mlNick) upd.nickname = mlNick;
+            if (mlId) upd.ml_user_id = mlId;
+
+            await supabase.from("seller_accounts").update(upd).eq("id", acc.id);
+          }
         }
       }
 
-      // 2.3) tenta por ml_user_id (se você já tiver salvo)
-      if (!tokenRow && acc.ml_user_id) {
-        const t3 = await supabase
-          .from("ml_tokens")
-          .select("access_token, refresh_token, expires_at, seller_account_id, seller_id, ml_user_id, created_at")
-          .eq("ml_user_id", acc.ml_user_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (t3?.data?.access_token) {
-          tokenRow = t3.data;
-          debug.tokenFound = true;
-          debug.tokenMatchField = "ml_user_id";
-        }
-      }
-
-      if (tokenRow?.access_token) {
-        // 3) chama ML /users/me e pega nickname + id
-        const me = await fetchMe(tokenRow.access_token);
-        debug.mlUsersMe = { ok: me.ok, status: me.status, sample: { id: me.body?.id, nickname: me.body?.nickname } };
-
-        const mlNick = norm(me.body?.nickname);
-        const mlUserId = norm(me.body?.id);
-
-        if (mlNick) {
-          nickname = mlNick;
-
-          // 4) salva de volta no seller_accounts (nickname e ml_user_id se vier)
-          const upd: any = { nickname: mlNick };
-          if (mlUserId) upd.ml_user_id = mlUserId;
-
-          const { error: upErr } = await supabase
-            .from("seller_accounts")
-            .update(upd)
-            .eq("id", acc.id);
-
-          debug.savedNickname = !upErr;
-        }
-      }
+      items.push({
+        sellerId: acc.seller_id,
+        sellerAccountId: acc.id,
+        ml_user_id: mlUserId,
+        nickname,
+        created_at: acc.created_at ?? null,
+      });
     }
 
     return NextResponse.json({
       ok: true,
       userId,
-      sellerId: acc.seller_id,
-      sellerAccountId: acc.id,
-      ml_user_id: acc.ml_user_id,
-      nickname: nickname ?? null,
-      debug,
+      items,
     });
   } catch (e: any) {
     return NextResponse.json(
@@ -175,4 +136,3 @@ export async function GET(req: Request) {
     );
   }
 }
-  

@@ -12,82 +12,77 @@ export async function GET(req: NextRequest) {
 
   if (!userId) {
     return Response.json(
-      { error: "userId obrigatório neste MVP (use /api/me/seller?userId=...)" },
+      { error: "userId obrigatório" },
       { status: 400 }
     );
   }
 
-  // 1) Primeiro tenta seller ativo salvo em user_settings
-  const { data: settingsRow, error: settingsErr } = await supabaseAdmin
-    .from("user_settings")
-    .select("active_seller_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (settingsErr) {
-    return Response.json(
-      { error: "Falha ao buscar user_settings", details: settingsErr.message },
-      { status: 500 }
-    );
-  }
-
-  if (settingsRow?.active_seller_id) {
-    const sellerId = String(settingsRow.active_seller_id);
-
-    // tenta enriquecer com seller_account, se existir
-    const { data: accountRow } = await supabaseAdmin
-      .from("seller_accounts")
-      .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
-      .eq("owner_user_id", userId)
-      .eq("seller_id", sellerId)
-      .maybeSingle();
-
-    return Response.json({
-      ok: true,
-      userId,
-      sellerId,
-      sellerAccountId: accountRow?.id ?? null,
-      ml_user_id: accountRow?.ml_user_id ?? null,
-      nickname: accountRow?.nickname ?? null,
-      source: "user_settings",
-    });
-  }
-
-  // 2) Fallback: seller_accounts
-  const { data, error } = await supabaseAdmin
+  // =====================================================
+  // 1) BUSCA SELLERS DO USUÁRIO
+  // =====================================================
+  const { data: sellers, error: sellersErr } = await supabaseAdmin
     .from("seller_accounts")
-    .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
+    .select("id, seller_id, ml_user_id, nickname, created_at")
     .eq("owner_user_id", userId)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
-  if (error) {
+  if (sellersErr) {
     return Response.json(
-      { error: "Falha ao buscar seller_accounts", details: error.message },
+      { error: "Erro ao buscar seller_accounts", details: sellersErr.message },
       { status: 500 }
     );
   }
 
-  if (!data) {
+  if (!sellers || sellers.length === 0) {
     return Response.json(
       { error: "Nenhum seller encontrado para este usuário" },
       { status: 404 }
     );
   }
 
-  if (!data.seller_id) {
-    return Response.json(
-      { error: "seller_accounts encontrado, mas seller_id está vazio", seller_account_id: data.id },
-      { status: 409 }
-    );
+  // =====================================================
+  // 2) BUSCA SELLER ATIVO
+  // =====================================================
+  const { data: settingsRow } = await supabaseAdmin
+    .from("user_settings")
+    .select("active_seller_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  let activeSellerId = settingsRow?.active_seller_id ?? null;
+
+  // =====================================================
+  // 3) VALIDA SE O SELLER ATIVO PERTENCE AO USUÁRIO
+  // =====================================================
+  let activeSeller = sellers.find(s => s.seller_id === activeSellerId);
+
+  // =====================================================
+  // 4) FALLBACK (SE NÃO EXISTE OU INVÁLIDO)
+  // =====================================================
+  if (!activeSeller) {
+    activeSeller = sellers[0]; // mais recente
+
+    activeSellerId = activeSeller.seller_id;
+
+    // salva como ativo automaticamente
+    await supabaseAdmin
+      .from("user_settings")
+      .upsert({
+        user_id: userId,
+        active_seller_id: activeSellerId,
+      });
   }
 
+  // =====================================================
+  // 5) RETORNO FINAL
+  // =====================================================
   return Response.json({
     ok: true,
     userId,
-    sellerId: data.seller_id,
-    sellerAccountId: data.id,
-    ml_user_id: data.ml_user_id,
-    nickname: data.nickname,
-    source: "seller_accounts",
+    sellerId: activeSeller.seller_id,
+    sellerAccountId: activeSeller.id,
+    ml_user_id: activeSeller.ml_user_id,
+    nickname: activeSeller.nickname,
+    totalSellers: sellers.length,
   });
 }

@@ -7,6 +7,7 @@ import {
   ReputationThermometer,
   type ReputationLevel,
 } from "@/app/components/reputation/ReputationThermometer";
+import SellerSwitcher from "@/app/components/SellerSwitcher";
 
 type MlMe = {
   nickname?: string;
@@ -385,27 +386,27 @@ export default function SellerDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={startConnect}
-                      disabled={connecting}
-                      className={[
-                        "inline-flex items-center justify-center rounded-xl border border-white/10",
-                        "bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-3.5 py-2 text-sm text-white/90",
-                        "hover:from-emerald-400/25 hover:to-emerald-900/25",
-                        "disabled:opacity-60 disabled:cursor-not-allowed",
-                      ].join(" ")}
-                    >
-                      {connecting ? "Abrindo OAuth..." : "Conectar Mercado Livre"}
-                    </button>
+                    <div className="flex gap-2">
+  <button
+    onClick={startConnect}
+    disabled={connecting}
+    className={[
+      "inline-flex items-center justify-center rounded-xl border border-white/10",
+      "bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-3.5 py-2 text-sm text-white/90",
+      "hover:from-emerald-400/25 hover:to-emerald-900/25",
+      "disabled:opacity-60 disabled:cursor-not-allowed",
+    ].join(" ")}
+  >
+    {connecting ? "Abrindo OAuth..." : "Conectar Mercado Livre"}
+  </button>
 
-                    <Link
-                      href="/app/cases"
-                      className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white/85 hover:bg-white/10"
-                    >
-                      Abrir defesa urgente →
-                    </Link>
-                  </div>
+  <Link
+    href="/app/cases"
+    className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white/85 hover:bg-white/10"
+  >
+    Abrir defesa urgente →
+  </Link>
+</div>
                 </div>
               </div>
             </div>
