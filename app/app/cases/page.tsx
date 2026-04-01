@@ -473,6 +473,8 @@ export default function CasesPage() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [details, setDetails] = useState<CaseDetails | null>(null);
+  const [page, setPage] = useState(1);
+const [totalPages, setTotalPages] = useState(1);
 
   function openDetails(itemId: string) {
     setSelectedId(itemId);
@@ -531,13 +533,16 @@ export default function CasesPage() {
         const sid = sidBackend;
 
         setSellerId(sid);
-
-        const res = await fetch(`/api/ml/cases?sellerId=${encodeURIComponent(sid)}`, {
-          cache: "no-store",
-        });
+setPage(1);
+       const res = await fetch(
+  `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10`,
+  { cache: "no-store" }
+);
 
         const json = await res.json().catch(() => ({}));
-
+if (json?.totalPages) {
+  setTotalPages(json.totalPages);
+}
         if (json?.counts) {
           setApiCounts({
             reclamacoes: Number(json.counts.reclamacoes ?? 0),
@@ -570,7 +575,7 @@ export default function CasesPage() {
     return () => {
       alive = false;
     };
-  }, []);
+ }, [page]);
 
   useEffect(() => {
     let alive = true;
@@ -788,8 +793,24 @@ export default function CasesPage() {
               selected={it.id === selectedId}
               onSelect={() => openDetails(it.id)}
             />
+
           ))}
         </div>
+        <div className="flex justify-center gap-2 mt-4">
+  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+    <button
+      key={p}
+      onClick={() => setPage(p)}
+      className={`px-3 py-1 rounded-lg border text-sm ${
+        p === page
+          ? "bg-white text-black"
+          : "bg-white/5 text-white/70 border-white/10"
+      }`}
+    >
+      {p}
+    </button>
+  ))}
+</div>
       </section>
 
       {detailsOpen && selected && (
