@@ -81,26 +81,29 @@ export async function GET(req: NextRequest) {
     let sellerId: string | null = null;
 
     // 4A) Primeiro tenta achar por ml_user_id em seller_accounts
-    const { data: accountByMlUser, error: accountByMlUserErr } = await supabase
-      .from("seller_accounts")
-      .select("id, seller_id, owner_user_id, ml_user_id")
-      .eq("ml_user_id", mlUserId)
-      .maybeSingle();
+    const { data: accountsByMlUser, error: accountByMlUserErr } = await supabase
+  .from("seller_accounts")
+  .select("id, seller_id, owner_user_id, ml_user_id, created_at")
+  .eq("ml_user_id", mlUserId)
+  .eq("owner_user_id", userId)
+  .order("created_at", { ascending: false })
+  .limit(1);
 
-    if (accountByMlUserErr) {
-      return NextResponse.json(
-        {
-          error: "Falha ao buscar seller_accounts por ml_user_id",
-          details: accountByMlUserErr.message,
-        },
-        { status: 500 }
-      );
-    }
+if (accountByMlUserErr) {
+  return NextResponse.json(
+    {
+      error: "Falha ao buscar seller_accounts por ml_user_id",
+      details: accountByMlUserErr.message,
+    },
+    { status: 500 }
+  );
+}
 
-    if (accountByMlUser?.seller_id) {
-      sellerId = String(accountByMlUser.seller_id);
-    }
+const accountByMlUser = accountsByMlUser?.[0] ?? null;
 
+if (accountByMlUser?.seller_id) {
+  sellerId = String(accountByMlUser.seller_id);
+}
     // 4B) Se não achou, tenta por owner_user_id
     if (!sellerId) {
       const { data: existingAccount, error: accGetErr } = await supabase
