@@ -168,7 +168,7 @@ export default function SellerSwitcher() {
 
       if (!accessToken) return;
 
-      const r = await fetch("/api/seller/set", {
+      const r = await fetch("/api/me/seller/set", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
