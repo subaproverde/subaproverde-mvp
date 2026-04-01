@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
           nickname,
         },
       ],
-      { onConflict: "owner_user_id" }
+      { onConflict: "owner_user_id,seller_id" }
     )
     .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
     .maybeSingle();

@@ -230,7 +230,7 @@ export async function GET(req: NextRequest) {
         ml_user_id: mlUserId,
         nickname,
       },
-      { onConflict: "owner_user_id" }
+      { onConflict: "owner_user_id,seller_id" }
     );
 
     if (accUpsertErr) {
