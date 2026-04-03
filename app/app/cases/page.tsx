@@ -533,7 +533,6 @@ const [totalPages, setTotalPages] = useState(1);
         const sid = sidBackend;
 
         setSellerId(sid);
-setPage(1);
        const res = await fetch(
   `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10`,
   { cache: "no-store" }
