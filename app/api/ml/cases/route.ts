@@ -183,6 +183,8 @@ function normalizeShipment(shipment: any) {
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
+    const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
+const limit = Math.max(1, Number(url.searchParams.get("limit") ?? 10));
 
     const sellerId =
       url.searchParams.get("sellerId") ||
@@ -499,7 +501,13 @@ export async function GET(req: NextRequest) {
       ...normalizedDelayedOrders,
       ...fallbackDelayedItems,
     ];
+const total = items.length;
+const totalPages = Math.max(1, Math.ceil(total / limit));
 
+const start = (page - 1) * limit;
+const end = start + limit;
+
+const pagedItems = items.slice(start, end);
     return NextResponse.json(
       {
         ok: true,
@@ -520,7 +528,11 @@ export async function GET(req: NextRequest) {
           detectedAtrasos: items.filter((x: any) => x.type === "atrasos").length,
           items: items.length,
         },
-        items,
+       page,
+limit,
+total,
+totalPages,
+items: pagedItems,
         debug: {
           ordersStatus: ordersRes.status,
           claims1Status: claimsRes1.status,
