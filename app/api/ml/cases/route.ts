@@ -518,7 +518,7 @@ const pagedItems = items.slice(start, end);
           orders: orders.length,
           claimsAttempt1: claims1.length,
           claimsAttempt2: claims2.length,
-          reclamacoes: officialClaimsCount,
+          reclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
           atrasos: officialDelayCount,
           cancelamentos: officialCancelCount,
           mediacoes: 0,

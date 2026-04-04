@@ -794,6 +794,51 @@ if (json?.totalPages) {
             />
 
           ))}
+          {totalPages > 1 && (
+  <div className="flex justify-center gap-2 mt-4 flex-wrap">
+    <button
+      onClick={() => setPage((p) => Math.max(1, p - 1))}
+      disabled={page === 1}
+      className="px-3 py-1 rounded-lg border text-sm bg-white/5 text-white/70 border-white/10 disabled:opacity-40"
+    >
+      Anterior
+    </button>
+
+    {Array.from({ length: totalPages }, (_, i) => i + 1)
+      .filter((p) => {
+        if (totalPages <= 7) return true;
+        return p === 1 || p === totalPages || Math.abs(p - page) <= 1;
+      })
+      .map((p, idx, arr) => {
+        const prev = arr[idx - 1];
+        const showGap = prev && p - prev > 1;
+
+        return (
+          <div key={p} className="flex items-center gap-2">
+            {showGap ? <span className="text-white/40">...</span> : null}
+            <button
+              onClick={() => setPage(p)}
+              className={`px-3 py-1 rounded-lg border text-sm ${
+                p === page
+                  ? "bg-white text-black"
+                  : "bg-white/5 text-white/70 border-white/10"
+              }`}
+            >
+              {p}
+            </button>
+          </div>
+        );
+      })}
+
+    <button
+      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+      disabled={page === totalPages}
+      className="px-3 py-1 rounded-lg border text-sm bg-white/5 text-white/70 border-white/10 disabled:opacity-40"
+    >
+      Próxima
+    </button>
+  </div>
+)}
         </div>
         <div className="flex justify-center gap-2 mt-4">
   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
