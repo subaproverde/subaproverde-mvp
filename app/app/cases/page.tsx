@@ -840,21 +840,7 @@ if (json?.totalPages) {
   </div>
 )}
         </div>
-        <div className="flex justify-center gap-2 mt-4">
-  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-    <button
-      key={p}
-      onClick={() => setPage(p)}
-      className={`px-3 py-1 rounded-lg border text-sm ${
-        p === page
-          ? "bg-white text-black"
-          : "bg-white/5 text-white/70 border-white/10"
-      }`}
-    >
-      {p}
-    </button>
-  ))}
-</div>
+
       </section>
 
       {detailsOpen && selected && (
