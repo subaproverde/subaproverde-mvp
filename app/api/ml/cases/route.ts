@@ -342,7 +342,12 @@ const limit = Math.max(1, Number(url.searchParams.get("limit") ?? 10));
         raw: c,
       };
     });
+const impactfulClaims = normalizedClaims.filter((c: any) => {
+  if (c.type !== "reclamacoes") return true;
 
+  const status = String(c.statusPill ?? "").toLowerCase();
+  return status !== "closed";
+});
     const normalizedCancelledOrders = orders
       .filter((o: any) => orderIsCancelled(o))
       .map((o: any) => {
@@ -495,12 +500,12 @@ const limit = Math.max(1, Number(url.searchParams.get("limit") ?? 10));
           }))
         : [];
 
-    const items = [
-      ...normalizedClaims,
-      ...normalizedCancelledOrders,
-      ...normalizedDelayedOrders,
-      ...fallbackDelayedItems,
-    ];
+   const items = [
+  ...impactfulClaims,
+  ...normalizedCancelledOrders,
+  ...normalizedDelayedOrders,
+  ...fallbackDelayedItems,
+];
 const total = items.length;
 const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -518,7 +523,7 @@ const pagedItems = items.slice(start, end);
           orders: orders.length,
           claimsAttempt1: claims1.length,
           claimsAttempt2: claims2.length,
-          reclamacoes: items.filter((x: any) => x.type === "reclamacoes").length,
+          reclamacoes: impactfulClaims.filter((x: any) => x.type === "reclamacoes").length,
           atrasos: officialDelayCount,
           cancelamentos: officialCancelCount,
           mediacoes: 0,
