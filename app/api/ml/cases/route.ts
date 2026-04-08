@@ -346,7 +346,7 @@ const impactfulClaims = normalizedClaims.filter((c: any) => {
   if (c.type !== "reclamacoes") return true;
 
   const status = String(c.statusPill ?? "").toLowerCase();
-  return status !== "closed";
+  return true;
 });
     const normalizedCancelledOrders = orders
       .filter((o: any) => orderIsCancelled(o))

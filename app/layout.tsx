@@ -12,14 +12,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Suba Pro Verde",
   description:
     "Radar inteligente de reputação para vendedores do Mercado Livre.",
   openGraph: {
     title: "Suba Pro Verde",
-    description:
-      "Proteja sua reputação antes que impactos virem prejuízo.",
+    description: "Proteja sua reputação antes que impactos virem prejuízo.",
     url: "https://www.subaproverde.com",
     images: [
       {
@@ -37,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
