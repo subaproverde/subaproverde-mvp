@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 declare global {
@@ -11,7 +11,7 @@ declare global {
 
 const INTRO_DURATION = 4600;
 const START_ANGLE = -128;
-const END_ANGLE = 8; // para exatamente no verde, sem passar
+const END_ANGLE = 8;
 const START_PROGRESS = 0.06;
 const END_PROGRESS = 0.92;
 
@@ -19,83 +19,112 @@ export default function SubaProVerdeIntro() {
   const [show, setShow] = useState(true);
   const [progress, setProgress] = useState(START_PROGRESS);
   const [pulse, setPulse] = useState(false);
-  const soundPlayedRef = useRef(false);
 
   useEffect(() => {
-    const playEngineRise = () => {
-      if (soundPlayedRef.current) return;
-      soundPlayedRef.current = true;
+    let isCancelled = false;
 
+    const playEngineRise = async () => {
       const AudioCtx =
         window.AudioContext ||
-        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        (window as Window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
 
       if (!AudioCtx) return;
 
       const ctx = new AudioCtx();
-      const now = ctx.currentTime;
 
-      const oscA = ctx.createOscillator();
-      const oscB = ctx.createOscillator();
-      const oscC = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
+      try {
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
 
-      oscA.type = "sawtooth";
-      oscB.type = "triangle";
-      oscC.type = "sine";
+        if (isCancelled) {
+          await ctx.close();
+          return;
+        }
 
-      oscA.frequency.setValueAtTime(72, now);
-      oscB.frequency.setValueAtTime(108, now);
-      oscC.frequency.setValueAtTime(36, now);
+        const now = ctx.currentTime;
 
-      oscA.frequency.exponentialRampToValueAtTime(150, now + 0.9);
-      oscB.frequency.exponentialRampToValueAtTime(230, now + 0.9);
-      oscC.frequency.exponentialRampToValueAtTime(72, now + 0.9);
+        const oscA = ctx.createOscillator();
+        const oscB = ctx.createOscillator();
+        const oscC = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
 
-      oscA.frequency.exponentialRampToValueAtTime(255, now + 2.2);
-      oscB.frequency.exponentialRampToValueAtTime(390, now + 2.2);
-      oscC.frequency.exponentialRampToValueAtTime(110, now + 2.2);
+        oscA.type = "sawtooth";
+        oscB.type = "triangle";
+        oscC.type = "sine";
 
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(380, now);
-      filter.frequency.exponentialRampToValueAtTime(900, now + 0.9);
-      filter.frequency.exponentialRampToValueAtTime(2400, now + 2.2);
-      filter.Q.setValueAtTime(5, now);
+        oscA.frequency.setValueAtTime(72, now);
+        oscB.frequency.setValueAtTime(108, now);
+        oscC.frequency.setValueAtTime(36, now);
 
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.018, now + 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.034, now + 1.4);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+        oscA.frequency.exponentialRampToValueAtTime(150, now + 0.9);
+        oscB.frequency.exponentialRampToValueAtTime(230, now + 0.9);
+        oscC.frequency.exponentialRampToValueAtTime(72, now + 0.9);
 
-      oscA.connect(filter);
-      oscB.connect(filter);
-      oscC.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
+        oscA.frequency.exponentialRampToValueAtTime(255, now + 2.2);
+        oscB.frequency.exponentialRampToValueAtTime(390, now + 2.2);
+        oscC.frequency.exponentialRampToValueAtTime(110, now + 2.2);
 
-      oscA.start(now);
-      oscB.start(now);
-      oscC.start(now);
-      oscA.stop(now + 2.85);
-      oscB.stop(now + 2.85);
-      oscC.stop(now + 2.85);
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(380, now);
+        filter.frequency.exponentialRampToValueAtTime(900, now + 0.9);
+        filter.frequency.exponentialRampToValueAtTime(2400, now + 2.2);
+        filter.Q.setValueAtTime(5, now);
 
-      oscC.onended = () => {
-        void ctx.close();
-      };
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.018, now + 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.034, now + 1.4);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+        oscA.connect(filter);
+        oscB.connect(filter);
+        oscC.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        oscA.start(now);
+        oscB.start(now);
+        oscC.start(now);
+
+        oscA.stop(now + 2.85);
+        oscB.stop(now + 2.85);
+        oscC.stop(now + 2.85);
+
+        oscC.onended = () => {
+          void ctx.close();
+        };
+      } catch (error) {
+        try {
+          await ctx.close();
+        } catch {}
+        console.error("Erro ao tocar intro:", error);
+      }
     };
 
-    const unlockAndPlay = () => {
+    const unlockAndPlay = async () => {
       window.__subaAudioUnlocked = true;
-      playEngineRise();
+      await playEngineRise();
+    };
+
+    const onPointerDown = () => {
+      void unlockAndPlay();
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+
+    const onKeyDown = () => {
+      void unlockAndPlay();
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
     };
 
     if (window.__subaAudioUnlocked) {
-      playEngineRise();
+      void playEngineRise();
     } else {
-      window.addEventListener("pointerdown", unlockAndPlay, { once: true });
-      window.addEventListener("keydown", unlockAndPlay, { once: true });
+      window.addEventListener("pointerdown", onPointerDown);
+      window.addEventListener("keydown", onKeyDown);
     }
 
     const startTimer = window.setTimeout(() => {
@@ -124,10 +153,11 @@ export default function SubaProVerdeIntro() {
     }, INTRO_DURATION);
 
     return () => {
+      isCancelled = true;
       window.clearTimeout(startTimer);
       window.clearTimeout(endTimer);
-      window.removeEventListener("pointerdown", unlockAndPlay);
-      window.removeEventListener("keydown", unlockAndPlay);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 
@@ -198,7 +228,8 @@ export default function SubaProVerdeIntro() {
               transition={{ duration: 0.45 }}
               className="mt-4 max-w-2xl text-sm text-white/70 md:text-lg"
             >
-              Sua plataforma de gestão de reputação e performance para sellers do Mercado Livre
+              Sua plataforma de gestão de reputação e performance para sellers do
+              Mercado Livre
             </motion.p>
           </motion.div>
         </motion.div>
@@ -207,7 +238,13 @@ export default function SubaProVerdeIntro() {
   );
 }
 
-function AnimatedGauge({ progress, pulse }: { progress: number; pulse: boolean }) {
+function AnimatedGauge({
+  progress,
+  pulse,
+}: {
+  progress: number;
+  pulse: boolean;
+}) {
   const angle = START_ANGLE + (END_ANGLE - START_ANGLE) * progress;
   const arcLength = 565.48;
   const dashOffset = arcLength * (1 - progress);
@@ -269,14 +306,20 @@ function AnimatedGauge({ progress, pulse }: { progress: number; pulse: boolean }
         <motion.div
           animate={
             pulse
-              ? { rotate: [angle, angle + 1.4, angle - 0.8, angle], scale: [1, 1.04, 1] }
+              ? {
+                  rotate: [angle, angle + 1.4, angle - 0.8, angle],
+                  scale: [1, 1.04, 1],
+                }
               : { rotate: angle, scale: 1 }
           }
-          transition={{ duration: pulse ? 0.7 : 0.06, ease: pulse ? "easeOut" : "linear" }}
+          transition={{
+            duration: pulse ? 0.7 : 0.06,
+            ease: pulse ? "easeOut" : "linear",
+          }}
           className="relative h-0 w-0 origin-center"
           style={{ transformOrigin: "0px 0px" }}
         >
-          <div className="absolute left-0 top-0 h-[10px] w-[122px] origin-left rounded-full bg-gradient-to-r from-emerald-700 via-emerald-500 to-emerald-300 shadow-[0_0_28px_rgba(0,255,150,0.45)] -translate-y-1/2" />
+          <div className="absolute left-0 top-0 h-[10px] w-[122px] -translate-y-1/2 rounded-full bg-gradient-to-r from-emerald-700 via-emerald-500 to-emerald-300 shadow-[0_0_28px_rgba(0,255,150,0.45)]" />
           <div className="absolute -left-[14px] -top-[14px] h-7 w-7 rounded-full border-4 border-emerald-400 bg-white shadow-[0_0_18px_rgba(255,255,255,0.35)]" />
         </motion.div>
       </div>
