@@ -3,97 +3,121 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const INTRO_DURATION = 3600;
-const START_ANGLE = -130;
-const END_ANGLE = 20;
+declare global {
+  interface Window {
+    __subaAudioUnlocked?: boolean;
+  }
+}
+
+const INTRO_DURATION = 4600;
+const START_ANGLE = -128;
+const END_ANGLE = 8; // para exatamente no verde, sem passar
+const START_PROGRESS = 0.06;
+const END_PROGRESS = 0.92;
 
 export default function SubaProVerdeIntro() {
   const [show, setShow] = useState(true);
-  const [progress, setProgress] = useState(0.06);
+  const [progress, setProgress] = useState(START_PROGRESS);
   const [pulse, setPulse] = useState(false);
-  const audioStartedRef = useRef(false);
+  const soundPlayedRef = useRef(false);
 
   useEffect(() => {
-    const startEngineSound = () => {
-      if (audioStartedRef.current) return;
-      audioStartedRef.current = true;
+    const playEngineRise = () => {
+      if (soundPlayedRef.current) return;
+      soundPlayedRef.current = true;
 
       const AudioCtx =
         window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 
       if (!AudioCtx) return;
 
       const ctx = new AudioCtx();
       const now = ctx.currentTime;
 
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
+      const oscA = ctx.createOscillator();
+      const oscB = ctx.createOscillator();
+      const oscC = ctx.createOscillator();
       const gain = ctx.createGain();
       const filter = ctx.createBiquadFilter();
 
-      osc1.type = "sawtooth";
-      osc2.type = "triangle";
-      osc1.frequency.setValueAtTime(90, now);
-      osc2.frequency.setValueAtTime(135, now);
+      oscA.type = "sawtooth";
+      oscB.type = "triangle";
+      oscC.type = "sine";
 
-      osc1.frequency.exponentialRampToValueAtTime(210, now + 0.8);
-      osc2.frequency.exponentialRampToValueAtTime(320, now + 0.8);
-      osc1.frequency.exponentialRampToValueAtTime(390, now + 1.7);
-      osc2.frequency.exponentialRampToValueAtTime(540, now + 1.7);
+      oscA.frequency.setValueAtTime(72, now);
+      oscB.frequency.setValueAtTime(108, now);
+      oscC.frequency.setValueAtTime(36, now);
+
+      oscA.frequency.exponentialRampToValueAtTime(150, now + 0.9);
+      oscB.frequency.exponentialRampToValueAtTime(230, now + 0.9);
+      oscC.frequency.exponentialRampToValueAtTime(72, now + 0.9);
+
+      oscA.frequency.exponentialRampToValueAtTime(255, now + 2.2);
+      oscB.frequency.exponentialRampToValueAtTime(390, now + 2.2);
+      oscC.frequency.exponentialRampToValueAtTime(110, now + 2.2);
 
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(500, now);
-      filter.frequency.exponentialRampToValueAtTime(2200, now + 1.7);
-      filter.Q.setValueAtTime(3, now);
+      filter.frequency.setValueAtTime(380, now);
+      filter.frequency.exponentialRampToValueAtTime(900, now + 0.9);
+      filter.frequency.exponentialRampToValueAtTime(2400, now + 2.2);
+      filter.Q.setValueAtTime(5, now);
 
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.03, now + 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.055, now + 1.2);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+      gain.gain.exponentialRampToValueAtTime(0.018, now + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.034, now + 1.4);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
 
-      osc1.connect(filter);
-      osc2.connect(filter);
+      oscA.connect(filter);
+      oscB.connect(filter);
+      oscC.connect(filter);
       filter.connect(gain);
       gain.connect(ctx.destination);
 
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 2.25);
-      osc2.stop(now + 2.25);
+      oscA.start(now);
+      oscB.start(now);
+      oscC.start(now);
+      oscA.stop(now + 2.85);
+      oscB.stop(now + 2.85);
+      oscC.stop(now + 2.85);
 
-      const closeCtx = () => {
+      oscC.onended = () => {
         void ctx.close();
       };
-
-      osc2.onended = closeCtx;
     };
 
-    // navegadores só liberam som após interação do usuário
-    window.addEventListener("pointerdown", startEngineSound, { once: true });
-    window.addEventListener("keydown", startEngineSound, { once: true });
+    const unlockAndPlay = () => {
+      window.__subaAudioUnlocked = true;
+      playEngineRise();
+    };
+
+    if (window.__subaAudioUnlocked) {
+      playEngineRise();
+    } else {
+      window.addEventListener("pointerdown", unlockAndPlay, { once: true });
+      window.addEventListener("keydown", unlockAndPlay, { once: true });
+    }
 
     const startTimer = window.setTimeout(() => {
       const startedAt = performance.now();
-      const duration = 1800;
+      const duration = 2400;
 
       const step = (now: number) => {
         const t = Math.min((now - startedAt) / duration, 1);
         const eased = 1 - Math.pow(1 - t, 3);
-        const next = Math.min(0.94, 0.06 + 0.9 * eased);
+        const next = START_PROGRESS + (END_PROGRESS - START_PROGRESS) * eased;
         setProgress(next);
 
         if (t < 1) {
           requestAnimationFrame(step);
         } else {
           setPulse(true);
-          window.setTimeout(() => setPulse(false), 900);
+          window.setTimeout(() => setPulse(false), 1200);
         }
       };
 
       requestAnimationFrame(step);
-    }, 400);
+    }, 550);
 
     const endTimer = window.setTimeout(() => {
       setShow(false);
@@ -102,8 +126,8 @@ export default function SubaProVerdeIntro() {
     return () => {
       window.clearTimeout(startTimer);
       window.clearTimeout(endTimer);
-      window.removeEventListener("pointerdown", startEngineSound);
-      window.removeEventListener("keydown", startEngineSound);
+      window.removeEventListener("pointerdown", unlockAndPlay);
+      window.removeEventListener("keydown", unlockAndPlay);
     };
   }, []);
 
@@ -113,26 +137,27 @@ export default function SubaProVerdeIntro() {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
           className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/92 backdrop-blur-md"
         >
           <div className="absolute inset-0">
-            {[...Array(12)].map((_, i) => (
+            {[...Array(14)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute rounded-full bg-emerald-400/10 blur-2xl"
+                className="absolute rounded-full bg-emerald-400/10 blur-3xl"
                 style={{
-                  width: 120 + i * 10,
-                  height: 120 + i * 10,
-                  left: `${(i * 13) % 100}%`,
-                  top: `${(i * 7) % 100}%`,
+                  width: 110 + i * 12,
+                  height: 110 + i * 12,
+                  left: `${(i * 11.5) % 100}%`,
+                  top: `${(i * 8.2) % 100}%`,
                 }}
                 animate={{
-                  y: [0, -40, 0],
-                  opacity: [0.2, 0.5, 0.2],
+                  y: [0, -55, 0],
+                  x: [0, i % 2 === 0 ? 10 : -10, 0],
+                  opacity: [0.14, 0.38, 0.14],
                 }}
                 transition={{
-                  duration: 6 + i,
+                  duration: 7 + i * 0.35,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
@@ -141,32 +166,36 @@ export default function SubaProVerdeIntro() {
           </div>
 
           <motion.div
-            animate={pulse ? { scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] } : { scale: 1 }}
-            transition={{ duration: 0.9 }}
-            className="absolute h-[500px] w-[500px] rounded-full bg-emerald-400/20 blur-[120px]"
+            animate={
+              pulse
+                ? { scale: [1, 1.18, 1], opacity: [0.22, 0.48, 0.24] }
+                : { scale: 1, opacity: 0.22 }
+            }
+            transition={{ duration: 1.1, ease: "easeOut" }}
+            className="absolute h-[560px] w-[560px] rounded-full bg-emerald-400/20 blur-[140px]"
           />
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.9 }}
             className="relative flex flex-col items-center px-6 text-center"
           >
             <AnimatedGauge progress={progress} pulse={pulse} />
 
             <motion.h1
               initial={{ opacity: 0 }}
-              animate={{ opacity: progress > 0.7 ? 1 : 0 }}
-              transition={{ duration: 0.4 }}
-              className="mt-10 text-3xl font-semibold tracking-[0.25em] text-white md:text-5xl"
+              animate={{ opacity: progress > 0.66 ? 1 : 0 }}
+              transition={{ duration: 0.5 }}
+              className="mt-10 text-3xl font-semibold tracking-[0.23em] text-white md:text-5xl"
             >
               BEM-VINDO À SUBA PRO VERDE
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0 }}
-              animate={{ opacity: progress > 0.8 ? 1 : 0 }}
-              transition={{ duration: 0.4 }}
+              animate={{ opacity: progress > 0.75 ? 1 : 0 }}
+              transition={{ duration: 0.45 }}
               className="mt-4 max-w-2xl text-sm text-white/70 md:text-lg"
             >
               Sua plataforma de gestão de reputação e performance para sellers do Mercado Livre
@@ -184,22 +213,29 @@ function AnimatedGauge({ progress, pulse }: { progress: number; pulse: boolean }
   const dashOffset = arcLength * (1 - progress);
 
   return (
-    <div className="relative h-[180px] w-[260px] md:h-[210px] md:w-[300px]">
-      <svg viewBox="0 0 240 180" className="h-full w-full">
+    <div className="relative h-[190px] w-[280px] md:h-[230px] md:w-[330px]">
+      <svg viewBox="0 0 240 180" className="h-full w-full overflow-visible">
         <defs>
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#ff2d12" />
-            <stop offset="30%" stopColor="#ff7a00" />
-            <stop offset="55%" stopColor="#ffd000" />
-            <stop offset="80%" stopColor="#79db27" />
+            <stop offset="28%" stopColor="#ff7a00" />
+            <stop offset="52%" stopColor="#ffd000" />
+            <stop offset="78%" stopColor="#79db27" />
             <stop offset="100%" stopColor="#00c853" />
           </linearGradient>
+          <filter id="meterGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
         <path
           d="M 25 145 A 95 95 0 0 1 215 145"
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.08)"
           strokeWidth="18"
           strokeLinecap="round"
         />
@@ -212,45 +248,54 @@ function AnimatedGauge({ progress, pulse }: { progress: number; pulse: boolean }
           strokeLinecap="round"
           strokeDasharray={arcLength}
           strokeDashoffset={dashOffset}
+          filter="url(#meterGlow)"
           animate={
             pulse
               ? {
                   filter: [
-                    "drop-shadow(0 0 0px rgba(0,255,136,0))",
-                    "drop-shadow(0 0 18px rgba(0,255,136,0.95))",
+                    "drop-shadow(0 0 3px rgba(0,255,136,0.2))",
+                    "drop-shadow(0 0 18px rgba(0,255,136,1))",
                     "drop-shadow(0 0 8px rgba(0,255,136,0.45))",
                   ],
                 }
               : undefined
           }
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          style={{ transition: "stroke-dashoffset 40ms linear" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          style={{ transition: "stroke-dashoffset 50ms linear" }}
         />
       </svg>
 
-      <motion.div
-        style={{ transform: `translate(-50%, -84%) rotate(${angle}deg)` }}
-        animate={pulse ? { scale: [1, 1.08, 1] } : undefined}
-        transition={{ duration: 0.5 }}
-        className="absolute left-1/2 top-[80%] h-[10px] w-[120px] origin-[6px_center] rounded-full bg-emerald-500 shadow-[0_0_25px_rgba(0,255,150,0.5)]"
-      >
-        <div className="absolute -left-3 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full border-4 border-emerald-400 bg-white" />
-      </motion.div>
+      <div className="absolute left-1/2 top-[79%] h-0 w-0">
+        <motion.div
+          animate={
+            pulse
+              ? { rotate: [angle, angle + 1.4, angle - 0.8, angle], scale: [1, 1.04, 1] }
+              : { rotate: angle, scale: 1 }
+          }
+          transition={{ duration: pulse ? 0.7 : 0.06, ease: pulse ? "easeOut" : "linear" }}
+          className="relative h-0 w-0 origin-center"
+          style={{ transformOrigin: "0px 0px" }}
+        >
+          <div className="absolute left-0 top-0 h-[10px] w-[122px] origin-left rounded-full bg-gradient-to-r from-emerald-700 via-emerald-500 to-emerald-300 shadow-[0_0_28px_rgba(0,255,150,0.45)] -translate-y-1/2" />
+          <div className="absolute -left-[14px] -top-[14px] h-7 w-7 rounded-full border-4 border-emerald-400 bg-white shadow-[0_0_18px_rgba(255,255,255,0.35)]" />
+        </motion.div>
+      </div>
 
       <motion.div
         animate={
           pulse
             ? {
-                scale: [1, 1.2, 1],
+                scale: [1, 1.18, 1],
                 boxShadow: [
                   "0 0 0 rgba(0,255,136,0)",
-                  "0 0 25px rgba(0,255,136,0.95)",
-                  "0 0 10px rgba(0,255,136,0.45)",
+                  "0 0 28px rgba(0,255,136,1)",
+                  "0 0 12px rgba(0,255,136,0.45)",
                 ],
               }
             : undefined
         }
-        className="absolute right-[8%] top-[42%] flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white"
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="absolute right-[7.5%] top-[42%] flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-emerald-500 text-white"
       >
         ✓
       </motion.div>
