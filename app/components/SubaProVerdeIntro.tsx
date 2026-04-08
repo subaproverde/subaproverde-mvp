@@ -1,27 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 const INTRO_DURATION = 3600;
 const START_ANGLE = -130;
-const END_ANGLE = 20; // limite correto (não passar do verde)
+const END_ANGLE = 20;
 
 export default function SubaProVerdeIntro() {
   const [show, setShow] = useState(true);
   const [progress, setProgress] = useState(0.06);
   const [pulse, setPulse] = useState(false);
+  const audioStartedRef = useRef(false);
 
   useEffect(() => {
+    const startEngineSound = () => {
+      if (audioStartedRef.current) return;
+      audioStartedRef.current = true;
+
+      const AudioCtx =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc1.type = "sawtooth";
+      osc2.type = "triangle";
+      osc1.frequency.setValueAtTime(90, now);
+      osc2.frequency.setValueAtTime(135, now);
+
+      osc1.frequency.exponentialRampToValueAtTime(210, now + 0.8);
+      osc2.frequency.exponentialRampToValueAtTime(320, now + 0.8);
+      osc1.frequency.exponentialRampToValueAtTime(390, now + 1.7);
+      osc2.frequency.exponentialRampToValueAtTime(540, now + 1.7);
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(500, now);
+      filter.frequency.exponentialRampToValueAtTime(2200, now + 1.7);
+      filter.Q.setValueAtTime(3, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.03, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.055, now + 1.2);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 2.25);
+      osc2.stop(now + 2.25);
+
+      const closeCtx = () => {
+        void ctx.close();
+      };
+
+      osc2.onended = closeCtx;
+    };
+
+    // navegadores só liberam som após interação do usuário
+    window.addEventListener("pointerdown", startEngineSound, { once: true });
+    window.addEventListener("keydown", startEngineSound, { once: true });
+
     const startTimer = window.setTimeout(() => {
       const startedAt = performance.now();
-      const duration = 1800; // mais suave
+      const duration = 1800;
 
       const step = (now: number) => {
         const t = Math.min((now - startedAt) / duration, 1);
         const eased = 1 - Math.pow(1 - t, 3);
-
-        // trava no máximo
         const next = Math.min(0.94, 0.06 + 0.9 * eased);
         setProgress(next);
 
@@ -43,6 +102,8 @@ export default function SubaProVerdeIntro() {
     return () => {
       window.clearTimeout(startTimer);
       window.clearTimeout(endTimer);
+      window.removeEventListener("pointerdown", startEngineSound);
+      window.removeEventListener("keydown", startEngineSound);
     };
   }, []);
 
@@ -53,9 +114,8 @@ export default function SubaProVerdeIntro() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/92 backdrop-blur-md overflow-hidden"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/92 backdrop-blur-md"
         >
-          {/* FUNDO COM BOLHAS */}
           <div className="absolute inset-0">
             {[...Array(12)].map((_, i) => (
               <motion.div
@@ -80,18 +140,17 @@ export default function SubaProVerdeIntro() {
             ))}
           </div>
 
-          {/* GLOW CENTRAL */}
           <motion.div
             animate={pulse ? { scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] } : { scale: 1 }}
             transition={{ duration: 0.9 }}
-            className="absolute w-[500px] h-[500px] bg-emerald-400/20 blur-[120px] rounded-full"
+            className="absolute h-[500px] w-[500px] rounded-full bg-emerald-400/20 blur-[120px]"
           />
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="relative flex flex-col items-center text-center px-6"
+            className="relative flex flex-col items-center px-6 text-center"
           >
             <AnimatedGauge progress={progress} pulse={pulse} />
 
@@ -99,7 +158,7 @@ export default function SubaProVerdeIntro() {
               initial={{ opacity: 0 }}
               animate={{ opacity: progress > 0.7 ? 1 : 0 }}
               transition={{ duration: 0.4 }}
-              className="mt-10 text-3xl md:text-5xl font-semibold tracking-[0.25em] text-white"
+              className="mt-10 text-3xl font-semibold tracking-[0.25em] text-white md:text-5xl"
             >
               BEM-VINDO À SUBA PRO VERDE
             </motion.h1>
@@ -108,7 +167,7 @@ export default function SubaProVerdeIntro() {
               initial={{ opacity: 0 }}
               animate={{ opacity: progress > 0.8 ? 1 : 0 }}
               transition={{ duration: 0.4 }}
-              className="mt-4 text-white/70 text-sm md:text-lg max-w-2xl"
+              className="mt-4 max-w-2xl text-sm text-white/70 md:text-lg"
             >
               Sua plataforma de gestão de reputação e performance para sellers do Mercado Livre
             </motion.p>
@@ -125,8 +184,8 @@ function AnimatedGauge({ progress, pulse }: { progress: number; pulse: boolean }
   const dashOffset = arcLength * (1 - progress);
 
   return (
-    <div className="relative h-[180px] w-[260px]">
-      <svg viewBox="0 0 240 180" className="w-full h-full">
+    <div className="relative h-[180px] w-[260px] md:h-[210px] md:w-[300px]">
+      <svg viewBox="0 0 240 180" className="h-full w-full">
         <defs>
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#ff2d12" />
@@ -153,23 +212,45 @@ function AnimatedGauge({ progress, pulse }: { progress: number; pulse: boolean }
           strokeLinecap="round"
           strokeDasharray={arcLength}
           strokeDashoffset={dashOffset}
-          animate={pulse ? { filter: "drop-shadow(0 0 15px #00ff88)" } : {}}
+          animate={
+            pulse
+              ? {
+                  filter: [
+                    "drop-shadow(0 0 0px rgba(0,255,136,0))",
+                    "drop-shadow(0 0 18px rgba(0,255,136,0.95))",
+                    "drop-shadow(0 0 8px rgba(0,255,136,0.45))",
+                  ],
+                }
+              : undefined
+          }
+          transition={{ duration: 0.7, ease: "easeOut" }}
           style={{ transition: "stroke-dashoffset 40ms linear" }}
         />
       </svg>
 
       <motion.div
         style={{ transform: `translate(-50%, -84%) rotate(${angle}deg)` }}
-        animate={pulse ? { scale: [1, 1.08, 1] } : {}}
+        animate={pulse ? { scale: [1, 1.08, 1] } : undefined}
         transition={{ duration: 0.5 }}
         className="absolute left-1/2 top-[80%] h-[10px] w-[120px] origin-[6px_center] rounded-full bg-emerald-500 shadow-[0_0_25px_rgba(0,255,150,0.5)]"
       >
-        <div className="absolute -left-3 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full bg-white border-4 border-emerald-400" />
+        <div className="absolute -left-3 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full border-4 border-emerald-400 bg-white" />
       </motion.div>
 
       <motion.div
-        animate={pulse ? { scale: [1, 1.2, 1], boxShadow: ["0 0 0", "0 0 25px #00ff88", "0 0 10px #00ff88"] } : {}}
-        className="absolute right-[8%] top-[42%] h-12 w-12 rounded-full bg-emerald-500 text-white flex items-center justify-center"
+        animate={
+          pulse
+            ? {
+                scale: [1, 1.2, 1],
+                boxShadow: [
+                  "0 0 0 rgba(0,255,136,0)",
+                  "0 0 25px rgba(0,255,136,0.95)",
+                  "0 0 10px rgba(0,255,136,0.45)",
+                ],
+              }
+            : undefined
+        }
+        className="absolute right-[8%] top-[42%] flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white"
       >
         ✓
       </motion.div>
