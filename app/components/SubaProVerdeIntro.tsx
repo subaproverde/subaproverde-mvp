@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 declare global {
@@ -20,29 +20,74 @@ export default function SubaProVerdeIntro() {
   const [progress, setProgress] = useState(START_PROGRESS);
   const [pulse, setPulse] = useState(false);
 
-  useEffect(() => {
-    let isCancelled = false;
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const introStartedRef = useRef(false);
+  const introFinishedRef = useRef(false);
 
-    const playEngineRise = async () => {
+  useEffect(() => {
+    let cancelled = false;
+    let pulseTimeout: number | undefined;
+
+    const unlockAudioOnly = async () => {
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as Window & { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext;
+
+        if (!AudioCtx) return;
+
+        if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+          audioCtxRef.current = new AudioCtx();
+        }
+
+        if (audioCtxRef.current.state === "suspended") {
+          await audioCtxRef.current.resume();
+        }
+
+        window.__subaAudioUnlocked = true;
+      } catch (error) {
+        console.error("Erro ao desbloquear áudio:", error);
+      }
+    };
+
+    const onUnlockInteraction = () => {
+      void unlockAudioOnly();
+    };
+
+    window.addEventListener("pointerdown", onUnlockInteraction);
+    window.addEventListener("keydown", onUnlockInteraction);
+    window.addEventListener("touchstart", onUnlockInteraction, {
+      passive: true,
+    });
+
+    const getAudioContext = async () => {
       const AudioCtx =
         window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext })
           .webkitAudioContext;
 
-      if (!AudioCtx) return;
+      if (!AudioCtx) return null;
 
-      const ctx = new AudioCtx();
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AudioCtx();
+      }
+
+      if (audioCtxRef.current.state === "suspended") {
+        await audioCtxRef.current.resume();
+      }
+
+      return audioCtxRef.current;
+    };
+
+    const playEngineRise = async () => {
+      if (!window.__subaAudioUnlocked) return;
+      if (introFinishedRef.current || cancelled) return;
+
+      const ctx = await getAudioContext();
+      if (!ctx || introFinishedRef.current || cancelled) return;
 
       try {
-        if (ctx.state === "suspended") {
-          await ctx.resume();
-        }
-
-        if (isCancelled) {
-          await ctx.close();
-          return;
-        }
-
         const now = ctx.currentTime;
 
         const oscA = ctx.createOscillator();
@@ -91,47 +136,25 @@ export default function SubaProVerdeIntro() {
         oscA.stop(now + 2.85);
         oscB.stop(now + 2.85);
         oscC.stop(now + 2.85);
-
-        oscC.onended = () => {
-          void ctx.close();
-        };
       } catch (error) {
-        try {
-          await ctx.close();
-        } catch {}
         console.error("Erro ao tocar intro:", error);
       }
     };
 
-    const unlockAndPlay = async () => {
-      window.__subaAudioUnlocked = true;
-      await playEngineRise();
-    };
+    const startIntro = () => {
+      if (introStartedRef.current || cancelled) return;
+      introStartedRef.current = true;
 
-    const onPointerDown = () => {
-      void unlockAndPlay();
-      window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
+      if (window.__subaAudioUnlocked) {
+        void playEngineRise();
+      }
 
-    const onKeyDown = () => {
-      void unlockAndPlay();
-      window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-
-    if (window.__subaAudioUnlocked) {
-      void playEngineRise();
-    } else {
-      window.addEventListener("pointerdown", onPointerDown);
-      window.addEventListener("keydown", onKeyDown);
-    }
-
-    const startTimer = window.setTimeout(() => {
       const startedAt = performance.now();
       const duration = 2400;
 
       const step = (now: number) => {
+        if (cancelled || introFinishedRef.current) return;
+
         const t = Math.min((now - startedAt) / duration, 1);
         const eased = 1 - Math.pow(1 - t, 3);
         const next = START_PROGRESS + (END_PROGRESS - START_PROGRESS) * eased;
@@ -141,23 +164,31 @@ export default function SubaProVerdeIntro() {
           requestAnimationFrame(step);
         } else {
           setPulse(true);
-          window.setTimeout(() => setPulse(false), 1200);
+          pulseTimeout = window.setTimeout(() => setPulse(false), 1200);
         }
       };
 
       requestAnimationFrame(step);
-    }, 550);
+    };
+
+    const startTimer = window.setTimeout(startIntro, 550);
 
     const endTimer = window.setTimeout(() => {
+      introFinishedRef.current = true;
       setShow(false);
     }, INTRO_DURATION);
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
+      introFinishedRef.current = true;
+
       window.clearTimeout(startTimer);
       window.clearTimeout(endTimer);
-      window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
+      if (pulseTimeout) window.clearTimeout(pulseTimeout);
+
+      window.removeEventListener("pointerdown", onUnlockInteraction);
+      window.removeEventListener("keydown", onUnlockInteraction);
+      window.removeEventListener("touchstart", onUnlockInteraction);
     };
   }, []);
 
