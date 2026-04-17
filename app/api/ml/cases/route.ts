@@ -169,8 +169,7 @@ function normalizeShipment(shipment: any) {
       "—"
     ),
     dateDelivered: toIsoOrDash(
-      shipment?.date_delivered ??
-        shipment?.tracking?.date_delivered
+      shipment?.date_delivered ?? shipment?.tracking?.date_delivered
     ),
     dateEstimatedDelivery: toIsoOrDash(
       shipment?.estimated_delivery_time?.date ??
@@ -184,7 +183,7 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
-const limit = Math.max(1, Number(url.searchParams.get("limit") ?? 10));
+    const limit = Math.max(1, Number(url.searchParams.get("limit") ?? 10));
 
     const sellerId =
       url.searchParams.get("sellerId") ||
@@ -342,12 +341,7 @@ const limit = Math.max(1, Number(url.searchParams.get("limit") ?? 10));
         raw: c,
       };
     });
-const impactfulClaims = normalizedClaims.filter((c: any) => {
-  if (c.type !== "reclamacoes") return true;
 
-  const status = String(c.statusPill ?? "").toLowerCase();
-  return true;
-});
     const normalizedCancelledOrders = orders
       .filter((o: any) => orderIsCancelled(o))
       .map((o: any) => {
@@ -418,7 +412,9 @@ const impactfulClaims = normalizedClaims.filter((c: any) => {
           }`,
           createdAt: toIsoOrDash(o?.date_created),
           updatedAt: toIsoOrDash(shipment?.last_updated ?? o?.last_updated),
-          ageLabel: timeAgo(shipment?.last_updated ?? o?.last_updated ?? o?.date_created),
+          ageLabel: timeAgo(
+            shipment?.last_updated ?? o?.last_updated ?? o?.date_created
+          ),
           buyerName: buyer.buyerNickname,
           statusPill: safeStr(shipment?.status ?? o?.status),
           chip: `#${o.id}`,
@@ -461,7 +457,8 @@ const impactfulClaims = normalizedClaims.filter((c: any) => {
             id: `delay-metric-${i + 1}`,
             type: "atrasos" as ImpactType,
             title: "Atraso impactando reputação",
-            reason: "Item vindo da métrica oficial do Mercado Livre (delayed_handling_time).",
+            reason:
+              "Item vindo da métrica oficial do Mercado Livre (delayed_handling_time).",
             createdAt: "—",
             updatedAt: "—",
             ageLabel: "métrica ML",
@@ -500,19 +497,21 @@ const impactfulClaims = normalizedClaims.filter((c: any) => {
           }))
         : [];
 
-   const items = [
-  ...impactfulClaims,
-  ...normalizedCancelledOrders,
-  ...normalizedDelayedOrders,
-  ...fallbackDelayedItems,
-];
-const total = items.length;
-const totalPages = Math.max(1, Math.ceil(total / limit));
+    const items = [
+      ...normalizedClaims,
+      ...normalizedCancelledOrders,
+      ...normalizedDelayedOrders,
+      ...fallbackDelayedItems,
+    ].filter(Boolean);
 
-const start = (page - 1) * limit;
-const end = start + limit;
+    const total = officialClaimsCount + officialDelayCount + officialCancelCount;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
-const pagedItems = items.slice(start, end);
+    const start = (page - 1) * limit;
+    const end = start + limit;
+
+    const pagedItems = items.slice(start, end);
+
     return NextResponse.json(
       {
         ok: true,
@@ -523,7 +522,7 @@ const pagedItems = items.slice(start, end);
           orders: orders.length,
           claimsAttempt1: claims1.length,
           claimsAttempt2: claims2.length,
-          reclamacoes: impactfulClaims.filter((x: any) => x.type === "reclamacoes").length,
+          reclamacoes: officialClaimsCount,
           atrasos: officialDelayCount,
           cancelamentos: officialCancelCount,
           mediacoes: 0,
@@ -533,11 +532,11 @@ const pagedItems = items.slice(start, end);
           detectedAtrasos: items.filter((x: any) => x.type === "atrasos").length,
           items: items.length,
         },
-       page,
-limit,
-total,
-totalPages,
-items: pagedItems,
+        page,
+        limit,
+        total,
+        totalPages,
+        items: pagedItems,
         debug: {
           ordersStatus: ordersRes.status,
           claims1Status: claimsRes1.status,
