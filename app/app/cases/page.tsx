@@ -534,7 +534,7 @@ const [totalPages, setTotalPages] = useState(1);
 
         setSellerId(sid);
        const res = await fetch(
-  `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10`,
+  `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10&type=${activeTab}`,
   { cache: "no-store" }
 );
 
@@ -574,7 +574,10 @@ if (json?.totalPages) {
     return () => {
       alive = false;
     };
- }, [page]);
+}, [page, activeTab]);
+useEffect(() => {
+  setPage(1);
+}, [activeTab]);
 
   useEffect(() => {
     let alive = true;
@@ -779,13 +782,13 @@ if (json?.totalPages) {
         </div>
 
         <div className="p-5 space-y-4">
-          {!loading && filtered.length === 0 && (
+          {!loading && items.length === 0 && (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-[13px] text-white/70">
               Nenhum item nessa categoria.
             </div>
           )}
 
-          {filtered.map((it) => (
+          {items.map((it) => (
             <ImpactRow
               key={it.id}
               item={it}
