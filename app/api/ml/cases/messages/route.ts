@@ -289,54 +289,71 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const messages = result.rawMessages.map((m: any, i: number) => {
-      const text =
-        m?.message ??
-        m?.text ??
-        m?.body ??
-        m?.content ??
-        m?.message_text ??
-        "";
+    const allMessages = result.rawMessages.map((m: any, i: number) => {
+  const text =
+    m?.message ??
+    m?.text ??
+    m?.body ??
+    m?.content ??
+    m?.message_text ??
+    "";
 
-      const fromRaw = m?.from ?? m?.sender ?? m?.author ?? null;
-      const toRaw = m?.to ?? m?.receiver ?? null;
+  const fromRaw = m?.from ?? m?.sender ?? m?.author ?? null;
+  const toRaw = m?.to ?? m?.receiver ?? null;
 
-      return {
-        id: String(m?.id ?? i),
-        from: normalizeFromForUi(fromRaw, sellerMlUserId),
-        to: normalizeToForUi(toRaw),
-        message: String(text),
-        date_created: m?.date_created ?? m?.created_at ?? m?.date ?? null,
-        stage: m?.stage ?? null,
-        status: m?.status ?? null,
-        moderation_status: m?.moderation_status ?? null,
-        message_type: m?.message_type ?? m?.type ?? null,
-        attachments: asArray(m?.attachments).map((a: any, idx: number) => ({
-          id: String(a?.id ?? idx),
-          filename: a?.filename ?? a?.name ?? null,
-          type: a?.type ?? a?.mime_type ?? null,
-          url: a?.url ?? a?.link ?? null,
-          thumbnail: a?.thumbnail ?? null,
-        })),
-        raw: m,
-      };
-    });
+  const from = normalizeFromForUi(fromRaw, sellerMlUserId);
 
-    messages.sort((a, b) => {
-      const ta = new Date(a.date_created ?? 0).getTime();
-      const tb = new Date(b.date_created ?? 0).getTime();
-      return ta - tb;
-    });
+  return {
+    id: String(m?.id ?? i),
+    from,
+    to: normalizeToForUi(toRaw),
+    message: String(text),
+    date_created: m?.date_created ?? m?.created_at ?? m?.date ?? null,
+    stage: m?.stage ?? null,
+    status: m?.status ?? null,
+    moderation_status: m?.moderation_status ?? null,
+    message_type: m?.message_type ?? m?.type ?? null,
+    attachments: asArray(m?.attachments).map((a: any, idx: number) => ({
+      id: String(a?.id ?? idx),
+      filename: a?.filename ?? a?.name ?? null,
+      type: a?.type ?? a?.mime_type ?? null,
+      url: a?.url ?? a?.link ?? null,
+      thumbnail: a?.thumbnail ?? null,
+    })),
+    raw: m,
+  };
+});
 
-    return NextResponse.json({
-      ok: true,
-      claimId: claimId || null,
-      packId: packId || null,
-      source: result.source,
-      sellerMlUserId,
-      messages,
-    });
-  } catch (e: any) {
+allMessages.sort((a, b) => {
+  const ta = new Date(a.date_created ?? 0).getTime();
+  const tb = new Date(b.date_created ?? 0).getTime();
+  return ta - tb;
+});
+
+// 🔥 separação inteligente
+const buyerMessages = allMessages.filter(
+  (m) => m.from === "buyer" || m.from === "seller"
+);
+
+const mediationMessages = allMessages.filter(
+  (m) => m.from === "mercadolivre"
+);
+
+return NextResponse.json({
+  ok: true,
+  claimId: claimId || null,
+  packId: packId || null,
+  source: result.source,
+  sellerMlUserId,
+
+  // 👇 agora separado corretamente
+  buyerMessages,
+  mediationMessages,
+
+  // opcional (mantém tudo também)
+  messages: allMessages,
+  });
+    } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Erro inesperado" },
       { status: 500 }
