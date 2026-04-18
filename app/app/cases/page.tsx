@@ -663,43 +663,42 @@ useEffect(() => {
         return;
       }
 
-      const msgs: Message[] = (json?.messages ?? []).map((m: any, i: number) => {
-        const fromRaw = String(m?.from ?? "").toLowerCase();
+     const buyerMsgs: Message[] = (json?.buyerMessages ?? []).map((m: any, i: number) => {
+  const from = m.from === "seller" ? "seller" : "buyer";
 
-        let from: "seller" | "buyer" = "buyer";
-        let name = "Comprador";
+  return {
+    id: "b-" + (m?.id ?? i),
+    from,
+    text: String(m?.message ?? "—"),
+    time: m?.date_created
+      ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "--:--",
+    name: from === "seller" ? "Você" : "Comprador",
+  };
+});
 
-        if (
-          fromRaw.includes("seller") ||
-          fromRaw.includes("you") ||
-          fromRaw.includes("self")
-        ) {
-          from = "seller";
-          name = "Você";
-        } else if (
-          fromRaw.includes("mercado") ||
-          fromRaw.includes("meli") ||
-          fromRaw.includes("mediation")
-        ) {
-          from = "buyer";
-          name = "Mercado Livre";
-        }
+const mediationMsgs: Message[] = (json?.mediationMessages ?? []).map((m: any, i: number) => {
+  return {
+    id: "m-" + (m?.id ?? i),
+    from: "buyer", // usa esquerda (estilo sistema)
+    text: String(m?.message ?? "—"),
+    time: m?.date_created
+      ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "--:--",
+    name: "Mercado Livre",
+  };
+});
 
-        return {
-          id: String(m?.id ?? i),
-          from,
-          text: String(m?.message ?? m?.text ?? "—"),
-          time: m?.date_created
-            ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "--:--",
-          name,
-        };
-      });
-
-      setMessages(msgs);
+      setMessages([
+  ...buyerMsgs,
+  ...mediationMsgs,
+]);   
     } catch {
       if (!alive) return;
       setMessages([]);
@@ -1208,7 +1207,29 @@ useEffect(() => {
                         Nenhuma mensagem encontrada para este caso.
                       </div>
                     ) : (
-                      messages.map((m) => <ChatBubble key={m.id} msg={m} />)
+                      <>
+  {/* 💬 CONVERSA COM COMPRADOR */}
+  <div className="mb-4">
+    <div className="text-[11px] font-bold text-white/50 mb-2">
+      Conversa com comprador
+    </div>
+
+    {messages
+      .filter((m) => m.name !== "Mercado Livre")
+      .map((m) => <ChatBubble key={m.id} msg={m} />)}
+  </div>
+
+  {/* ⚖️ MEDIAÇÃO */}
+  <div className="mt-6">
+    <div className="text-[11px] font-bold text-sky-300 mb-2">
+      Mediação Mercado Livre
+    </div>
+
+    {messages
+      .filter((m) => m.name === "Mercado Livre")
+      .map((m) => <ChatBubble key={m.id} msg={m} />)}
+  </div>
+</>
                     )}
                   </div>
                 </div>
