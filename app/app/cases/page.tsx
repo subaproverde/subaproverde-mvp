@@ -627,36 +627,67 @@ useEffect(() => {
   }, [sellerId, selected, detailsOpen]);
 
   useEffect(() => {
-    let alive = true;
+  let alive = true;
 
-    (async () => {
-      if (!sellerId || !selected?.claimId || !detailsOpen) {
+  (async () => {
+    if (!sellerId || !selected || !detailsOpen) {
+      setMessages([]);
+      return;
+    }
+
+    try {
+      setLoadingMessages(true);
+
+      const params = new URLSearchParams();
+      params.set("sellerId", sellerId);
+
+      if (selected.packId) {
+        params.set("packId", selected.packId);
+      } else if (selected.claimId) {
+        params.set("caseId", selected.claimId);
+      } else {
         setMessages([]);
         return;
       }
 
-      try {
-        setLoadingMessages(true);
+      const res = await fetch(`/api/ml/cases/messages?${params.toString()}`, {
+        cache: "no-store",
+      });
 
-        const res = await fetch(
-          `/api/ml/cases/messages?caseId=${encodeURIComponent(selected.claimId)}&sellerId=${encodeURIComponent(
-            sellerId
-          )}`,
-          { cache: "no-store" }
-        );
+      const json = await res.json().catch(() => ({}));
 
-        const json = await res.json().catch(() => ({}));
+      if (!alive) return;
 
-        if (!alive) return;
+      if (!res.ok || json?.ok === false) {
+        setMessages([]);
+        return;
+      }
 
-        if (!res.ok || json?.ok === false) {
-          setMessages([]);
-          return;
+      const msgs: Message[] = (json?.messages ?? []).map((m: any, i: number) => {
+        const fromRaw = String(m?.from ?? "").toLowerCase();
+
+        let from: "seller" | "buyer" = "buyer";
+        let name = "Comprador";
+
+        if (
+          fromRaw.includes("seller") ||
+          fromRaw.includes("you") ||
+          fromRaw.includes("self")
+        ) {
+          from = "seller";
+          name = "Você";
+        } else if (
+          fromRaw.includes("mercado") ||
+          fromRaw.includes("meli") ||
+          fromRaw.includes("mediation")
+        ) {
+          from = "buyer";
+          name = "Mercado Livre";
         }
 
-        const msgs: Message[] = (json?.messages ?? []).map((m: any, i: number) => ({
+        return {
           id: String(m?.id ?? i),
-          from: String(m?.from ?? "").toLowerCase().includes("seller") ? "seller" : "buyer",
+          from,
           text: String(m?.message ?? m?.text ?? "—"),
           time: m?.date_created
             ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
@@ -664,23 +695,24 @@ useEffect(() => {
                 minute: "2-digit",
               })
             : "--:--",
-          name: String(m?.from ?? "").toLowerCase().includes("seller") ? "Você" : "Comprador",
-        }));
+          name,
+        };
+      });
 
-        setMessages(msgs);
-      } catch {
-        if (!alive) return;
-        setMessages([]);
-      } finally {
-        if (!alive) return;
-        setLoadingMessages(false);
-      }
-    })();
+      setMessages(msgs);
+    } catch {
+      if (!alive) return;
+      setMessages([]);
+    } finally {
+      if (!alive) return;
+      setLoadingMessages(false);
+    }
+  })();
 
-    return () => {
-      alive = false;
-    };
-  }, [sellerId, selected?.claimId, detailsOpen]);
+  return () => {
+    alive = false;
+  };
+}, [sellerId, selected, detailsOpen]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
