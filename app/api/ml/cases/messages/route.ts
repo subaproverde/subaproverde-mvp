@@ -86,86 +86,42 @@ function extractUserId(value: any): string | null {
   return null;
 }
 
-function textHasMlSignal(value: any) {
-  const s = JSON.stringify(value ?? {}).toLowerCase();
+function normalizeFromForUi(
+  fromRaw: any,
+  sellerMlUserId: string | null
+): MessageSender {
+  const userId = extractUserId(fromRaw);
 
-  return (
-    s.includes("mercado livre") ||
-    s.includes("mercadolivre") ||
-    s.includes("meli") ||
-    s.includes("mediation") ||
-    s.includes("mediacion") ||
-    s.includes("mediação") ||
-    s.includes("mediacao") ||
-    s.includes("moderation") ||
-    s.includes("moderacao") ||
-    s.includes("moderación") ||
-    s.includes("system") ||
-    s.includes("operator") ||
-    s.includes("agent")
-  );
-}
-
-function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null, rawMessage?: any): MessageSender {
-  if (!fromRaw) {
-    return textHasMlSignal(rawMessage) ? "mercadolivre" : "buyer";
+  if (sellerMlUserId && userId && userId === sellerMlUserId) {
+    return "seller";
   }
 
-  if (typeof fromRaw === "string") {
-    const s = fromRaw.toLowerCase();
-
-    if (sellerMlUserId && s === sellerMlUserId) return "seller";
-    if (s.includes("seller")) return "seller";
-    if (s.includes("buyer") || s.includes("customer") || s.includes("client")) return "buyer";
-    if (
-      s.includes("mercado") ||
-      s.includes("meli") ||
-      s.includes("mediation") ||
-      s.includes("system") ||
-      s.includes("operator") ||
-      s.includes("agent")
-    ) {
-      return "mercadolivre";
-    }
-
-    if (/^\d+$/.test(s)) {
-      return sellerMlUserId && s === sellerMlUserId ? "seller" : "buyer";
-    }
-
-    return textHasMlSignal(rawMessage) ? "mercadolivre" : "buyer";
+  if (userId && sellerMlUserId && userId !== sellerMlUserId) {
+    return "buyer";
   }
 
-  if (typeof fromRaw === "object") {
-    const userId = extractUserId(fromRaw);
+  const role = String(
+    fromRaw?.role ??
+      fromRaw?.type ??
+      fromRaw?.name ??
+      fromRaw?.nickname ??
+      fromRaw?.user?.role ??
+      ""
+  ).toLowerCase();
 
-    const role = String(
-      fromRaw.role ??
-        fromRaw.type ??
-        fromRaw.name ??
-        fromRaw.nickname ??
-        fromRaw.user?.role ??
-        ""
-    ).toLowerCase();
-
-    if (sellerMlUserId && userId && userId === sellerMlUserId) return "seller";
-    if (role.includes("seller")) return "seller";
-    if (role.includes("buyer") || role.includes("customer") || role.includes("client")) return "buyer";
-
-    if (
-      role.includes("mercado") ||
-      role.includes("meli") ||
-      role.includes("mediation") ||
-      role.includes("system") ||
-      role.includes("operator") ||
-      role.includes("agent")
-    ) {
-      return "mercadolivre";
-    }
-
-    if (userId) return "buyer";
+  if (
+    role.includes("mercado") ||
+    role.includes("meli") ||
+    role.includes("mediator") ||
+    role.includes("mediation") ||
+    role.includes("system") ||
+    role.includes("operator") ||
+    role.includes("agent")
+  ) {
+    return "mercadolivre";
   }
 
-  return textHasMlSignal(rawMessage) ? "mercadolivre" : "buyer";
+  return "buyer";
 }
 
 function normalizeToForUi(toRaw: any) {
@@ -223,7 +179,7 @@ function normalizeMessage(
   const fromRaw = m?.from ?? m?.sender ?? m?.author ?? m?.created_by ?? null;
   const toRaw = m?.to ?? m?.receiver ?? null;
 
-  const from = normalizeFromForUi(fromRaw, sellerMlUserId, m);
+  const from = normalizeFromForUi(fromRaw, sellerMlUserId);
 
   return {
     id: `${prefix}-${String(m?.id ?? i)}`,
