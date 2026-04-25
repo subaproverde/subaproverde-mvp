@@ -3,6 +3,21 @@ import { getValidMlAccessToken } from "@/lib/mlToken";
 
 type MessageSender = "seller" | "buyer" | "mercadolivre";
 
+type NormalizedMessage = {
+  id: string;
+  from: MessageSender;
+  to: any;
+  message: string;
+  date_created: string | null;
+  stage: any;
+  status: any;
+  moderation_status: any;
+  message_type: any;
+  channel: "buyer" | "mediation";
+  attachments: any[];
+  raw: any;
+};
+
 function asArray<T = any>(value: any): T[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.messages)) return value.messages;
@@ -71,8 +86,30 @@ function extractUserId(value: any): string | null {
   return null;
 }
 
-function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): MessageSender {
-  if (!fromRaw) return "mercadolivre";
+function textHasMlSignal(value: any) {
+  const s = JSON.stringify(value ?? {}).toLowerCase();
+
+  return (
+    s.includes("mercado livre") ||
+    s.includes("mercadolivre") ||
+    s.includes("meli") ||
+    s.includes("mediation") ||
+    s.includes("mediacion") ||
+    s.includes("mediação") ||
+    s.includes("mediacao") ||
+    s.includes("moderation") ||
+    s.includes("moderacao") ||
+    s.includes("moderación") ||
+    s.includes("system") ||
+    s.includes("operator") ||
+    s.includes("agent")
+  );
+}
+
+function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null, rawMessage?: any): MessageSender {
+  if (!fromRaw) {
+    return textHasMlSignal(rawMessage) ? "mercadolivre" : "buyer";
+  }
 
   if (typeof fromRaw === "string") {
     const s = fromRaw.toLowerCase();
@@ -80,13 +117,22 @@ function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): Messag
     if (sellerMlUserId && s === sellerMlUserId) return "seller";
     if (s.includes("seller")) return "seller";
     if (s.includes("buyer") || s.includes("customer") || s.includes("client")) return "buyer";
-    if (s.includes("mercado") || s.includes("meli") || s.includes("mediation")) return "mercadolivre";
+    if (
+      s.includes("mercado") ||
+      s.includes("meli") ||
+      s.includes("mediation") ||
+      s.includes("system") ||
+      s.includes("operator") ||
+      s.includes("agent")
+    ) {
+      return "mercadolivre";
+    }
 
     if (/^\d+$/.test(s)) {
       return sellerMlUserId && s === sellerMlUserId ? "seller" : "buyer";
     }
 
-    return "buyer";
+    return textHasMlSignal(rawMessage) ? "mercadolivre" : "buyer";
   }
 
   if (typeof fromRaw === "object") {
@@ -104,12 +150,22 @@ function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): Messag
     if (sellerMlUserId && userId && userId === sellerMlUserId) return "seller";
     if (role.includes("seller")) return "seller";
     if (role.includes("buyer") || role.includes("customer") || role.includes("client")) return "buyer";
-    if (role.includes("mercado") || role.includes("meli") || role.includes("mediation")) return "mercadolivre";
+
+    if (
+      role.includes("mercado") ||
+      role.includes("meli") ||
+      role.includes("mediation") ||
+      role.includes("system") ||
+      role.includes("operator") ||
+      role.includes("agent")
+    ) {
+      return "mercadolivre";
+    }
 
     if (userId) return "buyer";
   }
 
-  return "buyer";
+  return textHasMlSignal(rawMessage) ? "mercadolivre" : "buyer";
 }
 
 function normalizeToForUi(toRaw: any) {
@@ -160,14 +216,14 @@ function getMessageText(m: any) {
 function normalizeMessage(
   m: any,
   i: number,
-  prefix: "buyer" | "mediation",
+  prefix: "buyer" | "claim",
   sellerMlUserId: string | null,
-  forcedChannel: "buyer" | "mediation"
-) {
+  defaultChannel: "buyer" | "mediation"
+): NormalizedMessage {
   const fromRaw = m?.from ?? m?.sender ?? m?.author ?? m?.created_by ?? null;
   const toRaw = m?.to ?? m?.receiver ?? null;
 
-  const from = normalizeFromForUi(fromRaw, sellerMlUserId);
+  const from = normalizeFromForUi(fromRaw, sellerMlUserId, m);
 
   return {
     id: `${prefix}-${String(m?.id ?? i)}`,
@@ -184,7 +240,7 @@ function normalizeMessage(
     status: m?.status ?? null,
     moderation_status: m?.moderation_status ?? null,
     message_type: m?.message_type ?? m?.type ?? null,
-    channel: forcedChannel,
+    channel: from === "mercadolivre" ? "mediation" : defaultChannel,
     attachments: asArray(m?.attachments).map((a: any, idx: number) => ({
       id: String(a?.id ?? idx),
       filename: a?.filename ?? a?.name ?? null,
@@ -201,6 +257,17 @@ function sortMessages<T extends { date_created?: string | null }>(messages: T[])
     const ta = new Date(a.date_created ?? 0).getTime();
     const tb = new Date(b.date_created ?? 0).getTime();
     return ta - tb;
+  });
+}
+
+function uniqueMessages(messages: NormalizedMessage[]) {
+  const seen = new Set<string>();
+
+  return messages.filter((m) => {
+    const key = `${m.id}|${m.date_created}|${m.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 
@@ -367,19 +434,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const packMessages = (packResult?.ok ? packResult.rawMessages : []).map((m: any, i: number) =>
+      normalizeMessage(m, i, "buyer", sellerMlUserId, "buyer")
+    );
+
+    const claimMessages = (claimResult?.ok ? claimResult.rawMessages : []).map((m: any, i: number) =>
+      normalizeMessage(m, i, "claim", sellerMlUserId, "buyer")
+    );
+
     const buyerMessages = sortMessages(
-      (packResult?.ok ? packResult.rawMessages : []).map((m: any, i: number) =>
-        normalizeMessage(m, i, "buyer", sellerMlUserId, "buyer")
-      )
+      uniqueMessages([
+        ...packMessages,
+        ...claimMessages.filter((m) => m.from !== "mercadolivre"),
+      ])
     );
 
     const mediationMessages = sortMessages(
-      (claimResult?.ok ? claimResult.rawMessages : []).map((m: any, i: number) =>
-        normalizeMessage(m, i, "mediation", sellerMlUserId, "mediation")
-      )
+      uniqueMessages(claimMessages.filter((m) => m.from === "mercadolivre"))
     );
 
-    const messages = sortMessages([...buyerMessages, ...mediationMessages]);
+    const messages = sortMessages(uniqueMessages([...buyerMessages, ...mediationMessages]));
 
     return NextResponse.json({
       ok: true,
@@ -394,8 +468,16 @@ export async function GET(req: NextRequest) {
       mediationMessages,
       messages,
       debug: {
-        pack: packResult?.debug ?? null,
-        claim: claimResult?.debug ?? null,
+        pack: {
+          ok: !!packResult?.ok,
+          count: packMessages.length,
+          endpoint: packResult?.debug?.endpoint ?? null,
+        },
+        claim: {
+          ok: !!claimResult?.ok,
+          count: claimMessages.length,
+          endpoint: claimResult?.debug?.endpoint ?? null,
+        },
       },
     });
   } catch (e: any) {
