@@ -50,7 +50,7 @@ type ImpactItem = {
 
 type Message = {
   id: string;
-  from: "seller" | "buyer";
+  from: "seller" | "buyer" | "mercadolivre";
   text: string;
   time: string;
   name?: string;
@@ -333,15 +333,25 @@ function ImpactRow({
 
 function ChatBubble({ msg }: { msg: Message }) {
   const isSeller = msg.from === "seller";
+  const isMercadoLivre = msg.from === "mercadolivre";
 
   return (
     <div className={cn("flex", isSeller ? "justify-end" : "justify-start")}>
       <div className={cn("max-w-[78%] flex items-end gap-2", isSeller ? "flex-row-reverse" : "flex-row")}>
-        <div className="h-9 w-9 rounded-2xl bg-white/10 border border-white/10 shrink-0" />
+        <div
+          className={cn(
+            "h-9 w-9 rounded-2xl border shrink-0",
+            isSeller
+              ? "bg-emerald-500/15 border-emerald-400/20"
+              : isMercadoLivre
+              ? "bg-sky-500/15 border-sky-400/20"
+              : "bg-white/10 border-white/10"
+          )}
+        />
 
         <div className={cn("min-w-0", isSeller ? "text-right" : "text-left")}>
           <div className={cn("text-[11px] font-semibold text-white/65", isSeller ? "pr-2" : "pl-2")}>
-            {msg.name ?? (isSeller ? "Seller" : "Comprador")} • {msg.time}
+            {msg.name ?? (isSeller ? "Você" : isMercadoLivre ? "Mercado Livre" : "Comprador")} • {msg.time}
           </div>
 
           <div
@@ -349,6 +359,8 @@ function ChatBubble({ msg }: { msg: Message }) {
               "mt-1 rounded-2xl px-4 py-3 text-[13px] leading-relaxed border",
               isSeller
                 ? "bg-emerald-700 text-white border-emerald-800/30 shadow-[0_16px_55px_rgba(16,185,129,0.18)]"
+                : isMercadoLivre
+                ? "bg-sky-500/10 text-sky-50 border-sky-400/20 shadow-[0_16px_55px_rgba(14,165,233,0.10)]"
                 : "bg-white/5 text-white border-white/10 shadow-[0_16px_55px_rgba(0,0,0,0.25)]"
             )}
           >
@@ -440,7 +452,13 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
       buyerEmail: c?.buyerEmail ? String(c.buyerEmail) : "—",
 
       orderStatus: c?.orderStatus ? String(c.orderStatus) : "—",
-      packId: c?.packId ? String(c.packId) : null,
+      packId: c?.packId
+        ? String(c.packId)
+        : c?.pack_id
+        ? String(c.pack_id)
+        : c?.raw?.pack_id
+        ? String(c.raw.pack_id)
+        : null,
 
       shippingMode: c?.shippingMode ? String(c.shippingMode) : "—",
       trackingNumber: c?.trackingNumber ? String(c.trackingNumber) : "—",
@@ -471,7 +489,9 @@ export default function CasesPage() {
     mediacoes: number;
   } | null>(null);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [buyerMessages, setBuyerMessages] = useState<Message[]>([]);
+  const [mediationMessages, setMediationMessages] = useState<Message[]>([]);
+  const [messageTab, setMessageTab] = useState<"buyer" | "mediation">("buyer");
   const [details, setDetails] = useState<CaseDetails | null>(null);
   const [page, setPage] = useState(1);
 const [totalPages, setTotalPages] = useState(1);
@@ -492,8 +512,6 @@ const [totalPages, setTotalPages] = useState(1);
     for (const it of items) base[it.type] = (base[it.type] ?? 0) + 1;
     return base;
   }, [items, apiCounts]);
-
-  const filtered = useMemo(() => items.filter((x) => x.type === activeTab), [items, activeTab]);
 
   const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
 
@@ -627,91 +645,114 @@ useEffect(() => {
   }, [sellerId, selected, detailsOpen]);
 
   useEffect(() => {
-  let alive = true;
+    let alive = true;
 
-  (async () => {
-    if (!sellerId || !selected || !detailsOpen) {
-      setMessages([]);
-      return;
-    }
-
-    try {
-      setLoadingMessages(true);
-
-      const params = new URLSearchParams();
-      params.set("sellerId", sellerId);
-
-      if (selected.packId) {
-        params.set("packId", selected.packId);
-      } else if (selected.claimId) {
-        params.set("caseId", selected.claimId);
-      } else {
-        setMessages([]);
+    (async () => {
+      if (!sellerId || !selected || !detailsOpen) {
+        setBuyerMessages([]);
+        setMediationMessages([]);
         return;
       }
 
-      const res = await fetch(`/api/ml/cases/messages?${params.toString()}`, {
-        cache: "no-store",
-      });
+      try {
+        setLoadingMessages(true);
 
-      const json = await res.json().catch(() => ({}));
+        const params = new URLSearchParams();
+        params.set("sellerId", sellerId);
 
-      if (!alive) return;
+        if (selected.packId) {
+          params.set("packId", selected.packId);
+        }
 
-      if (!res.ok || json?.ok === false) {
-        setMessages([]);
-        return;
+        if (selected.claimId) {
+          params.set("caseId", selected.claimId);
+        }
+
+        if (!selected.packId && !selected.claimId) {
+          setBuyerMessages([]);
+          setMediationMessages([]);
+          return;
+        }
+
+        const res = await fetch(`/api/ml/cases/messages?${params.toString()}`, {
+          cache: "no-store",
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!alive) return;
+
+        if (!res.ok || json?.ok === false) {
+          setBuyerMessages([]);
+          setMediationMessages([]);
+          return;
+        }
+
+        const buyerMsgs: Message[] = (json?.buyerMessages ?? []).map((m: any, i: number) => {
+          const from: "seller" | "buyer" =
+            m?.from === "seller" ? "seller" : "buyer";
+
+          return {
+            id: "b-" + String(m?.id ?? i),
+            from,
+            text: String(m?.message ?? m?.text ?? "—"),
+            time: m?.date_created
+              ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "--:--",
+            name: from === "seller" ? "Você" : "Comprador",
+          };
+        });
+
+        const mediationMsgs: Message[] = (json?.mediationMessages ?? []).map((m: any, i: number) => {
+          const from: "seller" | "buyer" | "mercadolivre" =
+            m?.from === "seller"
+              ? "seller"
+              : m?.from === "buyer"
+              ? "buyer"
+              : "mercadolivre";
+
+          return {
+            id: "m-" + String(m?.id ?? i),
+            from,
+            text: String(m?.message ?? m?.text ?? "—"),
+            time: m?.date_created
+              ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "--:--",
+            name:
+              from === "seller"
+                ? "Você"
+                : from === "buyer"
+                ? "Comprador"
+                : "Mercado Livre",
+          };
+        });
+
+        setBuyerMessages(buyerMsgs);
+        setMediationMessages(mediationMsgs);
+      } catch {
+        if (!alive) return;
+        setBuyerMessages([]);
+        setMediationMessages([]);
+      } finally {
+        if (!alive) return;
+        setLoadingMessages(false);
       }
+    })();
 
-     const buyerMsgs: Message[] = (json?.buyerMessages ?? []).map((m: any, i: number) => {
-  const from = m.from === "seller" ? "seller" : "buyer";
+    return () => {
+      alive = false;
+    };
+  }, [sellerId, selected, detailsOpen]);
 
-  return {
-    id: "b-" + (m?.id ?? i),
-    from,
-    text: String(m?.message ?? "—"),
-    time: m?.date_created
-      ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "--:--",
-    name: from === "seller" ? "Você" : "Comprador",
-  };
-});
-
-const mediationMsgs: Message[] = (json?.mediationMessages ?? []).map((m: any, i: number) => {
-  return {
-    id: "m-" + (m?.id ?? i),
-    from: "buyer", // usa esquerda (estilo sistema)
-    text: String(m?.message ?? "—"),
-    time: m?.date_created
-      ? new Date(m.date_created).toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "--:--",
-    name: "Mercado Livre",
-  };
-});
-
-      setMessages([
-  ...buyerMsgs,
-  ...mediationMsgs,
-]);   
-    } catch {
-      if (!alive) return;
-      setMessages([]);
-    } finally {
-      if (!alive) return;
-      setLoadingMessages(false);
-    }
-  })();
-
-  return () => {
-    alive = false;
-  };
-}, [sellerId, selected, detailsOpen]);
+  useEffect(() => {
+    if (detailsOpen) setMessageTab("buyer");
+  }, [selectedId, detailsOpen]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -1189,47 +1230,79 @@ const mediationMsgs: Message[] = (json?.mediationMessages ?? []).map((m: any, i:
                     </div>
 
                     <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-extrabold text-white/80">
-                      {selected?.claimId ? "Mensagens reais" : "Sem claim para mensagens"}
+                      {selected?.claimId || selected?.packId ? "Mensagens reais" : "Sem mensagens"}
                     </span>
                   </div>
 
-                  <div className="mt-5 space-y-3">
+                  <div className="mt-5">
                     {loadingMessages ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
                         Carregando mensagens...
                       </div>
-                    ) : !selected?.claimId ? (
+                    ) : !selected?.claimId && !selected?.packId ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
-                        Este item não possui claim vinculada para carregar mensagens.
+                        Este item não possui claim ou pack vinculado para carregar mensagens.
                       </div>
-                    ) : messages.length === 0 ? (
+                    ) : buyerMessages.length === 0 && mediationMessages.length === 0 ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
                         Nenhuma mensagem encontrada para este caso.
                       </div>
                     ) : (
                       <>
-  {/* 💬 CONVERSA COM COMPRADOR */}
-  <div className="mb-4">
-    <div className="text-[11px] font-bold text-white/50 mb-2">
-      Conversa com comprador
-    </div>
+                        <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/20 p-2">
+                          <button
+                            onClick={() => setMessageTab("buyer")}
+                            className={cn(
+                              "rounded-xl px-4 py-2 text-[12px] font-extrabold transition",
+                              messageTab === "buyer"
+                                ? "bg-white/10 text-white border border-white/10"
+                                : "text-white/55 hover:text-white"
+                            )}
+                          >
+                            Mensagens com comprador
+                            <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px]">
+                              {buyerMessages.length}
+                            </span>
+                          </button>
 
-    {messages
-      .filter((m) => m.name !== "Mercado Livre")
-      .map((m) => <ChatBubble key={m.id} msg={m} />)}
-  </div>
+                          <button
+                            onClick={() => setMessageTab("mediation")}
+                            className={cn(
+                              "rounded-xl px-4 py-2 text-[12px] font-extrabold transition",
+                              messageTab === "mediation"
+                                ? "bg-sky-500/15 text-sky-100 border border-sky-400/20"
+                                : "text-white/55 hover:text-white"
+                            )}
+                          >
+                            Mediação Mercado Livre
+                            <span className="ml-2 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px]">
+                              {mediationMessages.length}
+                            </span>
+                          </button>
+                        </div>
 
-  {/* ⚖️ MEDIAÇÃO */}
-  <div className="mt-6">
-    <div className="text-[11px] font-bold text-sky-300 mb-2">
-      Mediação Mercado Livre
-    </div>
-
-    {messages
-      .filter((m) => m.name === "Mercado Livre")
-      .map((m) => <ChatBubble key={m.id} msg={m} />)}
-  </div>
-</>
+                        {messageTab === "buyer" ? (
+                          <div className="space-y-3">
+                            {buyerMessages.length === 0 ? (
+                              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/60">
+                                Sem mensagens com comprador.
+                              </div>
+                            ) : (
+                              buyerMessages.map((m) => <ChatBubble key={m.id} msg={m} />)
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {mediationMessages.length === 0 ? (
+                              <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-[13px] text-sky-100/80">
+                                Sem mensagens de mediação para este caso.
+                              </div>
+                            ) : (
+                              mediationMessages.map((m) => <ChatBubble key={m.id} msg={m} />)
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

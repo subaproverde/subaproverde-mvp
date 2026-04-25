@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
 
+type MessageSender = "seller" | "buyer" | "mercadolivre";
+
 function asArray<T = any>(value: any): T[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.messages)) return value.messages;
@@ -10,7 +12,7 @@ function asArray<T = any>(value: any): T[] {
   return [];
 }
 
-function normalizeClaimId(raw: string) {
+function normalizeClaimId(raw?: string | null) {
   const v = String(raw || "").trim();
   if (!v) return "";
   return v.startsWith("claim-") ? v.replace(/^claim-/, "") : v;
@@ -48,42 +50,66 @@ async function fetchJson(url: string, accessToken: string) {
   return { res, json };
 }
 
-function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null) {
+function extractUserId(value: any): string | null {
+  if (!value) return null;
+
+  if (typeof value === "string" || typeof value === "number") {
+    const raw = String(value).trim();
+    return /^\d+$/.test(raw) ? raw : null;
+  }
+
+  if (typeof value === "object") {
+    return (
+      value.user_id?.toString?.() ??
+      value.userId?.toString?.() ??
+      value.id?.toString?.() ??
+      value.user?.id?.toString?.() ??
+      null
+    );
+  }
+
+  return null;
+}
+
+function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): MessageSender {
   if (!fromRaw) return "mercadolivre";
 
   if (typeof fromRaw === "string") {
     const s = fromRaw.toLowerCase();
 
+    if (sellerMlUserId && s === sellerMlUserId) return "seller";
     if (s.includes("seller")) return "seller";
     if (s.includes("buyer") || s.includes("customer") || s.includes("client")) return "buyer";
     if (s.includes("mercado") || s.includes("meli") || s.includes("mediation")) return "mercadolivre";
 
-    return s;
+    if (/^\d+$/.test(s)) {
+      return sellerMlUserId && s === sellerMlUserId ? "seller" : "buyer";
+    }
+
+    return "buyer";
   }
 
   if (typeof fromRaw === "object") {
-    const userId =
-      fromRaw.user_id?.toString?.() ??
-      fromRaw.userId?.toString?.() ??
-      fromRaw.id?.toString?.() ??
-      null;
+    const userId = extractUserId(fromRaw);
 
-    const role =
-      fromRaw.role?.toString?.().toLowerCase?.() ??
-      fromRaw.type?.toString?.().toLowerCase?.() ??
-      fromRaw.name?.toString?.().toLowerCase?.() ??
-      fromRaw.nickname?.toString?.().toLowerCase?.() ??
-      "";
+    const role = String(
+      fromRaw.role ??
+        fromRaw.type ??
+        fromRaw.name ??
+        fromRaw.nickname ??
+        fromRaw.user?.role ??
+        ""
+    ).toLowerCase();
 
     if (sellerMlUserId && userId && userId === sellerMlUserId) return "seller";
     if (role.includes("seller")) return "seller";
     if (role.includes("buyer") || role.includes("customer") || role.includes("client")) return "buyer";
     if (role.includes("mercado") || role.includes("meli") || role.includes("mediation")) return "mercadolivre";
 
-    if (userId) return userId;
+    if (userId) return "buyer";
   }
 
-  return "mercadolivre";
+  return "buyer";
 }
 
 function normalizeToForUi(toRaw: any) {
@@ -104,6 +130,78 @@ function normalizeToForUi(toRaw: any) {
   }
 
   return null;
+}
+
+function getMessageText(m: any) {
+  const direct =
+    m?.message ??
+    m?.text ??
+    m?.body ??
+    m?.content ??
+    m?.message_text ??
+    m?.messageText ??
+    "";
+
+  if (typeof direct === "string") return direct;
+
+  if (direct && typeof direct === "object") {
+    return String(
+      direct.text ??
+        direct.message ??
+        direct.content ??
+        direct.body ??
+        ""
+    );
+  }
+
+  return "";
+}
+
+function normalizeMessage(
+  m: any,
+  i: number,
+  prefix: "buyer" | "mediation",
+  sellerMlUserId: string | null,
+  forcedChannel: "buyer" | "mediation"
+) {
+  const fromRaw = m?.from ?? m?.sender ?? m?.author ?? m?.created_by ?? null;
+  const toRaw = m?.to ?? m?.receiver ?? null;
+
+  const from = normalizeFromForUi(fromRaw, sellerMlUserId);
+
+  return {
+    id: `${prefix}-${String(m?.id ?? i)}`,
+    from,
+    to: normalizeToForUi(toRaw),
+    message: String(getMessageText(m) || "—"),
+    date_created:
+      m?.date_created ??
+      m?.created_at ??
+      m?.date ??
+      m?.dateCreated ??
+      null,
+    stage: m?.stage ?? null,
+    status: m?.status ?? null,
+    moderation_status: m?.moderation_status ?? null,
+    message_type: m?.message_type ?? m?.type ?? null,
+    channel: forcedChannel,
+    attachments: asArray(m?.attachments).map((a: any, idx: number) => ({
+      id: String(a?.id ?? idx),
+      filename: a?.filename ?? a?.name ?? null,
+      type: a?.type ?? a?.mime_type ?? null,
+      url: a?.url ?? a?.link ?? null,
+      thumbnail: a?.thumbnail ?? null,
+    })),
+    raw: m,
+  };
+}
+
+function sortMessages<T extends { date_created?: string | null }>(messages: T[]) {
+  return [...messages].sort((a, b) => {
+    const ta = new Date(a.date_created ?? 0).getTime();
+    const tb = new Date(b.date_created ?? 0).getTime();
+    return ta - tb;
+  });
 }
 
 async function getMlUserId(accessToken: string) {
@@ -164,15 +262,11 @@ async function fetchPackMessages(packId: string, sellerMlUserId: string, accessT
 
     if (!res.ok) continue;
 
-    const arr = asArray(json);
     return {
       ok: true,
       source: "pack" as const,
-      rawMessages: arr,
-      debug: {
-        endpoint,
-        raw: json,
-      },
+      rawMessages: asArray(json),
+      debug: { endpoint, raw: json },
     };
   }
 
@@ -180,15 +274,12 @@ async function fetchPackMessages(packId: string, sellerMlUserId: string, accessT
     ok: false,
     source: "pack" as const,
     rawMessages: [] as any[],
-    debug: {
-      status: lastStatus,
-      raw: lastJson,
-    },
+    debug: { status: lastStatus, raw: lastJson },
   };
 }
 
 async function fetchClaimMessages(claimId: string, accessToken: string) {
-  const candidateUrls = [
+  const endpoints = [
     `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/messages`,
     `https://api.mercadolibre.com/claims/${encodeURIComponent(claimId)}/messages`,
   ];
@@ -196,22 +287,18 @@ async function fetchClaimMessages(claimId: string, accessToken: string) {
   let lastStatus = 0;
   let lastJson: any = null;
 
-  for (const endpoint of candidateUrls) {
+  for (const endpoint of endpoints) {
     const { res, json } = await fetchJson(endpoint, accessToken);
     lastStatus = res.status;
     lastJson = json;
 
     if (!res.ok) continue;
 
-    const arr = asArray(json);
     return {
       ok: true,
       source: "claim" as const,
-      rawMessages: arr,
-      debug: {
-        endpoint,
-        raw: json,
-      },
+      rawMessages: asArray(json),
+      debug: { endpoint, raw: json },
     };
   }
 
@@ -219,10 +306,7 @@ async function fetchClaimMessages(claimId: string, accessToken: string) {
     ok: false,
     source: "claim" as const,
     rawMessages: [] as any[],
-    debug: {
-      status: lastStatus,
-      raw: lastJson,
-    },
+    debug: { status: lastStatus, raw: lastJson },
   };
 }
 
@@ -258,24 +342,15 @@ export async function GET(req: NextRequest) {
       packId = (await tryResolvePackIdFromClaim(claimId, accessToken)) ?? "";
     }
 
-    let result:
-      | {
-          ok: boolean;
-          source: "pack" | "claim";
-          rawMessages: any[];
-          debug: any;
-        }
-      | null = null;
+    const packResult = packId
+      ? await fetchPackMessages(packId, sellerMlUserId, accessToken)
+      : null;
 
-    if (packId) {
-      result = await fetchPackMessages(packId, sellerMlUserId, accessToken);
-    }
+    const claimResult = claimId
+      ? await fetchClaimMessages(claimId, accessToken)
+      : null;
 
-    if ((!result || !result.ok) && claimId) {
-      result = await fetchClaimMessages(claimId, accessToken);
-    }
-
-    if (!result || !result.ok) {
+    if ((!packResult || !packResult.ok) && (!claimResult || !claimResult.ok)) {
       return NextResponse.json(
         {
           ok: false,
@@ -283,77 +358,47 @@ export async function GET(req: NextRequest) {
           claimId: claimId || null,
           packId: packId || null,
           sellerMlUserId,
-          debug: result?.debug ?? null,
+          debug: {
+            pack: packResult?.debug ?? null,
+            claim: claimResult?.debug ?? null,
+          },
         },
         { status: 502 }
       );
     }
 
-    const allMessages = result.rawMessages.map((m: any, i: number) => {
-  const text =
-    m?.message ??
-    m?.text ??
-    m?.body ??
-    m?.content ??
-    m?.message_text ??
-    "";
+    const buyerMessages = sortMessages(
+      (packResult?.ok ? packResult.rawMessages : []).map((m: any, i: number) =>
+        normalizeMessage(m, i, "buyer", sellerMlUserId, "buyer")
+      )
+    );
 
-  const fromRaw = m?.from ?? m?.sender ?? m?.author ?? null;
-  const toRaw = m?.to ?? m?.receiver ?? null;
+    const mediationMessages = sortMessages(
+      (claimResult?.ok ? claimResult.rawMessages : []).map((m: any, i: number) =>
+        normalizeMessage(m, i, "mediation", sellerMlUserId, "mediation")
+      )
+    );
 
-  const from = normalizeFromForUi(fromRaw, sellerMlUserId);
+    const messages = sortMessages([...buyerMessages, ...mediationMessages]);
 
-  return {
-    id: String(m?.id ?? i),
-    from,
-    to: normalizeToForUi(toRaw),
-    message: String(text),
-    date_created: m?.date_created ?? m?.created_at ?? m?.date ?? null,
-    stage: m?.stage ?? null,
-    status: m?.status ?? null,
-    moderation_status: m?.moderation_status ?? null,
-    message_type: m?.message_type ?? m?.type ?? null,
-    attachments: asArray(m?.attachments).map((a: any, idx: number) => ({
-      id: String(a?.id ?? idx),
-      filename: a?.filename ?? a?.name ?? null,
-      type: a?.type ?? a?.mime_type ?? null,
-      url: a?.url ?? a?.link ?? null,
-      thumbnail: a?.thumbnail ?? null,
-    })),
-    raw: m,
-  };
-});
-
-allMessages.sort((a, b) => {
-  const ta = new Date(a.date_created ?? 0).getTime();
-  const tb = new Date(b.date_created ?? 0).getTime();
-  return ta - tb;
-});
-
-// 🔥 separação inteligente
-const buyerMessages = allMessages.filter(
-  (m) => m.from === "buyer" || m.from === "seller"
-);
-
-const mediationMessages = allMessages.filter(
-  (m) => m.from === "mercadolivre"
-);
-
-return NextResponse.json({
-  ok: true,
-  claimId: claimId || null,
-  packId: packId || null,
-  source: result.source,
-  sellerMlUserId,
-
-  // 👇 agora separado corretamente
-  buyerMessages,
-  mediationMessages,
-
-  // opcional (mantém tudo também)
-  messages: allMessages,
-  });
-    } catch (e: any) {
+    return NextResponse.json({
+      ok: true,
+      claimId: claimId || null,
+      packId: packId || null,
+      sellerMlUserId,
+      source: {
+        pack: !!packResult?.ok,
+        claim: !!claimResult?.ok,
+      },
+      buyerMessages,
+      mediationMessages,
+      messages,
+      debug: {
+        pack: packResult?.debug ?? null,
+        claim: claimResult?.debug ?? null,
+      },
+    });
+  } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "Erro inesperado" },
       { status: 500 }
