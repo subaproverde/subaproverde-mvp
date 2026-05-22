@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { isAdminEmail } from "@/lib/adminEmails";
 
 function navLinkClass(active: boolean) {
   return [
@@ -31,7 +32,7 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [activeSellerId, setActiveSellerId] = useState<string | null>(null);
+  const [, setActiveSellerId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -51,13 +52,14 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
       if (!alive) return;
       setCurrentUserId(user.id);
 
+      const adminByEmail = isAdminEmail(user.email);
       const { data, error } = await supabase.rpc("is_admin");
       if (!alive) return;
 
       if (error) {
-        setIsAdmin(false);
+        setIsAdmin(adminByEmail);
       } else {
-        setIsAdmin(!!data);
+        setIsAdmin(adminByEmail || !!data);
       }
 
       let localSellerId: string | null = null;
@@ -107,8 +109,6 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
       alive = false;
     };
   }, [pathname]);
-
-  const hasActiveSeller = useMemo(() => !!activeSellerId, [activeSellerId]);
 
   function goHome(e: React.MouseEvent) {
     e.preventDefault();
@@ -181,6 +181,20 @@ router.push(isAdmin ? "/dashboard/sellers" : "/app");
 
             {isAdmin ? (
               <>
+                <Link
+                  href="/admin/dashboard"
+                  className={navLinkClass(!!pathname?.startsWith("/admin/dashboard"))}
+                >
+                  Admin
+                </Link>
+
+                <Link
+                  href="/admin/remocoes"
+                  className={navLinkClass(!!pathname?.startsWith("/admin/remocoes"))}
+                >
+                  Remoções
+                </Link>
+
                 <Link
                   href="/dashboard/sellers"
                   className={navLinkClass(!!pathname?.startsWith("/dashboard/sellers"))}
