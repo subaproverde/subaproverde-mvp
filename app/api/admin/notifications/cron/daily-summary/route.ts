@@ -7,8 +7,8 @@ import {
 import { buildDailySummaryMessage } from "@/lib/adminNotificationMessages";
 
 function isAuthorized(request: NextRequest) {
-  const expected = process.env.ADMIN_NOTIFICATIONS_CRON_SECRET;
-  if (!expected) return true;
+  const expected = process.env.ADMIN_NOTIFICATIONS_CRON_SECRET || process.env.CRON_SECRET;
+  if (!expected) return process.env.NODE_ENV !== "production";
 
   const authHeader = request.headers.get("authorization");
   const secretParam = request.nextUrl.searchParams.get("secret");
@@ -18,7 +18,7 @@ function isAuthorized(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: "Não autorizado." }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "Nao autorizado." }, { status: 401 });
   }
 
   const message = buildDailySummaryMessage({
