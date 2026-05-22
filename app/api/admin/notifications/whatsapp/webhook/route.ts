@@ -56,6 +56,8 @@ const webhookEvents: Array<{
   payload: MetaWebhookBody;
 }> = [];
 
+const defaultVerifyToken = "subaproverde_whatsapp_webhook";
+
 function summarizePayload(payload: MetaWebhookBody) {
   const changes = payload.entry?.flatMap((entry) => entry.changes ?? []) ?? [];
 
@@ -91,7 +93,7 @@ export async function GET(request: NextRequest) {
   const mode = request.nextUrl.searchParams.get("hub.mode");
   const token = request.nextUrl.searchParams.get("hub.verify_token");
   const challenge = request.nextUrl.searchParams.get("hub.challenge");
-  const expectedToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+  const expectedToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || defaultVerifyToken;
 
   if (!mode && !token && !challenge) {
     return NextResponse.json({
