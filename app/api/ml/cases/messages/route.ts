@@ -182,14 +182,46 @@ function normalizeToForUi(toRaw: any) {
 }
 
 function stripHtml(value: string) {
+  const namedEntities: Record<string, string> = {
+    nbsp: " ",
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    quot: '"',
+    apos: "'",
+    aacute: "á",
+    agrave: "à",
+    acirc: "â",
+    atilde: "ã",
+    eacute: "é",
+    ecirc: "ê",
+    iacute: "í",
+    oacute: "ó",
+    ocirc: "ô",
+    otilde: "õ",
+    uacute: "ú",
+    ccedil: "ç",
+    Aacute: "Á",
+    Agrave: "À",
+    Acirc: "Â",
+    Atilde: "Ã",
+    Eacute: "É",
+    Ecirc: "Ê",
+    Iacute: "Í",
+    Oacute: "Ó",
+    Ocirc: "Ô",
+    Otilde: "Õ",
+    Uacute: "Ú",
+    Ccedil: "Ç",
+  };
+
   return value
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_match, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([\da-f]+);/gi, (_match, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&([a-zA-Z]+);/g, (match, name) => namedEntities[name] ?? match)
     .trim();
 }
 
@@ -288,7 +320,14 @@ function normalizeMessage(
     payload?.user ??
     (payload?.sender_role ? { role: payload.sender_role } : null) ??
     null;
-  const toRaw = m?.to ?? m?.receiver ?? payload?.to ?? payload?.receiver ?? null;
+  const toRaw =
+    m?.to ??
+    m?.receiver ??
+    (m?.receiver_role ? { role: m.receiver_role } : null) ??
+    payload?.to ??
+    payload?.receiver ??
+    (payload?.receiver_role ? { role: payload.receiver_role } : null) ??
+    null;
   const dateCreated = firstPresent(
     m?.date_created,
     m?.created_at,
@@ -313,7 +352,9 @@ function normalizeMessage(
   );
 
   return {
-    id: `${prefix}-${String(m?.id ?? m?.hash ?? i)}`,
+    id: `${prefix}-${String(m?.__source_id ? `${m.__source_id}-` : "")}${String(
+      m?.id ?? m?.hash ?? i
+    )}`,
     from: normalizeFromForUi(fromRaw, sellerMlUserId, fallbackSender),
     to: normalizeToForUi(toRaw),
     message: String(getMessageText(m) || "—"),
@@ -591,6 +632,7 @@ async function fetchClaimMessages(claimId: string, accessToken: string) {
     return {
       ok: true,
       source: "claim" as const,
+      claimId,
       rawMessages: asArray(json),
       debug: { endpoint, raw: json },
     };
@@ -599,8 +641,33 @@ async function fetchClaimMessages(claimId: string, accessToken: string) {
   return {
     ok: false,
     source: "claim" as const,
+    claimId,
     rawMessages: [] as any[],
     debug: { status: lastStatus, raw: lastJson },
+  };
+}
+
+async function fetchRelatedClaims(resource: string, resourceId: string, accessToken: string) {
+  if (!resource || !resourceId) {
+    return {
+      ok: false,
+      items: [] as any[],
+      debug: { endpoint: null, status: 0, raw: null },
+    };
+  }
+
+  const params = new URLSearchParams({
+    resource,
+    resource_id: resourceId,
+    limit: "50",
+  });
+  const endpoint = `https://api.mercadolibre.com/post-purchase/v1/claims/search?${params.toString()}`;
+  const { res, json } = await fetchJson(endpoint, accessToken);
+
+  return {
+    ok: res.ok,
+    items: res.ok ? asArray(json) : ([] as any[]),
+    debug: { endpoint, status: res.status, raw: json },
   };
 }
 
@@ -812,14 +879,34 @@ export async function GET(req: NextRequest) {
       ? await fetchPackTimeline(packId, sellerMlUserId, accessToken)
       : null;
 
-    const claimResult = claimId
-      ? await fetchClaimMessages(claimId, accessToken)
-      : null;
+    const relatedResource = String(claimDetailRaw?.resource ?? (orderId ? "order" : "")).trim();
+    const relatedResourceId = String(claimDetailRaw?.resource_id ?? orderId ?? "").trim();
+    const relatedClaimsResult =
+      relatedResource && relatedResourceId
+        ? await fetchRelatedClaims(relatedResource, relatedResourceId, accessToken)
+        : null;
+
+    const claimIdsToFetch = Array.from(
+      new Set(
+        [
+          claimId,
+          ...(relatedClaimsResult?.ok
+            ? relatedClaimsResult.items.map((c: any) => normalizeClaimId(c?.id))
+            : []),
+        ].filter(Boolean)
+      )
+    );
+
+    const claimResults = claimIdsToFetch.length
+      ? await Promise.all(claimIdsToFetch.map((id) => fetchClaimMessages(id, accessToken)))
+      : [];
+
+    const hasClaimMessages = claimResults.some((result) => result.ok);
 
     if (
       (!packResult || !packResult.ok) &&
       (!timelineResult || !timelineResult.ok) &&
-      (!claimResult || !claimResult.ok) &&
+      !hasClaimMessages &&
       (!claimDetail || !claimDetail.ok)
     ) {
       return NextResponse.json(
@@ -833,7 +920,8 @@ export async function GET(req: NextRequest) {
           debug: {
             pack: packResult?.debug ?? null,
             timeline: timelineResult?.debug ?? null,
-            claim: claimResult?.debug ?? null,
+            claim: claimResults.map((result) => result.debug),
+            relatedClaims: relatedClaimsResult?.debug ?? null,
             claimDetail: claimDetail?.debug ?? null,
             order: orderDetail?.debug ?? null,
           },
@@ -846,8 +934,14 @@ export async function GET(req: NextRequest) {
       normalizeMessage(m, i, "buyer", sellerMlUserId, "buyer")
     );
 
-    const claimMessages = (claimResult?.ok ? claimResult.rawMessages : []).map((m: any, i: number) =>
-      normalizeMessage(m, i, "claim", sellerMlUserId, "buyer")
+    const claimMessages = claimResults.flatMap((result) =>
+      (result.ok ? result.rawMessages : []).map((m: any, i: number) => {
+        const raw =
+          m && typeof m === "object"
+            ? { ...m, __source_id: result.claimId }
+            : { message: m, __source_id: result.claimId };
+        return normalizeMessage(raw, i, "claim", sellerMlUserId, "buyer");
+      })
     );
 
     const timelineMessages = (timelineResult?.ok ? timelineResult.rawMessages : []).map(
@@ -875,11 +969,11 @@ export async function GET(req: NextRequest) {
 
     const buyerMessages = sortMessages(uniqueMessages([...packMessages, ...claimBuyerMessages]));
 
+    const realMediationMessages = uniqueMessages([...timelineMessages, ...claimMediationMessages]);
     const mediationMessages = sortMessages(
       uniqueMessages([
-        ...timelineMessages,
-        ...claimMediationMessages,
-        ...mediationFromDetail,
+        ...realMediationMessages,
+        ...(realMediationMessages.length > 0 ? [] : mediationFromDetail),
       ])
     );
 
@@ -894,7 +988,8 @@ export async function GET(req: NextRequest) {
       source: {
         pack: !!packResult?.ok,
         timeline: !!timelineResult?.ok,
-        claim: !!claimResult?.ok,
+        claim: hasClaimMessages,
+        relatedClaims: !!relatedClaimsResult?.ok,
         claimDetail: !!claimDetail?.ok,
         order: !!orderDetail?.ok,
         expectedResolutions: !!expectedResolutions?.ok,
@@ -927,9 +1022,23 @@ export async function GET(req: NextRequest) {
           endpoint: timelineResult?.debug?.endpoint ?? null,
         },
         claim: {
-          ok: !!claimResult?.ok,
+          ok: hasClaimMessages,
           count: claimMessages.length,
-          endpoint: claimResult?.debug?.endpoint ?? null,
+          endpoints: claimResults
+            .filter((result) => result.ok)
+            .map((result) => result.debug?.endpoint ?? null),
+          ids: claimResults.map((result) => result.claimId).filter(Boolean),
+        },
+        relatedClaims: {
+          ok: !!relatedClaimsResult?.ok,
+          endpoint: relatedClaimsResult?.debug?.endpoint ?? null,
+          count: relatedClaimsResult?.items?.length ?? 0,
+          ids:
+            relatedClaimsResult?.items?.map((c: any) => ({
+              id: c?.id ?? null,
+              stage: c?.stage ?? null,
+              status: c?.status ?? null,
+            })) ?? [],
         },
         order: {
           ok: !!orderDetail?.ok,
@@ -940,6 +1049,8 @@ export async function GET(req: NextRequest) {
           endpoint: claimDetail?.endpoint ?? null,
           hasMediator: !!getMediatorFromClaimDetail(claimDetailRaw),
           eventCount: mediationEvents.length,
+          fallbackUsed: realMediationMessages.length === 0 && mediationFromDetail.length > 0,
+          fallbackCount: mediationFromDetail.length,
         },
         expectedResolutions: {
           ok: !!expectedResolutions?.ok,
