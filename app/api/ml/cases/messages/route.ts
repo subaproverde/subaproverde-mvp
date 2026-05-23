@@ -360,6 +360,30 @@ function uniqueMessages(messages: NormalizedMessage[]) {
   });
 }
 
+function isMediationClaimMessage(message: NormalizedMessage) {
+  const raw = message.raw ?? {};
+  const text = [
+    raw?.sender_role,
+    raw?.receiver_role,
+    raw?.stage,
+    raw?.type,
+    raw?.message_type,
+    message.stage,
+    message.message_type,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("mediator") ||
+    text.includes("mediation") ||
+    text.includes("mediacion") ||
+    text.includes("mediacao") ||
+    text.includes("dispute")
+  );
+}
+
 async function getMlUserId(accessToken: string) {
   const { res, json } = await fetchJson("https://api.mercadolibre.com/users/me", accessToken);
   if (!res.ok || !json?.id) return null;
@@ -841,15 +865,20 @@ export async function GET(req: NextRequest) {
       normalizeMessage(m, i, "mediation", sellerMlUserId, "mediation")
     );
 
+    const claimMediationMessages = claimMessages.filter(
+      (m) => m.from === "mercadolivre" || isMediationClaimMessage(m)
+    );
     const claimBuyerMessages =
-      packMessages.length > 0 ? [] : claimMessages.filter((m) => m.from !== "mercadolivre");
+      packMessages.length > 0
+        ? []
+        : claimMessages.filter((m) => m.from !== "mercadolivre" && !isMediationClaimMessage(m));
 
     const buyerMessages = sortMessages(uniqueMessages([...packMessages, ...claimBuyerMessages]));
 
     const mediationMessages = sortMessages(
       uniqueMessages([
         ...timelineMessages,
-        ...claimMessages.filter((m) => m.from === "mercadolivre"),
+        ...claimMediationMessages,
         ...mediationFromDetail,
       ])
     );
