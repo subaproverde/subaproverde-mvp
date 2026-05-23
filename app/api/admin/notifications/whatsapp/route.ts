@@ -91,6 +91,38 @@ function resolveSendPayload(phone: string, message: string, body: WhatsAppReques
   };
 }
 
+function getMetaError(data: unknown) {
+  if (!data || typeof data !== "object" || !("error" in data)) return null;
+  const error = (data as { error?: unknown }).error;
+  if (!error || typeof error !== "object") return null;
+  return error as {
+    code?: number;
+    message?: string;
+    error_data?: {
+      details?: string;
+    };
+  };
+}
+
+function shouldFallbackToText(data: unknown) {
+  if (process.env.WHATSAPP_ALLOW_TEXT_FALLBACK === "false") return false;
+
+  const error = getMetaError(data);
+  const code = error?.code;
+  const text = `${error?.message ?? ""} ${error?.error_data?.details ?? ""}`.toLowerCase();
+
+  return (
+    code === 132001 ||
+    code === 132015 ||
+    code === 132016 ||
+    (text.includes("template") &&
+      (text.includes("does not exist") ||
+        text.includes("not exist") ||
+        text.includes("not available") ||
+        text.includes("pending")))
+  );
+}
+
 async function sendViaMetaCloudApi(phone: string, message: string, body: WhatsAppRequestBody) {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -110,28 +142,45 @@ async function sendViaMetaCloudApi(phone: string, message: string, body: WhatsAp
     };
   }
 
-  const response = await fetch(
-    `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`,
-    {
+  const url = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
+  const sendPayload = (payload: unknown) =>
+    fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(resolved.payload),
-    }
-  );
+      body: JSON.stringify(payload),
+    });
 
-  const data = await response.json().catch(() => null);
+  let response = await sendPayload(resolved.payload);
+  let data = await response.json().catch(() => null);
+  let sendType = resolved.sendType;
+  let templateName = resolved.templateName;
+  let templateLanguage = resolved.templateLanguage;
+  let fallbackFromTemplate = false;
+  let templateError: unknown = null;
+
+  if (!response.ok && resolved.sendType === "template" && shouldFallbackToText(data)) {
+    fallbackFromTemplate = true;
+    templateError = data;
+    sendType = "text";
+    templateName = null;
+    templateLanguage = null;
+    response = await sendPayload(buildTextPayload(phone, message));
+    data = await response.json().catch(() => null);
+  }
 
   if (!response.ok) {
     return {
       ok: false,
       mode: "live",
       provider: "meta-cloud-api",
-      sendType: resolved.sendType,
-      templateName: resolved.templateName,
-      templateLanguage: resolved.templateLanguage,
+      sendType,
+      templateName,
+      templateLanguage,
+      fallbackFromTemplate,
+      templateError,
       status: response.status,
       error: data,
     };
@@ -141,9 +190,11 @@ async function sendViaMetaCloudApi(phone: string, message: string, body: WhatsAp
     ok: true,
     mode: "live",
     provider: "meta-cloud-api",
-    sendType: resolved.sendType,
-    templateName: resolved.templateName,
-    templateLanguage: resolved.templateLanguage,
+    sendType,
+    templateName,
+    templateLanguage,
+    fallbackFromTemplate,
+    templateError,
     data,
   };
 }
@@ -164,6 +215,7 @@ export async function GET() {
     templateName,
     templateLanguage: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "pt_BR",
     graphVersion: process.env.WHATSAPP_GRAPH_VERSION ?? "v23.0",
+    textFallbackEnabled: process.env.WHATSAPP_ALLOW_TEXT_FALLBACK !== "false",
   });
 }
 
