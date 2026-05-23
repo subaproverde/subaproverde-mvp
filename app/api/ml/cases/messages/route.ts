@@ -18,6 +18,10 @@ type NormalizedMessage = {
   raw: any;
 };
 
+function firstPresent<T>(...values: T[]) {
+  return values.find((value) => value !== null && value !== undefined && value !== "") ?? null;
+}
+
 function asArray<T = any>(value: any): T[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.messages)) return value.messages;
@@ -27,6 +31,7 @@ function asArray<T = any>(value: any): T[] {
   if (Array.isArray(value?.history)) return value.history;
   if (Array.isArray(value?.events)) return value.events;
   if (Array.isArray(value?.timeline)) return value.timeline;
+  if (Array.isArray(value?.bricks)) return value.bricks;
   return [];
 }
 
@@ -42,11 +47,33 @@ function normalizePackId(raw?: string | null) {
   return v.startsWith("pack-") ? v.replace(/^pack-/, "") : v;
 }
 
-function extractPackIdFromAnything(value: any): string | null {
+function normalizeOrderId(raw?: string | null) {
+  const v = String(raw || "").trim();
+  if (!v) return "";
+  return v.startsWith("order-") ? v.replace(/^order-/, "") : v;
+}
+
+function extractPackIdFromPackishValue(value: any): string | null {
   if (!value) return null;
   const raw = String(value).trim();
   const packMatch = raw.match(/packs\/(\d+)/i);
   if (packMatch?.[1]) return packMatch[1];
+  if (/^\d+$/.test(raw)) return raw;
+  return null;
+}
+
+function extractPackIdFromResource(value: any): string | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const packMatch = raw.match(/packs\/(\d+)/i);
+  return packMatch?.[1] ?? null;
+}
+
+function extractOrderIdFromResource(value: any): string | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const orderMatch = raw.match(/orders\/(\d+)/i);
+  if (orderMatch?.[1]) return orderMatch[1];
   if (/^\d+$/.test(raw)) return raw;
   return null;
 }
@@ -82,7 +109,11 @@ function extractUserId(value: any): string | null {
   return null;
 }
 
-function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): MessageSender {
+function normalizeFromForUi(
+  fromRaw: any,
+  sellerMlUserId: string | null,
+  fallback: MessageSender = "buyer"
+): MessageSender {
   const userId = extractUserId(fromRaw);
 
   if (sellerMlUserId && userId && userId === sellerMlUserId) return "seller";
@@ -98,6 +129,24 @@ function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): Messag
   ).toLowerCase();
 
   if (
+    role.includes("seller") ||
+    role.includes("vendedor") ||
+    role.includes("vendor") ||
+    role.includes("respondent")
+  ) {
+    return "seller";
+  }
+
+  if (
+    role.includes("buyer") ||
+    role.includes("comprador") ||
+    role.includes("customer") ||
+    role.includes("claimant")
+  ) {
+    return "buyer";
+  }
+
+  if (
     role.includes("mercado") ||
     role.includes("meli") ||
     role.includes("mediator") ||
@@ -110,7 +159,7 @@ function normalizeFromForUi(fromRaw: any, sellerMlUserId: string | null): Messag
     return "mercadolivre";
   }
 
-  return "buyer";
+  return fallback;
 }
 
 function normalizeToForUi(toRaw: any) {
@@ -132,28 +181,39 @@ function normalizeToForUi(toRaw: any) {
   return null;
 }
 
-function getMessageText(m: any) {
-  const direct =
-    m?.message ??
-    m?.text ??
-    m?.body ??
-    m?.content ??
-    m?.description ??
-    m?.detail ??
-    m?.title ??
-    m?.message_text ??
-    m?.messageText ??
-    "";
+function stripHtml(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+}
 
-  if (typeof direct === "string") return direct;
+function textFromValue(value: any): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number") {
+    return stripHtml(String(value));
+  }
 
-  if (direct && typeof direct === "object") {
-    return String(
-      direct.text ??
-        direct.message ??
-        direct.content ??
-        direct.body ??
-        direct.description ??
+  if (Array.isArray(value)) {
+    return value.map(textFromValue).filter(Boolean).join("\n").trim();
+  }
+
+  if (typeof value === "object") {
+    return textFromValue(
+      value.text ??
+        value.plain ??
+        value.message ??
+        value.content ??
+        value.body ??
+        value.description ??
+        value.title ??
+        value.label ??
+        value.value ??
         ""
     );
   }
@@ -161,39 +221,116 @@ function getMessageText(m: any) {
   return "";
 }
 
+function getMessageText(m: any) {
+  const payload = m?.payload ?? m?.data ?? m?.props ?? m?.content ?? null;
+  const direct =
+    m?.message ??
+    m?.text ??
+    m?.text?.plain ??
+    m?.body ??
+    m?.content ??
+    m?.description ??
+    m?.detail ??
+    m?.title ??
+    m?.message_text ??
+    m?.messageText ??
+    payload?.message ??
+    payload?.text ??
+    payload?.text?.plain ??
+    payload?.body ??
+    payload?.content ??
+    payload?.description ??
+    payload?.title ??
+    payload?.label ??
+    payload?.value ??
+    "";
+
+  return textFromValue(direct);
+}
+
+function normalizeDate(value: any): string | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "number") {
+    const ms = value > 9999999999 ? value : value * 1000;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return normalizeDate(Number(raw));
+
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? raw : date.toISOString();
+}
+
 function normalizeMessage(
   m: any,
   i: number,
-  prefix: "buyer" | "claim" | "mediation",
+  prefix: "buyer" | "claim" | "mediation" | "timeline",
   sellerMlUserId: string | null,
-  defaultChannel: "buyer" | "mediation"
+  defaultChannel: "buyer" | "mediation",
+  fallbackSender: MessageSender = defaultChannel === "mediation" ? "mercadolivre" : "buyer"
 ): NormalizedMessage {
-  const fromRaw = m?.from ?? m?.sender ?? m?.author ?? m?.created_by ?? null;
-  const toRaw = m?.to ?? m?.receiver ?? null;
-
-  const from = defaultChannel === "mediation"
-    ? "mercadolivre"
-    : normalizeFromForUi(fromRaw, sellerMlUserId);
+  const payload = m?.payload ?? m?.data ?? m?.props ?? m?.content ?? null;
+  const fromRaw =
+    m?.from ??
+    m?.sender ??
+    m?.author ??
+    m?.created_by ??
+    m?.user ??
+    (m?.sender_role ? { role: m.sender_role } : null) ??
+    payload?.from ??
+    payload?.sender ??
+    payload?.author ??
+    payload?.created_by ??
+    payload?.user ??
+    (payload?.sender_role ? { role: payload.sender_role } : null) ??
+    null;
+  const toRaw = m?.to ?? m?.receiver ?? payload?.to ?? payload?.receiver ?? null;
+  const dateCreated = firstPresent(
+    m?.date_created,
+    m?.created_at,
+    m?.date,
+    m?.dateCreated,
+    m?.last_updated,
+    m?.last_update,
+    m?.timestamp,
+    m?.message_date?.created,
+    m?.message_date?.received,
+    m?.message_date?.available,
+    payload?.date_created,
+    payload?.created_at,
+    payload?.date,
+    payload?.dateCreated,
+    payload?.last_updated,
+    payload?.last_update,
+    payload?.timestamp,
+    payload?.message_date?.created,
+    payload?.message_date?.received,
+    payload?.message_date?.available
+  );
 
   return {
     id: `${prefix}-${String(m?.id ?? m?.hash ?? i)}`,
-    from,
+    from: normalizeFromForUi(fromRaw, sellerMlUserId, fallbackSender),
     to: normalizeToForUi(toRaw),
     message: String(getMessageText(m) || "—"),
-    date_created:
-      m?.date_created ??
-      m?.created_at ??
-      m?.date ??
-      m?.dateCreated ??
-      m?.last_updated ??
-      m?.last_update ??
+    date_created: normalizeDate(dateCreated),
+    stage: m?.stage ?? payload?.stage ?? null,
+    status: m?.status ?? payload?.status ?? null,
+    moderation_status:
+      m?.moderation_status ??
+      m?.message_moderation?.status ??
+      payload?.moderation_status ??
+      payload?.message_moderation?.status ??
       null,
-    stage: m?.stage ?? null,
-    status: m?.status ?? null,
-    moderation_status: m?.moderation_status ?? null,
-    message_type: m?.message_type ?? m?.type ?? null,
+    message_type: m?.message_type ?? m?.type ?? payload?.message_type ?? payload?.type ?? null,
     channel: defaultChannel,
-    attachments: asArray(m?.attachments).map((a: any, idx: number) => ({
+    attachments: asArray(
+      m?.attachments ?? m?.message_attachments ?? payload?.attachments ?? payload?.message_attachments
+    ).map((a: any, idx: number) => ({
       id: String(a?.id ?? idx),
       filename: a?.filename ?? a?.name ?? null,
       type: a?.type ?? a?.mime_type ?? null,
@@ -264,14 +401,29 @@ async function fetchExpectedResolutions(claimId: string, accessToken: string) {
   };
 }
 
+async function fetchOrderDetail(orderId: string, accessToken: string) {
+  const endpoint = `https://api.mercadolibre.com/orders/${encodeURIComponent(orderId)}`;
+  const { res, json } = await fetchJson(endpoint, accessToken);
+
+  return {
+    ok: res.ok,
+    endpoint,
+    raw: res.ok ? json : null,
+    debug: { status: res.status, endpoint, raw: json },
+  };
+}
+
 async function fetchPackMessages(packId: string, sellerMlUserId: string, accessToken: string) {
   const endpoints = [
     `https://api.mercadolibre.com/messages/packs/${encodeURIComponent(packId)}/sellers/${encodeURIComponent(
       sellerMlUserId
-    )}/messages`,
+    )}?tag=post_sale&mark_as_read=false&limit=50`,
     `https://api.mercadolibre.com/messages/packs/${encodeURIComponent(packId)}/sellers/${encodeURIComponent(
       sellerMlUserId
-    )}/messages?tag=claim`,
+    )}?mark_as_read=false&tag=post_sale&limit=50`,
+    `https://api.mercadolibre.com/messages/packs/${encodeURIComponent(packId)}/sellers/${encodeURIComponent(
+      sellerMlUserId
+    )}/messages`,
   ];
 
   let lastStatus = 0;
@@ -295,6 +447,102 @@ async function fetchPackMessages(packId: string, sellerMlUserId: string, accessT
   return {
     ok: false,
     source: "pack" as const,
+    rawMessages: [] as any[],
+    debug: { status: lastStatus, raw: lastJson },
+  };
+}
+
+function visitTimelineNodes(value: any, acc: any[], depth = 0) {
+  if (!value || depth > 7) return;
+
+  if (Array.isArray(value)) {
+    for (const item of value) visitTimelineNodes(item, acc, depth + 1);
+    return;
+  }
+
+  if (typeof value !== "object") return;
+
+  const type = String(
+    value?.type ?? value?.id ?? value?.name ?? value?.component ?? value?.brick ?? ""
+  ).toLowerCase();
+  const text = getMessageText(value);
+  const looksLikeTimelineItem =
+    Boolean(text) ||
+    type.includes("message") ||
+    type.includes("milestone") ||
+    type.includes("event") ||
+    type.includes("status");
+
+  if (looksLikeTimelineItem) {
+    acc.push(value);
+  }
+
+  for (const key of [
+    "bricks",
+    "children",
+    "items",
+    "components",
+    "messages",
+    "events",
+    "timeline",
+    "content",
+    "body",
+  ]) {
+    const child = value?.[key];
+    if (Array.isArray(child) || (child && typeof child === "object" && key !== "content")) {
+      visitTimelineNodes(child, acc, depth + 1);
+    }
+  }
+}
+
+function extractTimelineItems(raw: any) {
+  const items: any[] = [];
+  visitTimelineNodes(raw?.bricks ?? raw?.timeline ?? raw?.messages ?? raw?.events ?? raw, items);
+
+  const seen = new Set<string>();
+  return items.filter((item, index) => {
+    const text = getMessageText(item);
+    if (!text) return false;
+    const key = `${item?.id ?? item?.hash ?? index}|${text}|${normalizeDate(
+      item?.date_created ?? item?.created_at ?? item?.date ?? item?.timestamp
+    )}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function fetchPackTimeline(packId: string, sellerMlUserId: string, accessToken: string) {
+  const endpoints = [
+    `https://www.mercadolivre.com.br/api/messages/packs/${encodeURIComponent(
+      packId
+    )}/sellers/${encodeURIComponent(sellerMlUserId)}/timeline`,
+    `https://api.mercadolibre.com/messages/packs/${encodeURIComponent(
+      packId
+    )}/sellers/${encodeURIComponent(sellerMlUserId)}/timeline`,
+  ];
+
+  let lastStatus = 0;
+  let lastJson: any = null;
+
+  for (const endpoint of endpoints) {
+    const { res, json } = await fetchJson(endpoint, accessToken);
+    lastStatus = res.status;
+    lastJson = json;
+
+    if (!res.ok) continue;
+
+    return {
+      ok: true,
+      source: "timeline" as const,
+      rawMessages: extractTimelineItems(json),
+      debug: { endpoint, raw: json },
+    };
+  }
+
+  return {
+    ok: false,
+    source: "timeline" as const,
     rawMessages: [] as any[],
     debug: { status: lastStatus, raw: lastJson },
   };
@@ -459,17 +707,19 @@ export async function GET(req: NextRequest) {
 
     const rawCaseId = url.searchParams.get("caseId");
     const rawPackId = url.searchParams.get("packId");
+    const rawOrderId = url.searchParams.get("orderId");
     const sellerId = url.searchParams.get("sellerId");
 
-    if (!sellerId || (!rawCaseId && !rawPackId)) {
+    if (!sellerId || (!rawCaseId && !rawPackId && !rawOrderId)) {
       return NextResponse.json(
-        { ok: false, error: "sellerId e (caseId ou packId) obrigatórios" },
+        { ok: false, error: "sellerId e (caseId, packId ou orderId) obrigatórios" },
         { status: 400 }
       );
     }
 
     const claimId = rawCaseId ? normalizeClaimId(rawCaseId) : "";
     let packId = normalizePackId(rawPackId);
+    let orderId = normalizeOrderId(rawOrderId);
 
     const { accessToken } = await getValidMlAccessToken(sellerId);
     const sellerMlUserId = await getMlUserId(accessToken);
@@ -483,32 +733,59 @@ export async function GET(req: NextRequest) {
 
     const claimDetail = claimId ? await fetchClaimDetail(claimId, accessToken) : null;
     const expectedResolutions = claimId ? await fetchExpectedResolutions(claimId, accessToken) : null;
+    const claimDetailRaw = claimDetail?.ok ? claimDetail.raw : null;
 
-    if (!packId && claimDetail?.ok) {
+    if (!packId && claimDetailRaw) {
       const possibleValues = [
-        claimDetail.raw?.resource,
-        claimDetail.raw?.resource_id,
-        claimDetail.raw?.resource?.id,
-        claimDetail.raw?.pack_id,
-        claimDetail.raw?.packId,
-        claimDetail.raw?.pack?.id,
-        claimDetail.raw?.order?.pack_id,
-        claimDetail.raw?.order?.packId,
-        claimDetail.raw?.context?.pack_id,
-        claimDetail.raw?.context?.packId,
+        claimDetailRaw?.pack_id,
+        claimDetailRaw?.packId,
+        claimDetailRaw?.pack?.id,
+        claimDetailRaw?.order?.pack_id,
+        claimDetailRaw?.order?.packId,
+        claimDetailRaw?.context?.pack_id,
+        claimDetailRaw?.context?.packId,
       ];
 
       for (const value of possibleValues) {
-        const foundPackId = extractPackIdFromAnything(value);
+        const foundPackId = extractPackIdFromPackishValue(value);
         if (foundPackId) {
           packId = foundPackId;
           break;
         }
       }
+
+      packId = packId || extractPackIdFromResource(claimDetailRaw?.resource) || "";
+    }
+
+    if (!orderId && claimDetailRaw) {
+      orderId =
+        extractOrderIdFromResource(claimDetailRaw?.resource) ??
+        extractOrderIdFromResource(claimDetailRaw?.resource_id) ??
+        extractOrderIdFromResource(claimDetailRaw?.order_id) ??
+        extractOrderIdFromResource(claimDetailRaw?.resource?.id) ??
+        "";
+    }
+
+    const orderDetail = orderId ? await fetchOrderDetail(orderId, accessToken) : null;
+
+    if (!packId && orderDetail?.ok) {
+      packId =
+        extractPackIdFromPackishValue(orderDetail.raw?.pack_id) ??
+        extractPackIdFromPackishValue(orderDetail.raw?.packId) ??
+        extractPackIdFromPackishValue(orderDetail.raw?.pack?.id) ??
+        "";
+    }
+
+    if (!packId && orderId) {
+      packId = orderId;
     }
 
     const packResult = packId
       ? await fetchPackMessages(packId, sellerMlUserId, accessToken)
+      : null;
+
+    const timelineResult = packId
+      ? await fetchPackTimeline(packId, sellerMlUserId, accessToken)
       : null;
 
     const claimResult = claimId
@@ -517,6 +794,7 @@ export async function GET(req: NextRequest) {
 
     if (
       (!packResult || !packResult.ok) &&
+      (!timelineResult || !timelineResult.ok) &&
       (!claimResult || !claimResult.ok) &&
       (!claimDetail || !claimDetail.ok)
     ) {
@@ -526,11 +804,14 @@ export async function GET(req: NextRequest) {
           error: "Falha ao buscar mensagens",
           claimId: claimId || null,
           packId: packId || null,
+          orderId: orderId || null,
           sellerMlUserId,
           debug: {
             pack: packResult?.debug ?? null,
+            timeline: timelineResult?.debug ?? null,
             claim: claimResult?.debug ?? null,
             claimDetail: claimDetail?.debug ?? null,
+            order: orderDetail?.debug ?? null,
           },
         },
         { status: 502 }
@@ -545,7 +826,10 @@ export async function GET(req: NextRequest) {
       normalizeMessage(m, i, "claim", sellerMlUserId, "buyer")
     );
 
-    const claimDetailRaw = claimDetail?.ok ? claimDetail.raw : null;
+    const timelineMessages = (timelineResult?.ok ? timelineResult.rawMessages : []).map(
+      (m: any, i: number) =>
+        normalizeMessage(m, i, "timeline", sellerMlUserId, "mediation", "mercadolivre")
+    );
 
     if (claimDetailRaw && expectedResolutions?.ok) {
       claimDetailRaw.expected_resolutions = expectedResolutions.items;
@@ -557,15 +841,14 @@ export async function GET(req: NextRequest) {
       normalizeMessage(m, i, "mediation", sellerMlUserId, "mediation")
     );
 
-    const buyerMessages = sortMessages(
-      uniqueMessages([
-        ...packMessages,
-        ...claimMessages.filter((m) => m.from !== "mercadolivre"),
-      ])
-    );
+    const claimBuyerMessages =
+      packMessages.length > 0 ? [] : claimMessages.filter((m) => m.from !== "mercadolivre");
+
+    const buyerMessages = sortMessages(uniqueMessages([...packMessages, ...claimBuyerMessages]));
 
     const mediationMessages = sortMessages(
       uniqueMessages([
+        ...timelineMessages,
         ...claimMessages.filter((m) => m.from === "mercadolivre"),
         ...mediationFromDetail,
       ])
@@ -577,11 +860,14 @@ export async function GET(req: NextRequest) {
       ok: true,
       claimId: claimId || null,
       packId: packId || null,
+      orderId: orderId || null,
       sellerMlUserId,
       source: {
         pack: !!packResult?.ok,
+        timeline: !!timelineResult?.ok,
         claim: !!claimResult?.ok,
         claimDetail: !!claimDetail?.ok,
+        order: !!orderDetail?.ok,
         expectedResolutions: !!expectedResolutions?.ok,
       },
       buyerMessages,
@@ -606,10 +892,19 @@ export async function GET(req: NextRequest) {
           count: packMessages.length,
           endpoint: packResult?.debug?.endpoint ?? null,
         },
+        timeline: {
+          ok: !!timelineResult?.ok,
+          count: timelineMessages.length,
+          endpoint: timelineResult?.debug?.endpoint ?? null,
+        },
         claim: {
           ok: !!claimResult?.ok,
           count: claimMessages.length,
           endpoint: claimResult?.debug?.endpoint ?? null,
+        },
+        order: {
+          ok: !!orderDetail?.ok,
+          endpoint: orderDetail?.endpoint ?? null,
         },
         claimDetail: {
           ok: !!claimDetail?.ok,

@@ -664,11 +664,15 @@ useEffect(() => {
           params.set("packId", selected.packId);
         }
 
+        if (selected.orderId) {
+          params.set("orderId", selected.orderId);
+        }
+
         if (selected.claimId) {
           params.set("caseId", selected.claimId);
         }
 
-        if (!selected.packId && !selected.claimId) {
+        if (!selected.packId && !selected.claimId && !selected.orderId) {
           setBuyerMessages([]);
           setMediationMessages([]);
           return;
@@ -1230,7 +1234,7 @@ useEffect(() => {
                     </div>
 
                     <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-extrabold text-white/80">
-                      {selected?.claimId || selected?.packId ? "Mensagens reais" : "Sem mensagens"}
+                      {selected?.claimId || selected?.packId || selected?.orderId ? "Mensagens reais" : "Sem mensagens"}
                     </span>
                   </div>
 
@@ -1239,9 +1243,9 @@ useEffect(() => {
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
                         Carregando mensagens...
                       </div>
-                    ) : !selected?.claimId && !selected?.packId ? (
+                    ) : !selected?.claimId && !selected?.packId && !selected?.orderId ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
-                        Este item não possui claim ou pack vinculado para carregar mensagens.
+                        Este item não possui claim, pack ou pedido vinculado para carregar mensagens.
                       </div>
                     ) : buyerMessages.length === 0 && mediationMessages.length === 0 ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
