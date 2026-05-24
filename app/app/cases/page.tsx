@@ -2,6 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  Clipboard,
+  ClipboardCheck,
+  ExternalLink,
+  Headphones,
+  MessageSquareText,
+  ShieldCheck,
+} from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
@@ -132,6 +141,14 @@ function displayText(v: any, fallback = "-") {
   return String(v);
 }
 
+function hasValue(v: any) {
+  return v !== null && v !== undefined && v !== "" && v !== "-" && v !== "â€”" && v !== "—";
+}
+
+function firstValue(...values: any[]) {
+  return values.find(hasValue) ?? "";
+}
+
 function displayMoney(value?: number, currencyId?: string) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
   const n = Number(value);
@@ -151,6 +168,132 @@ function joinName(first?: string, last?: string) {
   const a = displayText(first, "").trim();
   const b = displayText(last, "").trim();
   return `${a} ${b}`.trim() || "-";
+}
+
+function displayDateTime(value?: string | null) {
+  if (!hasValue(value)) return "-";
+
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function impactLabel(type?: ImpactType | string | null) {
+  const map: Record<string, string> = {
+    reclamacoes: "Reclamação",
+    atrasos: "Atraso",
+    cancelamentos: "Cancelamento",
+    mediacoes: "Mediação",
+  };
+
+  return map[String(type ?? "")] ?? "Impacto";
+}
+
+function mercadoLivreOrderUrl(orderId?: string | null) {
+  const id = String(orderId ?? "").trim();
+  return id
+    ? `https://www.mercadolivre.com.br/vendas/${encodeURIComponent(id)}/detalhe`
+    : "https://www.mercadolivre.com.br/vendas";
+}
+
+function buildSupportMessage(
+  selected?: ImpactItem | null,
+  details?: CaseDetails | null,
+  buyerMessages: Message[] = [],
+  mediationMessages: Message[] = []
+) {
+  const orderId = firstValue(details?.order?.id, selected?.orderId);
+  const claimId = firstValue(details?.claim?.id, selected?.claimId);
+  const shipmentId = firstValue(details?.shipment?.id, selected?.shipmentId);
+  const packId = firstValue(details?.order?.packId, selected?.packId);
+  const title = firstValue(details?.item?.title, selected?.itemTitle, selected?.title);
+  const claimDescription = firstValue(details?.claim?.description, selected?.reason);
+  const claimStatus = firstValue(details?.claim?.status, selected?.statusPill);
+  const claimStage = firstValue(details?.claim?.stage);
+  const shippingStatus = firstValue(details?.shipment?.status, selected?.shippingStatus);
+  const shippingSubstatus = firstValue(details?.shipment?.substatus, selected?.shippingSubstatus);
+  const tracking = firstValue(details?.shipment?.trackingNumber, selected?.trackingNumber);
+  const delivered = firstValue(details?.shipment?.dateDelivered, selected?.dateDelivered);
+  const estimated = firstValue(details?.shipment?.estimatedDelivery, selected?.dateEstimatedDelivery);
+  const buyerName = firstValue(
+    joinName(
+      details?.buyer?.firstName ?? selected?.buyerFirstName,
+      details?.buyer?.lastName ?? selected?.buyerLastName
+    ),
+    selected?.buyerName
+  );
+
+  const latestBuyerMessages = buyerMessages
+    .slice(-3)
+    .map((m) => `- ${m.name ?? m.from} (${m.time}): ${m.text}`)
+    .join("\n");
+
+  const latestMediationMessages = mediationMessages
+    .slice(-3)
+    .map((m) => `- ${m.name ?? m.from} (${m.time}): ${m.text}`)
+    .join("\n");
+
+  return [
+    "Olá, equipe Mercado Livre.",
+    "",
+    "Solicito análise para remoção do impacto desta venda, pois o caso precisa ser revisado com base nas informações abaixo.",
+    "",
+    `Tipo de impacto: ${impactLabel(selected?.type)}`,
+    `Pedido: ${orderId || "não informado"}`,
+    `Claim ID: ${claimId || "não informado"}`,
+    `Pack ID: ${packId || "não informado"}`,
+    `Shipment ID: ${shipmentId || "não informado"}`,
+    `Produto: ${title || "não informado"}`,
+    `Comprador: ${buyerName || "não informado"}`,
+    `Status da reclamação: ${claimStatus || "não informado"}${claimStage ? ` / stage: ${claimStage}` : ""}`,
+    `Status do envio: ${shippingStatus || "não informado"}${shippingSubstatus ? ` / substatus: ${shippingSubstatus}` : ""}`,
+    `Rastreio: ${tracking || "não informado"}`,
+    `Entrega prevista: ${displayDateTime(estimated)}`,
+    `Entrega realizada: ${displayDateTime(delivered)}`,
+    "",
+    "Contexto do caso:",
+    claimDescription || "Descrever o contexto principal antes de enviar.",
+    "",
+    buyerMessages.length ? "Últimas mensagens com o comprador:" : "",
+    buyerMessages.length ? latestBuyerMessages : "",
+    "",
+    mediationMessages.length ? "Últimas interações na mediação:" : "",
+    mediationMessages.length ? latestMediationMessages : "",
+    "",
+    "Pedido:",
+    "Peço a revisão do impacto na reputação e a remoção do apontamento desta venda, considerando as evidências e o histórico do caso.",
+    "",
+    "Fico à disposição para enviar evidências adicionais.",
+  ]
+    .filter((line, index, lines) => line !== "" || lines[index - 1] !== "")
+    .join("\n")
+    .trim();
+}
+
+function supportReadiness(
+  selected?: ImpactItem | null,
+  details?: CaseDetails | null,
+  buyerMessages: Message[] = [],
+  mediationMessages: Message[] = []
+) {
+  const rows = [
+    { label: "Pedido", ok: hasValue(firstValue(details?.order?.id, selected?.orderId)) },
+    { label: "Claim", ok: hasValue(firstValue(details?.claim?.id, selected?.claimId)) },
+    { label: "Envio", ok: hasValue(firstValue(details?.shipment?.id, selected?.shipmentId)) },
+    { label: "Produto", ok: hasValue(firstValue(details?.item?.title, selected?.itemTitle)) },
+    { label: "Status", ok: hasValue(firstValue(details?.claim?.status, selected?.statusPill)) },
+    { label: "Mensagens", ok: buyerMessages.length > 0 || mediationMessages.length > 0 },
+  ];
+
+  const done = rows.filter((row) => row.ok).length;
+  return { rows, percent: Math.round((done / rows.length) * 100) };
 }
 
 function MetricCard({
@@ -255,10 +398,12 @@ function ImpactRow({
   item,
   selected,
   onSelect,
+  onSupport,
 }: {
   item: ImpactItem;
   selected: boolean;
   onSelect: () => void;
+  onSupport?: () => void;
 }) {
   const leftBorder = cn(selected ? "border-emerald-300" : "border-white/10", "border");
 
@@ -320,10 +465,14 @@ function ImpactRow({
             Ver detalhes
           </button>
           <button
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSupport?.();
+            }}
             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-semibold text-white/85 hover:bg-white/10"
           >
-            WhatsApp
+            <Headphones className="h-3.5 w-3.5" />
+            Chamado ML
           </button>
         </div>
       </div>
@@ -366,6 +515,156 @@ function ChatBubble({ msg }: { msg: Message }) {
           >
             {msg.text}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SupportAssistant({
+  selected,
+  details,
+  buyerMessages,
+  mediationMessages,
+  message,
+  copied,
+  onCopy,
+  onClose,
+}: {
+  selected: ImpactItem;
+  details: CaseDetails | null;
+  buyerMessages: Message[];
+  mediationMessages: Message[];
+  message: string;
+  copied: boolean;
+  onCopy: () => void;
+  onClose: () => void;
+}) {
+  const readiness = supportReadiness(selected, details, buyerMessages, mediationMessages);
+  const orderId = firstValue(details?.order?.id, selected.orderId);
+  const claimId = firstValue(details?.claim?.id, selected.claimId);
+  const orderUrl = mercadoLivreOrderUrl(orderId || selected.orderId);
+  const helpUrl = "https://www.mercadolivre.com.br/ajuda";
+  const channel =
+    selected.type === "atrasos" || selected.type === "cancelamentos"
+      ? "WhatsApp ou telefone"
+      : "WhatsApp, telefone ou e-mail";
+
+  return (
+    <div className="rounded-[26px] border border-emerald-400/20 bg-gradient-to-br from-emerald-500/12 via-white/[0.055] to-sky-500/10 p-5 shadow-[0_24px_100px_rgba(16,185,129,0.12)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-extrabold text-emerald-100">
+            <Headphones className="h-3.5 w-3.5" />
+            Assistente de chamado ML
+          </div>
+          <h2 className="mt-3 text-[22px] font-extrabold leading-tight text-white">
+            Defesa pronta para solicitar remoção de impacto
+          </h2>
+          <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-white/70">
+            Use este bloco para abrir a venda no Mercado Livre, entrar em “Preciso de ajuda” e colar a defesa no canal escolhido.
+          </p>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="self-start rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-semibold text-white/75 hover:bg-white/10"
+        >
+          Fechar
+        </button>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[11px] font-extrabold uppercase text-white/45">Prontidão</div>
+            <ShieldCheck className="h-4 w-4 text-emerald-200" />
+          </div>
+          <div className="mt-2 text-3xl font-black text-white">{readiness.percent}%</div>
+          <div className="mt-3 h-2 rounded-full bg-white/10">
+            <div
+              className="h-2 rounded-full bg-emerald-400"
+              style={{ width: `${readiness.percent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="text-[11px] font-extrabold uppercase text-white/45">Canal recomendado</div>
+          <div className="mt-2 flex items-center gap-2 text-[15px] font-extrabold text-white">
+            <MessageSquareText className="h-4 w-4 text-sky-200" />
+            {channel}
+          </div>
+          <div className="mt-2 text-[12px] leading-relaxed text-white/60">
+            Pedido {orderId || "sem ID"} {claimId ? `• Claim ${claimId}` : ""}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="text-[11px] font-extrabold uppercase text-white/45">Atalho operacional</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={orderUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-950 hover:bg-emerald-50"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Abrir venda
+            </a>
+            <a
+              href={helpUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-white/10"
+            >
+              <Headphones className="h-4 w-4" />
+              Ajuda ML
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="text-[12px] font-extrabold text-white">Checklist de evidências</div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {readiness.rows.map((row) => (
+              <div
+                key={row.label}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl border px-3 py-2 text-[12px] font-semibold",
+                  row.ok
+                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                    : "border-white/10 bg-white/5 text-white/45"
+                )}
+              >
+                <CheckCircle2 className={cn("h-4 w-4", row.ok ? "text-emerald-300" : "text-white/30")} />
+                {row.label}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-[12px] leading-relaxed text-sky-50/80">
+            Caminho mais seguro hoje: abrir a venda, clicar em “Preciso de ajuda”, escolher “Solicitar remoção de impacto desta venda” e selecionar o método de contato.
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[12px] font-extrabold text-white">Texto para enviar ao Mercado Livre</div>
+            <button
+              onClick={onCopy}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-emerald-600"
+            >
+              {copied ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+              {copied ? "Copiado" : "Copiar defesa"}
+            </button>
+          </div>
+
+          <pre className="mt-3 max-h-[320px] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-[#07111b] p-4 text-[12px] leading-relaxed text-white/78">
+            {message}
+          </pre>
         </div>
       </div>
     </div>
@@ -481,6 +780,8 @@ export default function CasesPage() {
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportCopied, setSupportCopied] = useState(false);
 
   const [apiCounts, setApiCounts] = useState<{
     reclamacoes: number;
@@ -503,6 +804,7 @@ const [totalPages, setTotalPages] = useState(1);
 
   function closeDetails() {
     setDetailsOpen(false);
+    setSupportOpen(false);
   }
 
   const counts = useMemo(() => {
@@ -514,6 +816,20 @@ const [totalPages, setTotalPages] = useState(1);
   }, [items, apiCounts]);
 
   const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
+  const supportMessage = useMemo(
+    () => buildSupportMessage(selected, details, buyerMessages, mediationMessages),
+    [selected, details, buyerMessages, mediationMessages]
+  );
+
+  async function copySupportMessage() {
+    try {
+      await navigator.clipboard.writeText(supportMessage);
+      setSupportCopied(true);
+      window.setTimeout(() => setSupportCopied(false), 1600);
+    } catch {
+      setSupportCopied(false);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -756,6 +1072,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (detailsOpen) setMessageTab("buyer");
+    setSupportCopied(false);
   }, [selectedId, detailsOpen]);
 
   useEffect(() => {
@@ -870,6 +1187,10 @@ useEffect(() => {
               item={it}
               selected={it.id === selectedId}
               onSelect={() => openDetails(it.id)}
+              onSupport={() => {
+                openDetails(it.id);
+                setSupportOpen(true);
+              }}
             />
 
           ))}
@@ -1025,8 +1346,18 @@ useEffect(() => {
                   </div>
 
                   <div className="mt-4 flex items-center justify-between gap-3">
-                    <ButtonGhost>Suporte</ButtonGhost>
-                    <ButtonPrimary>Ação sugerida</ButtonPrimary>
+                    <ButtonGhost onClick={() => setSupportOpen(true)}>
+                      <span className="inline-flex items-center gap-2">
+                        <Headphones className="h-4 w-4" />
+                        Suporte ML
+                      </span>
+                    </ButtonGhost>
+                    <ButtonPrimary onClick={copySupportMessage}>
+                      <span className="inline-flex items-center gap-2">
+                        {supportCopied ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                        {supportCopied ? "Copiado" : "Copiar defesa"}
+                      </span>
+                    </ButtonPrimary>
                   </div>
 
                   {loadingDetails && (
@@ -1038,6 +1369,19 @@ useEffect(() => {
               </div>
 
               <div className="col-span-12 lg:col-span-8 space-y-4">
+                {supportOpen && (
+                  <SupportAssistant
+                    selected={selected}
+                    details={details}
+                    buyerMessages={buyerMessages}
+                    mediationMessages={mediationMessages}
+                    message={supportMessage}
+                    copied={supportCopied}
+                    onCopy={copySupportMessage}
+                    onClose={() => setSupportOpen(false)}
+                  />
+                )}
+
                 <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
                   <div className="text-[12px] font-extrabold text-white">Dados da venda</div>
 
