@@ -134,7 +134,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               href="/app/settings"
               className={navLinkClass(pathname?.startsWith("/app/settings"))}
             >
-              Configuração
+              Configurações
             </Link>
           </nav>
         </div>

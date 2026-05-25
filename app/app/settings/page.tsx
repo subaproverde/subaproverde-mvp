@@ -238,10 +238,10 @@ export default function AppSettingsPage() {
             Teste operacional
           </div>
           <h1 className="mt-3 text-3xl font-black tracking-tight text-white">
-            Colaborador Mercado Livre
+            Configurações
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/65">
-            Controle o convite que permite a Suba operar o contato do Mercado Livre com usuário próprio, sem senha principal do seller.
+            Ajustes operacionais da conta, começando pelo convite de colaborador que permite a Suba operar o contato do Mercado Livre sem senha principal do seller.
           </p>
           <p className="mt-2 text-xs text-white/45">
             Seller ativo: <span className="font-mono text-white/70">{sellerId}</span>

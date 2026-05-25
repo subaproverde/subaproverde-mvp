@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/adminEmails";
 
@@ -27,7 +27,6 @@ type MeSellerResp =
   | { ok?: false; error: string; details?: string };
 
 export default function SellerAppLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -110,11 +109,6 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
     };
   }, [pathname]);
 
-  function goHome(e: React.MouseEvent) {
-    e.preventDefault();
-
-router.push(isAdmin ? "/dashboard/sellers" : "/app");
-}
   function handleConnectMl() {
     if (!currentUserId) {
       window.location.href = "/login";
@@ -175,9 +169,9 @@ router.push(isAdmin ? "/dashboard/sellers" : "/app");
 
         <div className="mx-auto max-w-7xl px-6 pb-3">
           <nav className="flex items-center gap-2">
-            <a href="#" onClick={goHome} className={navLinkClass(false)}>
+            <Link href="/app" className={navLinkClass(pathname === "/app")}>
               Início
-            </a>
+            </Link>
 
             {isAdmin ? (
               <>
@@ -220,7 +214,7 @@ router.push(isAdmin ? "/dashboard/sellers" : "/app");
             </Link>
 
             <Link href="/app/settings" className={navLinkClass(!!pathname?.startsWith("/app/settings"))}>
-              Configuração
+              Configurações
             </Link>
           </nav>
         </div>
