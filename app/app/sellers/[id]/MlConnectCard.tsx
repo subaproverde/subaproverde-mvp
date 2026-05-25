@@ -1,22 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
-import { supabaseBrowser } from "@/lib/supabaseClient";
 
 export default function MlConnectCard({ sellerId }: { sellerId: string }) {
   const [meLoading, setMeLoading] = useState(true);
   const [mlUser, setMlUser] = useState<any | null>(null);
-  const [user, setUser] = useState<User | null>(null);
 
   async function loadMe() {
     setMeLoading(true);
 
     try {
-      const { data } = await supabaseBrowser.auth.getUser();
-      const u = data?.user ?? null;
-      setUser(u);
-
       // Se não tem sellerId, não tenta buscar ML
       if (!sellerId) {
         setMlUser(null);
@@ -38,14 +31,6 @@ export default function MlConnectCard({ sellerId }: { sellerId: string }) {
     loadMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sellerId]);
-
-  function startConnect() {
-    // ✅ fluxo atual: OAuth sempre começa por userId
-    if (!user?.id) return;
-    const params = new URLSearchParams({ userId: user.id });
-    if (sellerId) params.set("sellerId", sellerId);
-    window.location.href = `/api/ml/connect?${params.toString()}`;
-  }
 
   const connected = !!mlUser;
 
@@ -71,24 +56,6 @@ export default function MlConnectCard({ sellerId }: { sellerId: string }) {
       </div>
 
       <div className="mt-4 grid gap-2">
-        {!connected && (
-          <button
-            onClick={startConnect}
-            className="w-full rounded-xl px-4 py-2 border border-white/10 bg-white/5 text-white/90 hover:bg-white/10"
-          >
-            Conectar Mercado Livre
-          </button>
-        )}
-
-        {connected && (
-          <button
-            onClick={startConnect}
-            className="w-full rounded-xl px-4 py-2 border border-emerald-400/20 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15"
-          >
-            Acessar Mercado Livre
-          </button>
-        )}
-
         <button
           onClick={loadMe}
           className="w-full rounded-xl px-4 py-2 border border-white/10 bg-transparent text-white/70 hover:bg-white/5"

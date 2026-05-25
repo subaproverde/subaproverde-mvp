@@ -108,9 +108,6 @@ export default function SellerDashboardPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [inProgress, setInProgress] = useState<any[]>([]);
 
-  const [connectErr, setConnectErr] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -272,29 +269,6 @@ export default function SellerDashboardPage() {
   const repLabel = useMemo(() => repLabelFromLevel(repLevel), [repLevel]);
   const tone = useMemo(() => toneFromLevel(repLevel), [repLevel]);
 
-  async function startConnect() {
-    try {
-      setConnectErr(null);
-      setConnecting(true);
-
-      const { data } = await supabaseBrowser.auth.getUser();
-      const user = data?.user;
-
-      if (!user?.id) {
-        setConnectErr("Você não está logado. Faça login novamente.");
-        setConnecting(false);
-        return;
-      }
-
-      const params = new URLSearchParams({ userId: user.id });
-      if (sellerId) params.set("sellerId", sellerId);
-      window.location.href = `/api/ml/connect?${params.toString()}`;
-    } catch (e: any) {
-      setConnectErr(e?.message ?? "Falha ao iniciar conexão com Mercado Livre.");
-      setConnecting(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="p-6">
@@ -317,13 +291,6 @@ export default function SellerDashboardPage() {
             href="/login"
           >
             Voltar ao login
-          </Link>
-
-          <Link
-            className="inline-flex rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25"
-            href="/app/sellers"
-          >
-            Conectar Mercado Livre
           </Link>
         </div>
       </div>
@@ -381,29 +348,11 @@ export default function SellerDashboardPage() {
                         </span>
                       </div>
 
-                      {connectErr ? (
-                        <div className="mt-2 text-[12px] text-red-300">
-                          {connectErr}
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 
                     <div className="flex flex-wrap items-center gap-2">
   <SellerSwitcher />
-
-  <button
-    onClick={startConnect}
-    disabled={connecting}
-    className={[
-      "inline-flex items-center justify-center rounded-xl border border-white/10",
-      "bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-3.5 py-2 text-sm text-white/90",
-      "hover:from-emerald-400/25 hover:to-emerald-900/25",
-      "disabled:opacity-60 disabled:cursor-not-allowed",
-    ].join(" ")}
-  >
-    {connecting ? "Abrindo OAuth..." : "Conectar Mercado Livre"}
-  </button>
 
   <Link
     href="/app/cases"
@@ -491,13 +440,6 @@ export default function SellerDashboardPage() {
                         ABRIR DEFESA URGENTE →
                       </Link>
 
-                      <button
-                        onClick={startConnect}
-                        disabled={connecting}
-                        className="w-full inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-semibold text-white/85 hover:bg-white/10 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {connecting ? "Abrindo OAuth..." : "Conectar Mercado Livre"}
-                      </button>
                     </div>
                   </div>
                 </div>
