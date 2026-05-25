@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { isAdminEmail } from "@/lib/adminEmails";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
 
@@ -785,6 +786,7 @@ export default function CasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ImpactItem[]>([]);
   const [sellerId, setSellerId] = useState<string | null>(null);
+  const [sellerName, setSellerName] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string>("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -869,17 +871,43 @@ export default function CasesPage() {
 
         if (!user?.id) throw new Error("Você não está logado. Faça login novamente.");
 
-        const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
-          cache: "no-store",
-        });
+        const requestedSellerId =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("sellerId")?.trim()
+            : "";
 
-        const jSeller = await rSeller.json().catch(() => ({}));
-
-        if (!rSeller.ok || !jSeller?.sellerId) {
-          throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
+        let canUseRequestedSeller = false;
+        if (requestedSellerId) {
+          const adminByEmail = isAdminEmail(user.email);
+          let adminRpc = false;
+          try {
+            const { data: adminData } = await supabaseBrowser.rpc("is_admin");
+            adminRpc = !!adminData;
+          } catch {
+            adminRpc = false;
+          }
+          canUseRequestedSeller = adminByEmail || !!adminRpc;
         }
 
-        const sidBackend = String(jSeller.sellerId);
+        let sidBackend = "";
+        let resolvedSellerName = "";
+
+        if (requestedSellerId && canUseRequestedSeller) {
+          sidBackend = requestedSellerId;
+        } else {
+          const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+            cache: "no-store",
+          });
+
+          const jSeller = await rSeller.json().catch(() => ({}));
+
+          if (!rSeller.ok || !jSeller?.sellerId) {
+            throw new Error(jSeller?.error ?? "Não foi possível identificar o seller desta conta.");
+          }
+
+          sidBackend = String(jSeller.sellerId);
+          resolvedSellerName = String(jSeller.nickname ?? "").trim();
+        }
 
         try {
           const sidLocal = localStorage.getItem("activeSellerId");
@@ -892,15 +920,20 @@ export default function CasesPage() {
         const sid = sidBackend;
 
         setSellerId(sid);
-       const res = await fetch(
-  `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10&type=${activeTab}`,
-  { cache: "no-store" }
-);
+        setSellerName(resolvedSellerName);
+
+        const res = await fetch(
+          `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10&type=${activeTab}`,
+          { cache: "no-store" }
+        );
 
         const json = await res.json().catch(() => ({}));
-if (json?.totalPages) {
-  setTotalPages(json.totalPages);
-}
+        if (json?.totalPages) {
+          setTotalPages(json.totalPages);
+        }
+        if (json?.nickname) {
+          setSellerName(String(json.nickname));
+        }
         if (json?.counts) {
           setApiCounts({
             reclamacoes: Number(json.counts.reclamacoes ?? 0),
@@ -1149,6 +1182,8 @@ useEffect(() => {
 
           {!!sellerId && (
             <p className="mt-1 text-[12px] text-white/45">
+              Seller: <span className="font-semibold text-white/70">{sellerName || "Mercado Livre"}</span>
+              <span className="mx-1 text-white/25">•</span>
               sellerId: <span className="font-mono">{sellerId}</span>
             </p>
           )}
@@ -1163,7 +1198,7 @@ useEffect(() => {
         <div className="hidden sm:flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl px-4 py-3 shadow-[0_18px_70px_rgba(0,0,0,0.35)]">
           <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10" />
           <div className="leading-tight">
-            <div className="text-[13px] font-extrabold text-white">Marcela Lima</div>
+            <div className="text-[13px] font-extrabold text-white">{sellerName || "Seller Mercado Livre"}</div>
             <div className="text-[11px] text-emerald-200/90 font-semibold">
               Reputação • ações & sugestões
             </div>

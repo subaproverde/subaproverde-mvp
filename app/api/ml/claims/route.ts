@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getValidMlAccessToken } from "@/lib/mlToken";
 
 type MlFetchOpts = { accessToken: string };
 
@@ -52,15 +53,17 @@ const supabase = createClient(
 
 // ✅ Busca token + ml_user_id pelo seller UUID do seu sistema
 async function getSellerMlAuth(sellerUuid: string) {
+  const { accessToken } = await getValidMlAccessToken(sellerUuid);
+
   // Ajuste nomes de tabela/colunas conforme seu banco.
   // Você comentou que a “fonte da verdade” é ml_tokens.
   const { data, error } = await supabase
     .from("ml_tokens")
-    .select("access_token, ml_user_id")
+    .select("ml_user_id")
     .eq("seller_id", sellerUuid)
     .single();
 
-  if (error || !data?.access_token) {
+  if (error || !data) {
     throw new Error("Seller sem token válido no banco (ml_tokens).");
   }
   if (!data?.ml_user_id) {
@@ -68,7 +71,7 @@ async function getSellerMlAuth(sellerUuid: string) {
   }
 
   return {
-    accessToken: data.access_token as string,
+    accessToken,
     mlUserId: String(data.ml_user_id),
   };
 }

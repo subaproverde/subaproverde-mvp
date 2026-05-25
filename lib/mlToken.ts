@@ -12,6 +12,8 @@ type MlTokenRow = {
   refresh_token: string | null;
   token_type: string | null;
   scope: string | null;
+  ml_user_id?: string | number | null;
+  expires_in?: number | null;
   expires_at: string | null; // ISO
   updated_at?: string | null;
   created_at?: string | null;
@@ -21,7 +23,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function isExpiringSoon(expiresAtIso?: string | null, skewSeconds = 120) {
+function isExpiringSoon(expiresAtIso?: string | null, skewSeconds = 300) {
   if (!expiresAtIso) return true;
   const t = Date.parse(expiresAtIso);
   if (Number.isNaN(t)) return true;
@@ -31,7 +33,7 @@ function isExpiringSoon(expiresAtIso?: string | null, skewSeconds = 120) {
 async function loadTokenRow(sellerId: string) {
   const { data, error } = await supabaseAdmin
     .from("ml_tokens")
-    .select("seller_id, access_token, refresh_token, token_type, scope, expires_at, updated_at, created_at")
+    .select("seller_id, access_token, refresh_token, token_type, scope, ml_user_id, expires_in, expires_at, updated_at, created_at")
     .eq("seller_id", sellerId)
     .limit(1)
     .maybeSingle<MlTokenRow>();
@@ -54,6 +56,8 @@ async function saveTokenRow(row: MlTokenRow) {
         refresh_token: row.refresh_token ?? null,
         token_type: row.token_type ?? "Bearer",
         scope: row.scope ?? null,
+        ml_user_id: row.ml_user_id ?? null,
+        expires_in: row.expires_in ?? null,
         expires_at: row.expires_at ?? null,
         updated_at: nowIso(),
       },
@@ -118,6 +122,7 @@ async function refreshAccessToken(refreshToken: string) {
     expires_in?: number;
     token_type?: string;
     scope?: string;
+    user_id?: string | number;
   };
 }
 
@@ -161,6 +166,8 @@ export async function getValidMlAccessToken(sellerId: string) {
     refresh_token: refreshed.refresh_token ?? row.refresh_token,
     token_type: refreshed.token_type ?? row.token_type ?? "Bearer",
     scope: refreshed.scope ?? row.scope ?? null,
+    ml_user_id: refreshed.user_id ?? row.ml_user_id ?? null,
+    expires_in: expiresIn || (row.expires_in ?? null),
     expires_at: expiresAt,
   };
 

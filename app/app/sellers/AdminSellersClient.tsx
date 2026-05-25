@@ -1,380 +1,422 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  BadgeCheck,
+  BriefcaseBusiness,
+  CheckCircle2,
+  Clock3,
+  RefreshCcw,
+  Search,
+  ShieldAlert,
+  Store,
+  Users,
+  WifiOff,
+} from "lucide-react";
+import { supabaseBrowser } from "@/lib/supabaseClient";
 
-type SellerRow = {
+type TokenStatus = "connected" | "expiring" | "needs_reconnect" | "not_connected";
+
+type AdminSellerItem = {
   id: string;
-  name: string | null;
-  company_name: string | null;
+  name: string;
+  sellerName: string | null;
+  companyName: string | null;
   status: string | null;
-  created_at: string | null;
-  ml_user_id?: string | null; // <- se existir na tabela sellers
-};
-
-type SellerAccountRow = {
-  id: string;
-  seller_id: string | null;
-  ml_user_id: string | null;
+  sellerAccountId: string | null;
   nickname: string | null;
+  ml_user_id: string;
   created_at: string | null;
+  token: {
+    status: TokenStatus;
+    hasToken: boolean;
+    hasRefresh: boolean;
+    refreshed: boolean;
+    refreshError: string | null;
+    expires_at: string | null;
+    updated_at: string | null;
+    secondsUntilExpiry: number | null;
+  };
 };
 
-type MlTokenRow = {
-  seller_id: string;
-  expires_at: string | null;
-  updated_at?: string | null;
-  created_at?: string | null;
+type Summary = {
+  total: number;
+  connected: number;
+  expiring: number;
+  needsReconnect: number;
+  notConnected: number;
+  refreshedNow: number;
 };
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const emptySummary: Summary = {
+  total: 0,
+  connected: 0,
+  expiring: 0,
+  needsReconnect: 0,
+  notConnected: 0,
+  refreshedNow: 0,
+};
 
-function panelSurface() {
-  return "border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/[0.35] backdrop-blur-md";
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
 }
 
-function pillBase() {
-  return "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] font-semibold";
+function formatDate(value?: string | null) {
+  if (!value) return "Sem data";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data invalida";
+  return date.toLocaleString("pt-BR");
 }
 
-function isExpired(expiresAt: string | null | undefined) {
-  if (!expiresAt) return false; // se não tem expires_at, tratamos como “tem token” mesmo assim
-  const t = Date.parse(expiresAt);
-  if (Number.isNaN(t)) return false;
-  return t <= Date.now();
+function expiryLabel(seconds: number | null, expiresAt: string | null) {
+  if (!expiresAt) return "Sem validade registrada";
+  if (seconds === null) return formatDate(expiresAt);
+  if (seconds <= 0) return "Expirado";
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `Vence em ${minutes} min`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Vence em ${hours} h`;
+
+  const days = Math.round(hours / 24);
+  return `Vence em ${days} dias`;
+}
+
+function statusMeta(status: TokenStatus) {
+  if (status === "connected") {
+    return {
+      label: "Conectado",
+      icon: CheckCircle2,
+      className: "border-emerald-400/25 bg-emerald-400/10 text-emerald-100",
+    };
+  }
+
+  if (status === "expiring") {
+    return {
+      label: "Vencendo",
+      icon: Clock3,
+      className: "border-amber-400/25 bg-amber-400/10 text-amber-100",
+    };
+  }
+
+  if (status === "needs_reconnect") {
+    return {
+      label: "Reconectar",
+      icon: ShieldAlert,
+      className: "border-rose-400/25 bg-rose-500/10 text-rose-100",
+    };
+  }
+
+  return {
+    label: "Sem conexao",
+    icon: WifiOff,
+    className: "border-white/10 bg-white/5 text-white/55",
+  };
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: "emerald" | "amber" | "rose" | "slate";
+}) {
+  const tones = {
+    emerald: "from-emerald-400/18 to-emerald-900/5 text-emerald-100",
+    amber: "from-amber-300/18 to-amber-900/5 text-amber-100",
+    rose: "from-rose-400/18 to-rose-900/5 text-rose-100",
+    slate: "from-white/[0.08] to-black/20 text-white/85",
+  } as const;
+
+  return (
+    <div className={cn("rounded-[24px] border border-white/10 bg-gradient-to-br p-4", tones[tone])}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-black/20">
+          {icon}
+        </div>
+        <div className="text-3xl font-black">{value}</div>
+      </div>
+      <div className="mt-3 text-[12px] font-bold uppercase tracking-wide opacity-70">{label}</div>
+    </div>
+  );
 }
 
 export default function AdminSellersClient() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-
-  const [sellers, setSellers] = useState<SellerRow[]>([]);
-  const [accounts, setAccounts] = useState<SellerAccountRow[]>([]);
-  const [tokens, setTokens] = useState<MlTokenRow[]>([]);
-
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [items, setItems] = useState<AdminSellerItem[]>([]);
+  const [summary, setSummary] = useState<Summary>(emptySummary);
   const [q, setQ] = useState("");
-  const [mlFilter, setMlFilter] = useState<"all" | "connected" | "not_connected">("all");
+  const [filter, setFilter] = useState<"all" | TokenStatus>("all");
+
+  async function loadSellers() {
+    try {
+      setRefreshing(true);
+      setError("");
+
+      const {
+        data: { session },
+      } = await supabaseBrowser.auth.getSession();
+
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Voce nao esta logado.");
+      }
+
+      const response = await fetch("/api/admin/sellers/list", {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const json = await response.json().catch(() => ({}));
+
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.error ?? "Falha ao carregar sellers.");
+      }
+
+      setItems((json.items ?? []) as AdminSellerItem[]);
+      setSummary((json.summary ?? emptySummary) as Summary);
+    } catch (e: any) {
+      setError(e?.message ?? "Erro ao carregar sellers.");
+      setItems([]);
+      setSummary(emptySummary);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-
-      // sellers
-      const { data: sellersData } = await supabase
-        .from("sellers")
-        .select("id, name, company_name, status, created_at, ml_user_id")
-        .order("created_at", { ascending: false });
-
-      // seller_accounts (nickname / info auxiliar)
-      const { data: accData } = await supabase
-        .from("seller_accounts")
-        .select("id, seller_id, ml_user_id, nickname, created_at")
-        .order("created_at", { ascending: false });
-
-      // ✅ FONTE DA VERDADE da conexão: ml_tokens
-      const { data: tokData } = await supabase
-        .from("ml_tokens")
-        .select("seller_id, expires_at, updated_at, created_at");
-
-      setSellers((sellersData ?? []) as SellerRow[]);
-      setAccounts((accData ?? []) as SellerAccountRow[]);
-      setTokens((tokData ?? []) as MlTokenRow[]);
-
-      setLoading(false);
-    })();
+    loadSellers();
   }, []);
-
-  const accountBySellerId = useMemo(() => {
-    const m = new Map<string, SellerAccountRow>();
-    for (const a of accounts) {
-      if (a.seller_id) m.set(a.seller_id, a);
-    }
-    return m;
-  }, [accounts]);
-
-  const tokenBySellerId = useMemo(() => {
-    const m = new Map<string, MlTokenRow>();
-    for (const t of tokens) {
-      if (t.seller_id) m.set(t.seller_id, t);
-    }
-    return m;
-  }, [tokens]);
-
-  const connectedCount = useMemo(() => {
-    let c = 0;
-    for (const s of sellers) {
-      const tok = tokenBySellerId.get(s.id);
-      if (tok && !isExpired(tok.expires_at)) c++;
-    }
-    return c;
-  }, [sellers, tokenBySellerId]);
-
-  const notConnectedCount = useMemo(() => {
-    return Math.max(0, (sellers?.length ?? 0) - connectedCount);
-  }, [sellers, connectedCount]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
 
-    return sellers.filter((s) => {
-      const acc = accountBySellerId.get(s.id);
-      const tok = tokenBySellerId.get(s.id);
-
-      const connected = !!tok && !isExpired(tok.expires_at);
-
-      if (mlFilter === "connected" && !connected) return false;
-      if (mlFilter === "not_connected" && connected) return false;
-
+    return items.filter((item) => {
+      if (filter !== "all" && item.token.status !== filter) return false;
       if (!needle) return true;
 
-      const hay = [
-        s.id,
-        s.name ?? "",
-        s.company_name ?? "",
-        s.status ?? "",
-        s.ml_user_id ?? "",
-        acc?.nickname ?? "",
-        acc?.ml_user_id ?? "",
-        tok?.expires_at ?? "",
+      return [
+        item.id,
+        item.name,
+        item.sellerName ?? "",
+        item.companyName ?? "",
+        item.nickname ?? "",
+        item.ml_user_id,
+        item.status ?? "",
       ]
         .join(" ")
-        .toLowerCase();
-
-      return hay.includes(needle);
+        .toLowerCase()
+        .includes(needle);
     });
-  }, [sellers, accountBySellerId, tokenBySellerId, q, mlFilter]);
+  }, [filter, items, q]);
 
   async function setActiveSeller(sellerId: string) {
     try {
       localStorage.setItem("activeSellerId", sellerId);
     } catch {
-      // ignore
+      // Local context only.
     }
 
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await supabaseBrowser.auth.getSession();
 
-      const accessToken = session?.access_token;
+      if (!session?.access_token) return;
 
-      if (accessToken) {
-        await fetch("/api/seller/set", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ sellerId }),
-        });
-      }
+      await fetch("/api/me/seller/set", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ sellerId }),
+      });
     } catch {
-      // ignore - não bloqueia navegação
+      // Admin can still open explicit seller routes even when active seller is not owned by the admin user.
     }
   }
 
-  async function openSellerDashboard(sellerId: string) {
-    await setActiveSeller(sellerId);
-    router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
-  }
-
-  async function goToCases(sellerId: string) {
+  async function openCases(sellerId: string) {
     await setActiveSeller(sellerId);
     router.push(`/app/cases?sellerId=${encodeURIComponent(sellerId)}`);
   }
 
+  async function openDashboard(sellerId: string) {
+    await setActiveSeller(sellerId);
+    router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
+  }
+
   return (
-    <div className="p-0">
-      <section
-        className={[
-          "relative rounded-3xl overflow-hidden",
-          "border border-black/10",
-          "bg-black/70",
-          "shadow-[0_20px_80px_rgba(0,0,0,0.25)]",
-        ].join(" ")}
-      >
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(90,255,140,0.12),transparent_55%),radial-gradient(ellipse_at_top_right,rgba(255,220,120,0.10),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(0,0,0,0.55),transparent_65%)]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.06] to-transparent" />
+    <div className="mx-auto max-w-7xl pb-14">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100">
+            <Store className="h-4 w-4" />
+            Admin Mercado Livre
+          </div>
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-white">Sellers</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/62">
+            Controle de contas conectadas, saude dos tokens OAuth e acesso rapido a cases e dashboards por seller.
+          </p>
         </div>
 
-        <div className="relative p-6">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-semibold text-white">Sellers</h1>
-              <p className="text-sm text-white/60 mt-1">
-                Visão Admin — sellers cadastrados + status de conexão Mercado Livre.
-              </p>
-              <p className="text-[12px] text-white/45 mt-2">
-                Obs: Conectado = existe token em <span className="font-mono">ml_tokens</span> (fonte da verdade).
-              </p>
-            </div>
+        <button
+          type="button"
+          onClick={loadSellers}
+          disabled={refreshing}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/80 hover:bg-white/10 disabled:opacity-50"
+        >
+          <RefreshCcw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          Atualizar tokens
+        </button>
+      </div>
 
-            <div className="flex gap-2 flex-wrap md:justify-end">
-              <span
-                className={[
-                  pillBase(),
-                  "border-emerald-400/25 bg-emerald-400/10 text-emerald-100",
-                ].join(" ")}
-              >
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                {connectedCount} conectados
-              </span>
-              <span
-                className={[
-                  pillBase(),
-                  "border-yellow-400/25 bg-yellow-400/10 text-yellow-100",
-                ].join(" ")}
-              >
-                <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                {notConnectedCount} não conectados
-              </span>
-            </div>
+      {error && (
+        <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm text-rose-100">
+          {error}
+        </div>
+      )}
+
+      <section className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <MetricCard icon={<Users className="h-5 w-5" />} label="sellers" value={summary.total} tone="slate" />
+        <MetricCard icon={<BadgeCheck className="h-5 w-5" />} label="conectados" value={summary.connected} tone="emerald" />
+        <MetricCard icon={<Clock3 className="h-5 w-5" />} label="vencendo" value={summary.expiring} tone="amber" />
+        <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="reconectar" value={summary.needsReconnect} tone="rose" />
+        <MetricCard icon={<RefreshCcw className="h-5 w-5" />} label="renovados agora" value={summary.refreshedNow} tone="emerald" />
+      </section>
+
+      <section className="mt-6 rounded-[28px] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.32)]">
+        <div className="border-b border-white/10 p-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_240px]">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+              <input
+                value={q}
+                onChange={(event) => setQ(event.target.value)}
+                placeholder="Buscar por nome, nickname, sellerId ou ml_user_id"
+                className="h-12 w-full rounded-2xl border border-white/10 bg-black/20 pl-11 pr-4 text-sm font-semibold text-white outline-none placeholder:text-white/35 focus:border-emerald-300/50"
+              />
+            </label>
+
+            <select
+              value={filter}
+              onChange={(event) => setFilter(event.target.value as typeof filter)}
+              className="h-12 rounded-2xl border border-white/10 bg-black/35 px-4 text-sm font-bold text-white outline-none focus:border-emerald-300/50"
+            >
+              <option value="all">Todos</option>
+              <option value="connected">Conectados</option>
+              <option value="expiring">Vencendo</option>
+              <option value="needs_reconnect">Reconectar</option>
+              <option value="not_connected">Sem conexao</option>
+            </select>
           </div>
+        </div>
 
-          <div className={["mt-5 rounded-2xl p-4", panelSurface()].join(" ")}>
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-3 items-end">
-              <div>
-                <label className="block text-xs text-white/60 mb-1">Buscar seller</label>
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Nome, company, sellerId, nickname ML, ml_user_id…"
-                  className="w-full h-11 rounded-xl border border-white/10 bg-black/40 px-4 text-white placeholder:text-white/35 outline-none focus:border-white/20"
-                />
-                <div className="text-[12px] text-white/40 mt-2">
-                  Dica: busque por “BRUDSTORE_”, “e4c677dc…”, “2392809929”, etc.
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-white/60 mb-1">Conexão ML</label>
-                <select
-                  value={mlFilter}
-                  onChange={(e) => setMlFilter(e.target.value as any)}
-                  className="w-full h-11 rounded-xl border border-white/10 bg-black/40 px-3 text-white outline-none focus:border-white/20"
-                >
-                  <option value="all">Todos</option>
-                  <option value="connected">Conectados</option>
-                  <option value="not_connected">Não conectados</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
+        <div className="p-5">
           {loading ? (
-            <div className="mt-6 text-white/60">Carregando…</div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-sm text-white/60">
+              Carregando sellers...
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="mt-6 text-white/60">Nenhum seller encontrado.</div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-sm text-white/60">
+              Nenhum seller encontrado.
+            </div>
           ) : (
-            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {filtered.map((s) => {
-                const acc = accountBySellerId.get(s.id);
-                const tok = tokenBySellerId.get(s.id);
-
-                const connected = !!tok && !isExpired(tok.expires_at);
-                const expired = !!tok && isExpired(tok.expires_at);
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+              {filtered.map((seller) => {
+                const meta = statusMeta(seller.token.status);
+                const StatusIcon = meta.icon;
 
                 return (
-                  <div key={s.id} className={["rounded-2xl p-5", panelSurface()].join(" ")}>
-                    <div className="flex items-start justify-between gap-3">
+                  <article
+                    key={seller.id}
+                    className="rounded-[24px] border border-white/10 bg-black/20 p-5 transition hover:border-white/20 hover:bg-white/[0.07]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold text-white/90 truncate">
-                          {s.name ?? "—"}
+                        <div className="flex items-center gap-2">
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5">
+                            <BriefcaseBusiness className="h-5 w-5 text-emerald-200" />
+                          </div>
+                          <div className="min-w-0">
+                            <h2 className="truncate text-base font-black text-white">{seller.name}</h2>
+                            <p className="mt-0.5 truncate text-xs font-semibold text-white/45">
+                              sellerId: <span className="font-mono">{seller.id}</span>
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-xs text-white/45 truncate mt-0.5">
-                          — <span className="font-mono">{s.id}</span>
-                        </div>
-                        {s.company_name ? (
-                          <div className="text-xs text-white/40 mt-1 truncate">{s.company_name}</div>
-                        ) : null}
                       </div>
 
-                      {connected ? (
-                        <span
-                          className={[
-                            pillBase(),
-                            "border-emerald-400/25 bg-emerald-400/10 text-emerald-100",
-                          ].join(" ")}
-                        >
-                          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                          Conectado {acc?.nickname ? `(${acc.nickname})` : ""}
-                        </span>
-                      ) : expired ? (
-                        <span
-                          className={[
-                            pillBase(),
-                            "border-orange-400/25 bg-orange-400/10 text-orange-100",
-                          ].join(" ")}
-                        >
-                          <span className="h-2 w-2 rounded-full bg-orange-400" />
-                          Token expirado
-                        </span>
-                      ) : (
-                        <span
-                          className={[
-                            pillBase(),
-                            "border-yellow-400/25 bg-yellow-400/10 text-yellow-100",
-                          ].join(" ")}
-                        >
-                          <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                          Não conectado
-                        </span>
-                      )}
+                      <span className={cn("inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-black", meta.className)}>
+                        <StatusIcon className="h-3.5 w-3.5" />
+                        {meta.label}
+                      </span>
                     </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-white/35">OAuth</div>
+                        <div className="mt-1 text-sm font-bold text-white/80">
+                          {expiryLabel(seller.token.secondsUntilExpiry, seller.token.expires_at)}
+                        </div>
+                        <div className="mt-1 text-[11px] text-white/40">
+                          Atualizado: {formatDate(seller.token.updated_at)}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-white/35">Conta ML</div>
+                        <div className="mt-1 truncate text-sm font-bold text-white/80">
+                          {seller.ml_user_id || "ml_user_id ausente"}
+                        </div>
+                        <div className="mt-1 text-[11px] text-white/40">
+                          Refresh token: {seller.token.hasRefresh ? "salvo" : "ausente"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {seller.token.refreshError && (
+                      <div className="mt-3 flex gap-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-3 text-xs leading-relaxed text-rose-100">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        {seller.token.refreshError}
+                      </div>
+                    )}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="text-[12px] rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
-                        Status: <span className="text-white/85">{s.status ?? "—"}</span>
-                      </span>
-
-                      <span className="text-[12px] rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
-                        Criado:{" "}
-                        <span className="text-white/85">
-                          {s.created_at ? new Date(s.created_at).toLocaleString("pt-BR") : "—"}
-                        </span>
-                      </span>
-
-                      {s.ml_user_id ? (
-                        <span className="text-[12px] rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
-                          ml_user_id: <span className="text-white/85">{s.ml_user_id}</span>
-                        </span>
-                      ) : null}
-
-                      {tok?.expires_at ? (
-                        <span className="text-[12px] rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
-                          expira:{" "}
-                          <span className="text-white/85">
-                            {new Date(tok.expires_at).toLocaleString("pt-BR")}
-                          </span>
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-4 flex gap-2 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => goToCases(s.id)}
-                        className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/85 hover:bg-white/10"
+                        onClick={() => openCases(seller.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white/85 hover:bg-white/10"
                       >
-                        Ver cases →
+                        Ver cases
+                        <ArrowUpRight className="h-4 w-4" />
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => openSellerDashboard(s.id)}
-                        className="inline-flex items-center justify-center rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-sm text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25"
+                        onClick={() => openDashboard(seller.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-black text-white hover:bg-emerald-600"
                       >
-                        Abrir dashboard ↗
+                        Abrir dashboard
+                        <ArrowUpRight className="h-4 w-4" />
                       </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>

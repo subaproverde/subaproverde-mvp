@@ -3,13 +3,141 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
 );
+
+function parseTargetSellerId(state: string) {
+  const [, sellerId] = state.split(":");
+  return sellerId?.trim() || null;
+}
+
+async function ensureSellerExists({
+  sellerId,
+  nickname,
+  mlUserId,
+}: {
+  sellerId: string;
+  nickname: string;
+  mlUserId: string;
+}) {
+  const { data: existing, error: checkErr } = await supabase
+    .from("sellers")
+    .select("id")
+    .eq("id", sellerId)
+    .maybeSingle();
+
+  if (checkErr) {
+    throw new Error(`Falha ao validar seller em sellers: ${checkErr.message}`);
+  }
+
+  if (existing?.id) return;
+
+  const { error: insertErr } = await supabase.from("sellers").insert({
+    id: sellerId,
+    name: nickname,
+    status: "active",
+    ml_user_id: mlUserId,
+  });
+
+  if (insertErr) {
+    throw new Error(`Falha ao criar seller resolvido: ${insertErr.message}`);
+  }
+}
+
+async function resolveSellerId({
+  userId,
+  mlUserId,
+  nickname,
+  targetSellerId,
+}: {
+  userId: string;
+  mlUserId: string;
+  nickname: string;
+  targetSellerId: string | null;
+}) {
+  if (targetSellerId) {
+    const { data: targetAccount, error } = await supabase
+      .from("seller_accounts")
+      .select("id, seller_id, owner_user_id")
+      .eq("owner_user_id", userId)
+      .eq("seller_id", targetSellerId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Falha ao validar seller alvo do OAuth: ${error.message}`);
+    }
+
+    if (targetAccount?.seller_id) {
+      return String(targetAccount.seller_id);
+    }
+  }
+
+  const { data: accountsByMlUser, error: accountByMlUserErr } = await supabase
+    .from("seller_accounts")
+    .select("id, seller_id, owner_user_id, ml_user_id, created_at")
+    .eq("ml_user_id", mlUserId)
+    .eq("owner_user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (accountByMlUserErr) {
+    throw new Error(`Falha ao buscar seller_accounts por ml_user_id: ${accountByMlUserErr.message}`);
+  }
+
+  if (accountsByMlUser?.[0]?.seller_id) {
+    return String(accountsByMlUser[0].seller_id);
+  }
+
+  const { data: existingAccounts, error: accGetErr } = await supabase
+    .from("seller_accounts")
+    .select("id, seller_id, owner_user_id")
+    .eq("owner_user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(2);
+
+  if (accGetErr) {
+    throw new Error(`Falha ao recuperar seller_accounts por owner_user_id: ${accGetErr.message}`);
+  }
+
+  if ((existingAccounts?.length ?? 0) === 1 && existingAccounts?.[0]?.seller_id) {
+    return String(existingAccounts[0].seller_id);
+  }
+
+  const { data: existingSeller, error: sellerFindErr } = await supabase
+    .from("sellers")
+    .select("id, ml_user_id")
+    .eq("ml_user_id", mlUserId)
+    .maybeSingle();
+
+  if (sellerFindErr) {
+    throw new Error(`Falha ao buscar seller em sellers por ml_user_id: ${sellerFindErr.message}`);
+  }
+
+  if (existingSeller?.id) {
+    return String(existingSeller.id);
+  }
+
+  const { data: newSeller, error: sellerErr } = await supabase
+    .from("sellers")
+    .insert({
+      name: nickname,
+      status: "active",
+      ml_user_id: mlUserId,
+    })
+    .select("id")
+    .single();
+
+  if (sellerErr || !newSeller?.id) {
+    throw new Error(`Falha ao criar seller: ${sellerErr?.message ?? "sem id"}`);
+  }
+
+  return String(newSeller.id);
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-
     const code = searchParams.get("code");
     const state = searchParams.get("state");
 
@@ -17,9 +145,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "code/state ausente" }, { status: 400 });
     }
 
-    // =====================================================
-    // 1) RECUPERA O USER QUE INICIOU O OAUTH
-    // =====================================================
     const { data: oauthState, error: stateErr } = await supabase
       .from("oauth_states")
       .select("user_id, state")
@@ -28,16 +153,14 @@ export async function GET(req: NextRequest) {
 
     if (stateErr || !oauthState?.user_id) {
       return NextResponse.json(
-        { error: "oauth_state inválido", details: stateErr?.message },
+        { error: "oauth_state invalido", details: stateErr?.message },
         { status: 400 }
       );
     }
 
     const userId = String(oauthState.user_id);
+    const targetSellerId = parseTargetSellerId(state);
 
-    // =====================================================
-    // 2) TROCA CODE POR TOKEN NO ML
-    // =====================================================
     const tokenRes = await fetch("https://api.mercadolibre.com/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -64,149 +187,22 @@ export async function GET(req: NextRequest) {
     const accessToken = String(tokenData.access_token);
     const refreshToken = tokenData.refresh_token ? String(tokenData.refresh_token) : null;
 
-    // =====================================================
-    // 3) BUSCA DADOS DA CONTA ML
-    // =====================================================
     const meRes = await fetch("https://api.mercadolibre.com/users/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
     });
-
     const me = await meRes.json().catch(() => ({} as any));
     const nickname = (me?.nickname && String(me.nickname).trim()) || "Conta Mercado Livre";
 
-    // =====================================================
-    // 4) RESOLVE sellerId COM SEGURANÇA
-    // =====================================================
-    let sellerId: string | null = null;
+    const sellerId = await resolveSellerId({
+      userId,
+      mlUserId,
+      nickname,
+      targetSellerId,
+    });
 
-    // 4A) Primeiro tenta achar por ml_user_id em seller_accounts
-    const { data: accountsByMlUser, error: accountByMlUserErr } = await supabase
-  .from("seller_accounts")
-  .select("id, seller_id, owner_user_id, ml_user_id, created_at")
-  .eq("ml_user_id", mlUserId)
-  .eq("owner_user_id", userId)
-  .order("created_at", { ascending: false })
-  .limit(1);
+    await ensureSellerExists({ sellerId, nickname, mlUserId });
 
-if (accountByMlUserErr) {
-  return NextResponse.json(
-    {
-      error: "Falha ao buscar seller_accounts por ml_user_id",
-      details: accountByMlUserErr.message,
-    },
-    { status: 500 }
-  );
-}
-
-const accountByMlUser = accountsByMlUser?.[0] ?? null;
-
-if (accountByMlUser?.seller_id) {
-  sellerId = String(accountByMlUser.seller_id);
-}
-    // 4B) Se não achou, tenta por owner_user_id
-    if (!sellerId) {
-      const { data: existingAccount, error: accGetErr } = await supabase
-        .from("seller_accounts")
-        .select("id, seller_id, owner_user_id")
-        .eq("owner_user_id", userId)
-        .maybeSingle();
-
-      if (accGetErr) {
-        return NextResponse.json(
-          {
-            error: "Falha ao recuperar seller_accounts por owner_user_id",
-            details: accGetErr.message,
-          },
-          { status: 500 }
-        );
-      }
-
-      if (existingAccount?.seller_id) {
-        sellerId = String(existingAccount.seller_id);
-      }
-    }
-
-    // 4C) Se ainda não achou, tenta em sellers por ml_user_id
-    if (!sellerId) {
-      const { data: existingSeller, error: sellerFindErr } = await supabase
-        .from("sellers")
-        .select("id, ml_user_id")
-        .eq("ml_user_id", mlUserId)
-        .maybeSingle();
-
-      if (sellerFindErr) {
-        return NextResponse.json(
-          {
-            error: "Falha ao buscar seller em sellers por ml_user_id",
-            details: sellerFindErr.message,
-          },
-          { status: 500 }
-        );
-      }
-
-      if (existingSeller?.id) {
-        sellerId = String(existingSeller.id);
-      }
-    }
-
-    // 4D) Se não achou nada, cria seller novo
-    if (!sellerId) {
-      const { data: newSeller, error: sellerErr } = await supabase
-        .from("sellers")
-        .insert({
-          name: nickname,
-          status: "active",
-          ml_user_id: mlUserId,
-        })
-        .select("id")
-        .single();
-
-      if (sellerErr || !newSeller?.id) {
-        return NextResponse.json(
-          { error: "Falha ao criar seller", details: sellerErr?.message ?? "sem id" },
-          { status: 500 }
-        );
-      }
-
-      sellerId = String(newSeller.id);
-    }
-
-    // 4E) GARANTE que sellerId existe em sellers
-    const { data: sellerCheck, error: sellerCheckErr } = await supabase
-      .from("sellers")
-      .select("id")
-      .eq("id", sellerId)
-      .maybeSingle();
-
-    if (sellerCheckErr) {
-      return NextResponse.json(
-        {
-          error: "Falha ao validar seller em sellers",
-          details: sellerCheckErr.message,
-        },
-        { status: 500 }
-      );
-    }
-
-    if (!sellerCheck?.id) {
-      return NextResponse.json(
-        {
-          error: "seller_id resolvido não existe em sellers",
-          debug: {
-            sellerId,
-            userId,
-            mlUserId,
-            nickname,
-          },
-        },
-        { status: 500 }
-      );
-    }
-
-    // =====================================================
-    // 5) ATUALIZA sellers
-    // =====================================================
     const { error: sellerUpdateErr } = await supabase
       .from("sellers")
       .update({
@@ -223,9 +219,6 @@ if (accountByMlUser?.seller_id) {
       );
     }
 
-    // =====================================================
-    // 6) UPSERT seller_accounts
-    // =====================================================
     const { error: accUpsertErr } = await supabase.from("seller_accounts").upsert(
       {
         owner_user_id: userId,
@@ -246,9 +239,6 @@ if (accountByMlUser?.seller_id) {
       );
     }
 
-    // =====================================================
-    // 7) SALVA TOKEN ML
-    // =====================================================
     const expiresIn = Number(tokenData.expires_in ?? 0);
     const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null;
 
@@ -283,19 +273,13 @@ if (accountByMlUser?.seller_id) {
       );
     }
 
-    // =====================================================
-    // 8) LIMPA oauth_state
-    // =====================================================
     await supabase.from("oauth_states").delete().eq("state", state);
 
-    // =====================================================
-    // 9) REDIRECT FINAL
-    // =====================================================
     const forwardedHost = req.headers.get("x-forwarded-host");
     const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
     const origin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : new URL(req.url).origin;
 
-    return NextResponse.redirect(`${origin}/app?ml_connected=1`);
+    return NextResponse.redirect(`${origin}/app?ml_connected=1&sellerId=${encodeURIComponent(sellerId)}`);
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message ?? "Erro callback ML" },

@@ -31,7 +31,7 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [, setActiveSellerId] = useState<string | null>(null);
+  const [activeSellerId, setActiveSellerId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -115,7 +115,9 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    window.location.href = `/api/ml/connect?userId=${encodeURIComponent(currentUserId)}`;
+    const params = new URLSearchParams({ userId: currentUserId });
+    if (activeSellerId && !isAdmin) params.set("sellerId", activeSellerId);
+    window.location.href = `/api/ml/connect?${params.toString()}`;
   }
 
   return (
@@ -190,20 +192,24 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
                 </Link>
 
                 <Link
-                  href="/dashboard/sellers"
-                  className={navLinkClass(!!pathname?.startsWith("/dashboard/sellers"))}
+                  href="/app/sellers"
+                  className={navLinkClass(!!pathname?.startsWith("/app/sellers"))}
                 >
                   Sellers
                 </Link>
 
                 <Link
-                  href="/dashboard/influencers"
-                  className={navLinkClass(!!pathname?.startsWith("/dashboard/influencers"))}
+                  href="/app/influencers"
+                  className={navLinkClass(!!pathname?.startsWith("/app/influencers"))}
                 >
                   Influencers
                 </Link>
               </>
             ) : null}
+
+            <Link href="/app/cases" className={navLinkClass(!!pathname?.startsWith("/app/cases"))}>
+              Cases
+            </Link>
 
             <Link href="/app/account" className={navLinkClass(!!pathname?.startsWith("/app/account"))}>
               Conta

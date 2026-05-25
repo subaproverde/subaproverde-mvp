@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getValidMlAccessToken } from "@/lib/mlToken";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,23 +39,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const { accessToken } = await getValidMlAccessToken(sellerId);
+
   // 2) Token + ml_user_id
   const { data: tokenRow, error: tokenErr } = await supabaseAdmin
     .from("ml_tokens")
-    .select("access_token, ml_user_id")
+    .select("ml_user_id")
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (tokenErr || !tokenRow?.access_token) {
+  if (tokenErr || !tokenRow) {
     return Response.json({ error: "Token ML não encontrado", details: tokenErr?.message }, { status: 400 });
   }
   if (!tokenRow?.ml_user_id) {
     return Response.json({ error: "ml_user_id vazio no ml_tokens" }, { status: 400 });
   }
 
-  const accessToken = tokenRow.access_token as string;
   const mlUserId = String(tokenRow.ml_user_id);
 
   // 3) Chama reputação via users/{id}

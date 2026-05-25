@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getValidMlAccessToken } from "@/lib/mlToken";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
 );
 
 export async function GET(req: Request) {
@@ -14,23 +16,21 @@ export async function GET(req: Request) {
     const limit = searchParams.get("limit") ?? "20";
     const offset = searchParams.get("offset") ?? "0";
     const siteId = searchParams.get("site_id") ?? "MLB";
-
-    // ✅ defaults corretos conforme doc: complainant/respondent/mediator/...
     const playerRole = searchParams.get("player_role") ?? "respondent";
 
-    // opcionais
-    const status = searchParams.get("status"); // opened | closed
-    const stage = searchParams.get("stage");   // claim | dispute | recontact | none | stale
-    const type = searchParams.get("type");     // mediations | return | fulfillment | ml_case | ...
+    const status = searchParams.get("status");
+    const stage = searchParams.get("stage");
+    const type = searchParams.get("type");
 
     if (!sellerId) {
-      return NextResponse.json({ error: "sellerId obrigatório" }, { status: 400 });
+      return NextResponse.json({ error: "sellerId obrigatorio" }, { status: 400 });
     }
 
-    // token + ml_user_id
+    const { accessToken } = await getValidMlAccessToken(sellerId);
+
     const { data: tokenRow, error: tokenErr } = await supabase
       .from("ml_tokens")
-      .select("access_token, ml_user_id")
+      .select("ml_user_id")
       .eq("seller_id", sellerId)
       .maybeSingle();
 
@@ -41,18 +41,13 @@ export async function GET(req: Request) {
       );
     }
 
-    if (!tokenRow?.access_token) {
-      return NextResponse.json({ error: "Token não encontrado" }, { status: 404 });
-    }
-
     if (!tokenRow?.ml_user_id) {
       return NextResponse.json(
-        { error: "ml_user_id não encontrado. Rode /api/ml/me para preencher." },
+        { error: "ml_user_id nao encontrado. Rode /api/ml/me para preencher." },
         { status: 400 }
       );
     }
 
-    // ✅ claims/search exige pelo menos 1 filtro — aqui já vai player_role + player_user_id
     const qs = new URLSearchParams();
     qs.set("limit", limit);
     qs.set("offset", offset);
@@ -67,10 +62,11 @@ export async function GET(req: Request) {
     const url = `https://api.mercadolibre.com/post-purchase/v1/claims/search?${qs.toString()}`;
 
     const mlRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${tokenRow.access_token}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
     });
 
-    const data = await mlRes.json();
+    const data = await mlRes.json().catch(() => ({}));
 
     if (!mlRes.ok) {
       return NextResponse.json(

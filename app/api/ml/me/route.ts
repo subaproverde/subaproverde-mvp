@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getValidMlAccessToken } from "@/lib/mlToken";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
 );
 
 export async function GET(req: Request) {
@@ -12,41 +14,19 @@ export async function GET(req: Request) {
     const sellerId = searchParams.get("sellerId");
 
     if (!sellerId) {
-      return NextResponse.json(
-        { error: "sellerId obrigatório" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "sellerId obrigatorio" }, { status: 400 });
     }
 
-    // 1) pega token salvo para o seller
-    const { data: tokenRow, error: tokenErr } = await supabase
-      .from("ml_tokens")
-      .select("id, access_token, ml_user_id")
-      .eq("seller_id", sellerId)
-      .maybeSingle();
+    const { accessToken } = await getValidMlAccessToken(sellerId);
 
-    if (tokenErr) {
-      return NextResponse.json(
-        { error: "Erro ao buscar token", detail: tokenErr.message },
-        { status: 500 }
-      );
-    }
-
-    if (!tokenRow?.access_token) {
-      return NextResponse.json(
-        { error: "Token não encontrado para este sellerId" },
-        { status: 404 }
-      );
-    }
-
-    // 2) chamada real ao Mercado Livre
     const mlRes = await fetch("https://api.mercadolibre.com/users/me", {
       headers: {
-        Authorization: `Bearer ${tokenRow.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
+      cache: "no-store",
     });
 
-    const mlData = await mlRes.json();
+    const mlData = await mlRes.json().catch(() => ({}));
 
     if (!mlRes.ok) {
       return NextResponse.json(
@@ -55,12 +35,19 @@ export async function GET(req: Request) {
       );
     }
 
-    // 3) salva ml_user_id se ainda não tiver
-    if (!tokenRow.ml_user_id && mlData?.id) {
+    if (mlData?.id) {
       await supabase
         .from("ml_tokens")
-        .update({ ml_user_id: mlData.id })
-        .eq("id", tokenRow.id);
+        .update({ ml_user_id: String(mlData.id) })
+        .eq("seller_id", sellerId);
+
+      await supabase
+        .from("seller_accounts")
+        .update({
+          ml_user_id: String(mlData.id),
+          nickname: mlData.nickname ?? null,
+        })
+        .eq("seller_id", sellerId);
     }
 
     return NextResponse.json({

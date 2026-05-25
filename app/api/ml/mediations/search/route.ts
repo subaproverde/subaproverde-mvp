@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getValidMlAccessToken } from "@/lib/mlToken";
 
 export async function GET(req: Request) {
   try {
@@ -12,30 +7,20 @@ export async function GET(req: Request) {
     const sellerId = searchParams.get("sellerId");
 
     if (!sellerId) {
-      return NextResponse.json({ error: "sellerId obrigatório" }, { status: 400 });
+      return NextResponse.json({ error: "sellerId obrigatorio" }, { status: 400 });
     }
 
-    // pega token
-    const { data: tokenRow } = await supabase
-      .from("ml_tokens")
-      .select("access_token")
-      .eq("seller_id", sellerId)
-      .maybeSingle();
-
-    if (!tokenRow?.access_token) {
-      return NextResponse.json({ error: "Token não encontrado" }, { status: 404 });
-    }
-
-    // chamada mediations
+    const { accessToken } = await getValidMlAccessToken(sellerId);
     const url = "https://api.mercadolibre.com/mediations/search";
 
     const mlRes = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${tokenRow.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
+      cache: "no-store",
     });
 
-    const data = await mlRes.json();
+    const data = await mlRes.json().catch(() => ({}));
 
     return NextResponse.json({
       ok: mlRes.ok,

@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
     const userId = sp.get("userId");
+    const sellerId = sp.get("sellerId")?.trim() || "";
 
     if (!userId) {
       return NextResponse.json(
@@ -36,9 +37,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    if (sellerId) {
+      const { data: sellerAccount, error: sellerAccountErr } = await supabaseAdmin
+        .from("seller_accounts")
+        .select("seller_id")
+        .eq("owner_user_id", userId)
+        .eq("seller_id", sellerId)
+        .maybeSingle();
+
+      if (sellerAccountErr) {
+        return NextResponse.json(
+          { error: "Falha ao validar seller antes do OAuth", details: sellerAccountErr.message },
+          { status: 500 }
+        );
+      }
+
+      if (!sellerAccount?.seller_id) {
+        return NextResponse.json(
+          { error: "sellerId nÃ£o pertence ao usuÃ¡rio logado" },
+          { status: 403 }
+        );
+      }
+    }
+
     await supabaseAdmin.from("oauth_states").delete().eq("user_id", userId);
 
-    const state = crypto.randomUUID();
+    const nonce = crypto.randomUUID();
+    const state = sellerId ? `${nonce}:${sellerId}` : nonce;
 
     const { error: insErr } = await supabaseAdmin.from("oauth_states").insert({
       user_id: userId,

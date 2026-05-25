@@ -102,19 +102,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <>
                 <Link
                   href="/app/sellers"
-                  className={navLinkClass(pathname?.startsWith("/dashboard/sellers"))}
+                  className={navLinkClass(!!pathname?.startsWith("/app/sellers"))}
                 >
                   Sellers
                 </Link>
 
                 <Link
                   href="/app/influencers"
-                  className={navLinkClass(pathname?.startsWith("/dashboard/influencers"))}
+                  className={navLinkClass(!!pathname?.startsWith("/app/influencers"))}
                 >
                   Influencers
                 </Link>
               </>
             ) : null}
+
+            <Link
+              href="/app/cases"
+              className={navLinkClass(!!pathname?.startsWith("/app/cases"))}
+            >
+              Cases
+            </Link>
 
             <Link
               href="/app/account"

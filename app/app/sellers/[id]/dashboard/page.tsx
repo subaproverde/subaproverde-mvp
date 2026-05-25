@@ -193,7 +193,9 @@ export default function SellerDashboardPage() {
     const user = data?.user;
     if (!user?.id) return;
 
-    window.location.href = `/api/ml/connect?userId=${encodeURIComponent(user.id)}`;
+    const params = new URLSearchParams({ userId: user.id });
+    if (sellerId) params.set("sellerId", sellerId);
+    window.location.href = `/api/ml/connect?${params.toString()}`;
   });
 }
 
