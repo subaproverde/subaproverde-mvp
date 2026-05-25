@@ -74,6 +74,12 @@ type ImpactItem = {
   dateDelivered?: string;
   dateEstimatedDelivery?: string;
   dateShipped?: string;
+  expectedDispatchDate?: string;
+  shippedAt?: string;
+  invoiceIssued?: boolean;
+  invoiceStatus?: string;
+  invoiceIssuedAt?: string;
+  invoiceNumber?: string;
 };
 
 type FilterCounts = {
@@ -147,10 +153,18 @@ type CaseDetails = {
     lastUpdated?: string;
     dateCreated?: string;
     dateShipped?: string;
+    expectedDispatchDate?: string;
+    shippedAt?: string;
     dateDelivered?: string;
     estimatedDelivery?: string;
     receiverAddress?: any;
     senderAddress?: any;
+  };
+  invoice?: {
+    issued?: boolean;
+    status?: string;
+    issuedAt?: string;
+    number?: string;
   };
 };
 
@@ -194,6 +208,24 @@ function displayMoney(value?: number, currencyId?: string) {
   } catch {
     return `${currencyId || "R$"} ${n.toFixed(2)}`;
   }
+}
+
+function invoiceStatusLabel(issued?: boolean, status?: string) {
+  if (issued) return "NF emitida";
+  const raw = displayText(status, "").toLowerCase();
+  if (!raw) return "NF não identificada";
+  if (raw.includes("cancel")) return "NF cancelada";
+  if (raw.includes("error") || raw.includes("rejected") || raw.includes("rejeit")) return "NF com erro";
+  return "NF não identificada";
+}
+
+function invoiceTone(issued?: boolean, status?: string) {
+  const raw = displayText(status, "").toLowerCase();
+  if (issued) return "border-emerald-300/30 bg-emerald-400/10 text-emerald-100";
+  if (raw.includes("cancel") || raw.includes("error") || raw.includes("rejected") || raw.includes("rejeit")) {
+    return "border-rose-300/30 bg-rose-400/10 text-rose-100";
+  }
+  return "border-amber-300/25 bg-amber-400/10 text-amber-100";
 }
 
 function joinName(first?: string, last?: string) {
@@ -526,6 +558,11 @@ function ImpactRow({
                 {logisticLabel(item.logisticKey, item.logisticType)}
               </span>
             )}
+            {item.type === "atrasos" && (
+              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", invoiceTone(item.invoiceIssued, item.invoiceStatus))}>
+                {invoiceStatusLabel(item.invoiceIssued, item.invoiceStatus)}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 text-[11px] text-white/45">
               <Clock3 className="h-3 w-3" />
               {item.ageLabel}
@@ -573,6 +610,30 @@ function ImpactRow({
               <div className="mt-0.5 truncate font-semibold text-white/78">{displayText(item.statusPill)}</div>
             </div>
           </div>
+
+          {item.type === "atrasos" && (
+            <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-white/55 md:grid-cols-3">
+              <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
+                <div className="font-bold text-white/38">Despachar até</div>
+                <div className="mt-0.5 truncate font-semibold text-white/78">
+                  {displayText(item.expectedDispatchDate)}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
+                <div className="font-bold text-white/38">Despachado em</div>
+                <div className="mt-0.5 truncate font-semibold text-white/78">
+                  {displayText(item.shippedAt, item.dateShipped)}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
+                <div className="font-bold text-white/38">Nota fiscal</div>
+                <div className="mt-0.5 truncate font-semibold text-white/78">
+                  {invoiceStatusLabel(item.invoiceIssued, item.invoiceStatus)}
+                  {hasUsefulValue(item.invoiceIssuedAt) ? ` • ${item.invoiceIssuedAt}` : ""}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="shrink-0 flex flex-col items-end gap-2">
@@ -807,6 +868,11 @@ function CaseSidePanel({
               {logisticLabel(selected.logisticKey, selected.logisticType)}
             </span>
           )}
+          {selected.type === "atrasos" && (
+            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", invoiceTone(selected.invoiceIssued, selected.invoiceStatus))}>
+              {invoiceStatusLabel(selected.invoiceIssued, selected.invoiceStatus)}
+            </span>
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 text-[12px]">
@@ -824,6 +890,34 @@ function CaseSidePanel({
             <span className="text-white/45">Situação envio</span>
             <span className="truncate font-semibold text-white/82">{displayText(shipmentStatus)}</span>
           </div>
+          {selected.type === "atrasos" && (
+            <>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+                <span className="text-white/45">Despachar até</span>
+                <span className="truncate font-semibold text-white/82">
+                  {displayText(details?.shipment?.expectedDispatchDate, selected.expectedDispatchDate)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+                <span className="text-white/45">Despachado em</span>
+                <span className="truncate font-semibold text-white/82">
+                  {displayText(details?.shipment?.shippedAt, selected.shippedAt || selected.dateShipped)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+                <span className="text-white/45">Nota fiscal</span>
+                <span className="truncate font-semibold text-white/82">
+                  {invoiceStatusLabel(details?.invoice?.issued ?? selected.invoiceIssued, details?.invoice?.status ?? selected.invoiceStatus)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+                <span className="text-white/45">Emissão NF</span>
+                <span className="truncate font-semibold text-white/82">
+                  {displayText(details?.invoice?.issuedAt, selected.invoiceIssuedAt)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {loadingDetails && (
@@ -951,6 +1045,12 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
       dateDelivered: c?.dateDelivered ? String(c.dateDelivered) : "—",
       dateEstimatedDelivery: c?.dateEstimatedDelivery ? String(c.dateEstimatedDelivery) : "—",
       dateShipped: c?.dateShipped ? String(c.dateShipped) : "—",
+      expectedDispatchDate: c?.expectedDispatchDate ? String(c.expectedDispatchDate) : "—",
+      shippedAt: c?.shippedAt ? String(c.shippedAt) : "—",
+      invoiceIssued: Boolean(c?.invoiceIssued),
+      invoiceStatus: c?.invoiceStatus ? String(c.invoiceStatus) : "—",
+      invoiceIssuedAt: c?.invoiceIssuedAt ? String(c.invoiceIssuedAt) : "—",
+      invoiceNumber: c?.invoiceNumber ? String(c.invoiceNumber) : "—",
     };
   });
 }
@@ -1023,6 +1123,11 @@ export default function CasesPage() {
         item.reputationImpact,
         item.removalEligible,
         item.logisticType,
+        item.expectedDispatchDate,
+        item.shippedAt,
+        item.invoiceStatus,
+        item.invoiceIssuedAt,
+        item.invoiceNumber,
       ]
         .filter(Boolean)
         .join(" ")
@@ -1919,6 +2024,18 @@ useEffect(() => {
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Despachar até</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.expectedDispatchDate, selected?.expectedDispatchDate)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Despachado em</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.shipment?.shippedAt, selected?.shippedAt || selected?.dateShipped)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Entrega estimada</div>
                       <div className="mt-1 font-semibold text-white">
                         {displayText(details?.shipment?.estimatedDelivery, selected?.dateEstimatedDelivery)}
@@ -1928,6 +2045,37 @@ useEffect(() => {
                       <div className="text-white/50">Data entregue</div>
                       <div className="mt-1 font-semibold text-white">
                         {displayText(details?.shipment?.dateDelivered, selected?.dateDelivered)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                  <div className="text-[12px] font-extrabold text-white">Nota fiscal</div>
+
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Situação</div>
+                      <div className={cn("mt-1 inline-flex rounded-full border px-2 py-1 text-[11px] font-black", invoiceTone(details?.invoice?.issued ?? selected?.invoiceIssued, details?.invoice?.status ?? selected?.invoiceStatus))}>
+                        {invoiceStatusLabel(details?.invoice?.issued ?? selected?.invoiceIssued, details?.invoice?.status ?? selected?.invoiceStatus)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Emissão</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.invoice?.issuedAt, selected?.invoiceIssuedAt)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Número</div>
+                      <div className="mt-1 font-semibold text-white break-all">
+                        {displayText(details?.invoice?.number, selected?.invoiceNumber)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="text-white/50">Status API</div>
+                      <div className="mt-1 font-semibold text-white">
+                        {displayText(details?.invoice?.status, selected?.invoiceStatus)}
                       </div>
                     </div>
                   </div>

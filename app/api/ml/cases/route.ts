@@ -36,6 +36,10 @@ function toIsoOrDash(v: any) {
   return String(v);
 }
 
+function firstValue(...values: any[]) {
+  return values.find((value) => value !== null && value !== undefined && value !== "");
+}
+
 function timeAgo(dateStr?: string | null) {
   if (!dateStr) return "—";
   const t = new Date(dateStr).getTime();
@@ -380,6 +384,124 @@ function normalizeLogistic(order: any, shipment: any): { key: LogisticKey; label
   return { key: "outro", label: raw ? "Outro" : "Não identificado" };
 }
 
+function findFirstValueByKey(value: any, keys: string[], depth = 0): any {
+  if (value === null || value === undefined || depth > 5) return null;
+  if (typeof value !== "object") return null;
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstValueByKey(item, keys, depth + 1);
+      if (found !== null && found !== undefined && found !== "") return found;
+    }
+    return null;
+  }
+
+  for (const [key, item] of Object.entries(value)) {
+    if (keys.includes(key.toLowerCase()) && item !== null && item !== undefined && item !== "") {
+      return item;
+    }
+  }
+
+  for (const item of Object.values(value)) {
+    const found = findFirstValueByKey(item, keys, depth + 1);
+    if (found !== null && found !== undefined && found !== "") return found;
+  }
+
+  return null;
+}
+
+function normalizeInvoice(invoice: any) {
+  const invoices = [
+    ...(Array.isArray(invoice?.results) ? invoice.results : []),
+    ...(Array.isArray(invoice?.data) ? invoice.data : []),
+    ...(Array.isArray(invoice?.items) ? invoice.items : []),
+    ...(Array.isArray(invoice?.invoices) ? invoice.invoices : []),
+    ...(Array.isArray(invoice) ? invoice : []),
+  ].filter(Boolean);
+
+  const primary = invoices[0] ?? invoice ?? null;
+  const rawStatus = safeStr(
+    firstValue(
+      primary?.status,
+      primary?.transaction_status,
+      primary?.authorization_status,
+      findFirstValueByKey(primary, ["status", "transaction_status"])
+    ),
+    "—"
+  );
+  const statusText = rawStatus.toLowerCase();
+  const number = safeStr(
+    firstValue(
+      primary?.invoice_number,
+      primary?.number,
+      primary?.id,
+      findFirstValueByKey(primary, ["invoice_number", "number", "id"])
+    ),
+    "—"
+  );
+  const issuedAt = toIsoOrDash(
+    firstValue(
+      primary?.issued_date,
+      primary?.emission_date,
+      primary?.date_issued,
+      primary?.date_authorized,
+      primary?.authorization_date,
+      primary?.date_created,
+      primary?.created_at,
+      findFirstValueByKey(primary, [
+        "issued_date",
+        "emission_date",
+        "date_issued",
+        "date_authorized",
+        "authorization_date",
+        "date_created",
+        "created_at",
+      ])
+    )
+  );
+
+  const issued =
+    statusText.includes("authoriz") ||
+    statusText.includes("autoriz") ||
+    statusText.includes("issued") ||
+    statusText.includes("emit") ||
+    (number !== "—" && !statusText.includes("cancel") && !statusText.includes("error"));
+
+  return {
+    issued,
+    status: rawStatus,
+    issuedAt,
+    number,
+  };
+}
+
+function normalizeDispatchDates(shipment: any, leadTime: any, sla?: any) {
+  return {
+    expectedDispatchDate: toIsoOrDash(
+      firstValue(
+        sla?.expected_date,
+        sla?.deadline,
+        sla?.handling?.expected_date,
+        sla?.estimated_handling_limit?.date,
+        leadTime?.estimated_handling_limit?.date,
+        leadTime?.estimated_handling_limit,
+        leadTime?.sla?.expected_date,
+        shipment?.estimated_handling_limit?.date,
+        shipment?.estimated_handling_limit,
+        shipment?.lead_time?.estimated_handling_limit?.date,
+        shipment?.lead_time?.estimated_handling_limit
+      )
+    ),
+    shippedAt: toIsoOrDash(
+      firstValue(
+        shipment?.date_shipped,
+        shipment?.date_first_printed,
+        shipment?.shipping_option?.date_shipped
+      )
+    ),
+  };
+}
+
 function dedupeById(items: any[]) {
   const seen = new Set<string>();
   const result: any[] = [];
@@ -425,9 +547,9 @@ function countFilterOptions(items: any[]) {
   };
 }
 
-async function fetchJson(url: string, accessToken: string) {
+async function fetchJson(url: string, accessToken: string, extraHeaders?: HeadersInit) {
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, ...(extraHeaders ?? {}) },
     cache: "no-store",
   });
 
@@ -463,7 +585,9 @@ function normalizeItem(order: any) {
   };
 }
 
-function normalizeShipment(shipment: any) {
+function normalizeShipment(shipment: any, leadTime?: any, sla?: any) {
+  const dispatchDates = normalizeDispatchDates(shipment, leadTime, sla);
+
   return {
     shippingStatus: safeStr(shipment?.status, "—"),
     shippingSubstatus: safeStr(shipment?.substatus, "—"),
@@ -481,6 +605,8 @@ function normalizeShipment(shipment: any) {
         shipment?.estimated_delivery_limit?.date
     ),
     dateShipped: toIsoOrDash(shipment?.date_shipped),
+    expectedDispatchDate: dispatchDates.expectedDispatchDate,
+    shippedAt: dispatchDates.shippedAt,
   };
 }
 
@@ -602,8 +728,47 @@ export async function GET(req: NextRequest) {
 
     const shipmentMap = new Map<string, any>(shipmentEntries);
 
+    const leadTimeEntries = await Promise.all(
+      shipmentIds.slice(0, 50).map(async (shipmentId: any) => {
+        const leadTimeUrl = `https://api.mercadolibre.com/shipments/${shipmentId}/lead_time`;
+        const { res, json } = await fetchJson(leadTimeUrl, accessToken, {
+          "x-format-new": "true",
+        });
+        return [String(shipmentId), res.ok ? json : null] as const;
+      })
+    );
+
+    const leadTimeMap = new Map<string, any>(leadTimeEntries);
+
+    const slaEntries = await Promise.all(
+      shipmentIds.slice(0, 50).map(async (shipmentId: any) => {
+        const slaUrl = `https://api.mercadolibre.com/shipments/${shipmentId}/sla`;
+        const { res, json } = await fetchJson(slaUrl, accessToken);
+        return [String(shipmentId), res.ok ? json : null] as const;
+      })
+    );
+
+    const slaMap = new Map<string, any>(slaEntries);
+
     const orderMap = new Map<string, any>(
       orders.map((o: any) => [String(o.id), o])
+    );
+
+    const invoiceEntries = await Promise.all(
+      orders.slice(0, 50).map(async (order: any) => {
+        const orderId = String(order?.id ?? "");
+        if (!orderId) return [orderId, null] as const;
+
+        const invoiceUrl = `https://api.mercadolibre.com/users/${encodeURIComponent(
+          mlUserId
+        )}/invoices/orders/${encodeURIComponent(orderId)}`;
+        const { res, json } = await fetchJson(invoiceUrl, accessToken);
+        return [orderId, res.ok ? normalizeInvoice(json) : normalizeInvoice(null)] as const;
+      })
+    );
+
+    const invoiceMap = new Map<string, ReturnType<typeof normalizeInvoice> | null>(
+      invoiceEntries
     );
 
     const normalizedClaims = claims.map((c: any) => {
@@ -614,10 +779,13 @@ export async function GET(req: NextRequest) {
       const order = orderId ? orderMap.get(String(orderId)) : null;
       const shipmentId = order?.shipping?.id ? String(order.shipping.id) : null;
       const shipment = shipmentId ? shipmentMap.get(shipmentId) : null;
+      const leadTime = shipmentId ? leadTimeMap.get(shipmentId) : null;
+      const sla = shipmentId ? slaMap.get(shipmentId) : null;
+      const invoice = orderId ? invoiceMap.get(String(orderId)) : null;
 
       const buyer = normalizeBuyer(order ?? {});
       const item = normalizeItem(order ?? {});
-      const shipping = normalizeShipment(shipment ?? {});
+      const shipping = normalizeShipment(shipment ?? {}, leadTime, sla);
       const logistics = normalizeLogistic(order ?? {}, shipment ?? {});
       const statusGroup = inferCaseStatus(c?.status, c?.stage, c?.resolution, order?.status);
       const reputationImpact = inferReputationImpact({ claim: c, order }, "unknown");
@@ -665,6 +833,12 @@ export async function GET(req: NextRequest) {
         dateDelivered: shipping.dateDelivered,
         dateEstimatedDelivery: shipping.dateEstimatedDelivery,
         dateShipped: shipping.dateShipped,
+        expectedDispatchDate: shipping.expectedDispatchDate,
+        shippedAt: shipping.shippedAt,
+        invoiceIssued: invoice?.issued ?? false,
+        invoiceStatus: invoice?.status ?? "—",
+        invoiceIssuedAt: invoice?.issuedAt ?? "—",
+        invoiceNumber: invoice?.number ?? "—",
         raw: c,
       };
     });
@@ -674,10 +848,13 @@ export async function GET(req: NextRequest) {
       .map((o: any, index: number) => {
         const shipmentId = o?.shipping?.id ? String(o.shipping.id) : null;
         const shipment = shipmentId ? shipmentMap.get(shipmentId) : null;
+        const leadTime = shipmentId ? leadTimeMap.get(shipmentId) : null;
+        const sla = shipmentId ? slaMap.get(shipmentId) : null;
+        const invoice = o?.id ? invoiceMap.get(String(o.id)) : null;
 
         const buyer = normalizeBuyer(o);
         const item = normalizeItem(o);
-        const shipping = normalizeShipment(shipment ?? {});
+        const shipping = normalizeShipment(shipment ?? {}, leadTime, sla);
         const logistics = normalizeLogistic(o, shipment ?? {});
         const reputationImpact = inferReputationImpact(
           { order: o, shipment },
@@ -730,6 +907,12 @@ export async function GET(req: NextRequest) {
           dateDelivered: shipping.dateDelivered,
           dateEstimatedDelivery: shipping.dateEstimatedDelivery,
           dateShipped: shipping.dateShipped,
+          expectedDispatchDate: shipping.expectedDispatchDate,
+          shippedAt: shipping.shippedAt,
+          invoiceIssued: invoice?.issued ?? false,
+          invoiceStatus: invoice?.status ?? "—",
+          invoiceIssuedAt: invoice?.issuedAt ?? "—",
+          invoiceNumber: invoice?.number ?? "—",
           raw: o,
         };
       });
@@ -738,12 +921,15 @@ export async function GET(req: NextRequest) {
       .map((o: any, index: number) => {
         const shipmentId = o?.shipping?.id ? String(o.shipping.id) : null;
         const shipment = shipmentId ? shipmentMap.get(shipmentId) : null;
+        const leadTime = shipmentId ? leadTimeMap.get(shipmentId) : null;
+        const sla = shipmentId ? slaMap.get(shipmentId) : null;
+        const invoice = o?.id ? invoiceMap.get(String(o.id)) : null;
 
         if (!shipment || !shipmentLooksDelayed(shipment)) return null;
 
         const buyer = normalizeBuyer(o);
         const item = normalizeItem(o);
-        const shipping = normalizeShipment(shipment);
+        const shipping = normalizeShipment(shipment, leadTime, sla);
         const logistics = normalizeLogistic(o, shipment);
         const reputationImpact = inferReputationImpact(
           { order: o, shipment },
@@ -800,9 +986,17 @@ export async function GET(req: NextRequest) {
           dateDelivered: shipping.dateDelivered,
           dateEstimatedDelivery: shipping.dateEstimatedDelivery,
           dateShipped: shipping.dateShipped,
+          expectedDispatchDate: shipping.expectedDispatchDate,
+          shippedAt: shipping.shippedAt,
+          invoiceIssued: invoice?.issued ?? false,
+          invoiceStatus: invoice?.status ?? "—",
+          invoiceIssuedAt: invoice?.issuedAt ?? "—",
+          invoiceNumber: invoice?.number ?? "—",
           raw: {
             order: o,
             shipment,
+            leadTime,
+            sla,
           },
         };
       })
@@ -858,6 +1052,12 @@ export async function GET(req: NextRequest) {
             dateDelivered: "—",
             dateEstimatedDelivery: "—",
             dateShipped: "—",
+            expectedDispatchDate: "—",
+            shippedAt: "—",
+            invoiceIssued: false,
+            invoiceStatus: "—",
+            invoiceIssuedAt: "—",
+            invoiceNumber: "—",
             raw: {
               metric: "delayed_handling_time",
               officialDelayCount,
@@ -913,6 +1113,12 @@ export async function GET(req: NextRequest) {
             dateDelivered: "—",
             dateEstimatedDelivery: "—",
             dateShipped: "—",
+            expectedDispatchDate: "—",
+            shippedAt: "—",
+            invoiceIssued: false,
+            invoiceStatus: "—",
+            invoiceIssuedAt: "—",
+            invoiceNumber: "—",
             raw: {
               metric: "claims",
               officialClaimsCount,
@@ -968,6 +1174,12 @@ export async function GET(req: NextRequest) {
             dateDelivered: "—",
             dateEstimatedDelivery: "—",
             dateShipped: "—",
+            expectedDispatchDate: "—",
+            shippedAt: "—",
+            invoiceIssued: false,
+            invoiceStatus: "—",
+            invoiceIssuedAt: "—",
+            invoiceNumber: "—",
             raw: {
               metric: "cancellations",
               officialCancelCount,
@@ -1046,6 +1258,8 @@ export async function GET(req: NextRequest) {
           claims1Status: claimsRes1.status,
           claims2Status: claimsRes2.status,
           shipmentCount: shipmentIds.length,
+          leadTimeCount: leadTimeEntries.filter(([, value]) => value).length,
+          slaCount: slaEntries.filter(([, value]) => value).length,
           ordersUrl,
           claimsUrl1,
           claimsUrl2,
