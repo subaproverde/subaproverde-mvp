@@ -18,6 +18,16 @@ import { supabaseBrowser } from "@/lib/supabaseClient";
 import { isAdminEmail } from "@/lib/adminEmails";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
+type CaseStatus = "open" | "closed" | "unknown";
+type ReputationImpact = "impacting" | "not_impacting" | "unknown";
+type RemovalEligibility = "eligible" | "not_eligible" | "unknown";
+type LogisticKey =
+  | "flex"
+  | "agencia_ml"
+  | "correios"
+  | "places"
+  | "mercado_envios"
+  | "outro";
 
 type ImpactItem = {
   id: string;
@@ -29,6 +39,11 @@ type ImpactItem = {
   ageLabel: string;
   buyerName: string;
   statusPill?: string;
+  statusGroup?: CaseStatus;
+  reputationImpact?: ReputationImpact;
+  removalEligible?: RemovalEligibility;
+  logisticKey?: LogisticKey;
+  logisticType?: string;
   chip?: string;
   source?: string;
   claimId?: string | null;
@@ -59,6 +74,13 @@ type ImpactItem = {
   dateDelivered?: string;
   dateEstimatedDelivery?: string;
   dateShipped?: string;
+};
+
+type FilterCounts = {
+  status?: Record<"all" | CaseStatus, number>;
+  impact?: Record<"all" | ReputationImpact, number>;
+  removal?: Record<RemovalEligibility, number>;
+  logistics?: Record<"all" | LogisticKey, number>;
 };
 
 type Message = {
@@ -202,6 +224,92 @@ function impactTone(type?: ImpactType | string | null) {
   return tones[String(type ?? "")] ?? "border-white/10 bg-white/5 text-white/70";
 }
 
+function statusGroupLabel(value?: CaseStatus) {
+  const labels: Record<CaseStatus, string> = {
+    open: "Aberta",
+    closed: "Encerrada",
+    unknown: "Status indefinido",
+  };
+
+  return labels[value ?? "unknown"];
+}
+
+function statusGroupTone(value?: CaseStatus) {
+  const tones: Record<CaseStatus, string> = {
+    open: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
+    closed: "border-white/12 bg-white/5 text-white/62",
+    unknown: "border-amber-300/25 bg-amber-400/10 text-amber-100",
+  };
+
+  return tones[value ?? "unknown"];
+}
+
+function reputationImpactLabel(value?: ReputationImpact) {
+  const labels: Record<ReputationImpact, string> = {
+    impacting: "Impactando reputação",
+    not_impacting: "Não impacta reputação",
+    unknown: "Impacto indefinido",
+  };
+
+  return labels[value ?? "unknown"];
+}
+
+function reputationImpactTone(value?: ReputationImpact) {
+  const tones: Record<ReputationImpact, string> = {
+    impacting: "border-rose-300/30 bg-rose-400/10 text-rose-100",
+    not_impacting: "border-sky-300/25 bg-sky-400/10 text-sky-100",
+    unknown: "border-amber-300/25 bg-amber-400/10 text-amber-100",
+  };
+
+  return tones[value ?? "unknown"];
+}
+
+function removalEligibilityLabel(value?: RemovalEligibility) {
+  const labels: Record<RemovalEligibility, string> = {
+    eligible: "Solicitar remoção",
+    not_eligible: "Sem remoção provável",
+    unknown: "Verificar remoção",
+  };
+
+  return labels[value ?? "unknown"];
+}
+
+function removalEligibilityTone(value?: RemovalEligibility) {
+  const tones: Record<RemovalEligibility, string> = {
+    eligible: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
+    not_eligible: "border-white/12 bg-white/5 text-white/62",
+    unknown: "border-amber-300/25 bg-amber-400/10 text-amber-100",
+  };
+
+  return tones[value ?? "unknown"];
+}
+
+function logisticLabel(value?: LogisticKey | string, fallback?: string) {
+  const labels: Record<LogisticKey, string> = {
+    flex: "Flex",
+    agencia_ml: "Agência Mercado Livre",
+    correios: "Correios",
+    places: "Places",
+    mercado_envios: "Mercado Envios",
+    outro: fallback || "Não identificado",
+  };
+
+  return labels[String(value ?? "outro") as LogisticKey] ?? fallback ?? "Não identificado";
+}
+
+function logisticTone(value?: LogisticKey | string) {
+  const tones: Record<LogisticKey, string> = {
+    flex: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
+    agencia_ml: "border-lime-300/30 bg-lime-400/10 text-lime-100",
+    correios: "border-sky-300/30 bg-sky-400/10 text-sky-100",
+    places: "border-violet-300/30 bg-violet-400/10 text-violet-100",
+    mercado_envios: "border-amber-300/30 bg-amber-400/10 text-amber-100",
+    outro: "border-white/12 bg-white/5 text-white/62",
+  };
+
+  return tones[String(value ?? "outro") as LogisticKey] ?? tones.outro;
+}
+
 function getPriority(item?: ImpactItem | null, details?: CaseDetails | null) {
   const raw = [
     item?.type,
@@ -333,6 +441,37 @@ function TabButton({
   );
 }
 
+function FilterChip({
+  active,
+  label,
+  count,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  count?: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-[11px] font-extrabold transition",
+        active
+          ? "border-emerald-300/45 bg-emerald-400/14 text-emerald-50 shadow-[0_12px_35px_rgba(16,185,129,0.12)]"
+          : "border-white/10 bg-black/18 text-white/58 hover:border-white/18 hover:text-white"
+      )}
+    >
+      <span>{label}</span>
+      {typeof count === "number" && (
+        <span className="rounded-full border border-white/10 bg-white/10 px-1.5 py-0.5 text-[10px]">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function ImpactRow({
   item,
   selected,
@@ -369,6 +508,22 @@ function ImpactRow({
             {item.chip && (
               <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-white/70">
                 {item.chip}
+              </span>
+            )}
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", statusGroupTone(item.statusGroup))}>
+              {statusGroupLabel(item.statusGroup)}
+            </span>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", reputationImpactTone(item.reputationImpact))}>
+              {reputationImpactLabel(item.reputationImpact)}
+            </span>
+            {(item.type === "reclamacoes" || item.type === "mediacoes") && (
+              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", removalEligibilityTone(item.removalEligible))}>
+                {removalEligibilityLabel(item.removalEligible)}
+              </span>
+            )}
+            {item.type === "atrasos" && (
+              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", logisticTone(item.logisticKey))}>
+                {logisticLabel(item.logisticKey, item.logisticType)}
               </span>
             )}
             <span className="inline-flex items-center gap-1 text-[11px] text-white/45">
@@ -637,6 +792,23 @@ function CaseSidePanel({
           <InfoTile icon={<Truck className="h-3.5 w-3.5" />} label="Envio" value={displayText(details?.shipment?.id, selected.shipmentId)} />
         </div>
 
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", statusGroupTone(selected.statusGroup))}>
+            {statusGroupLabel(selected.statusGroup)}
+          </span>
+          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", reputationImpactTone(selected.reputationImpact))}>
+            {reputationImpactLabel(selected.reputationImpact)}
+          </span>
+          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", removalEligibilityTone(selected.removalEligible))}>
+            {removalEligibilityLabel(selected.removalEligible)}
+          </span>
+          {selected.type === "atrasos" && (
+            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", logisticTone(selected.logisticKey))}>
+              {logisticLabel(selected.logisticKey, selected.logisticType)}
+            </span>
+          )}
+        </div>
+
         <div className="mt-4 grid grid-cols-1 gap-2 text-[12px]">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
             <span className="text-white/45">Status ML</span>
@@ -739,6 +911,11 @@ function normalizeCasesResponse(json: any): ImpactItem[] {
       ageLabel: String(c?.ageLabel ?? c?.age_label ?? c?.time_ago ?? "—"),
       buyerName: String(c?.buyerName ?? c?.buyer_name ?? c?.buyer?.nickname ?? "Comprador"),
       statusPill: String(c?.statusPill ?? c?.status ?? c?.status_pill ?? "—"),
+      statusGroup: (c?.statusGroup ?? c?.status_group ?? "unknown") as CaseStatus,
+      reputationImpact: (c?.reputationImpact ?? c?.reputation_impact ?? "unknown") as ReputationImpact,
+      removalEligible: (c?.removalEligible ?? c?.removal_eligible ?? "unknown") as RemovalEligibility,
+      logisticKey: (c?.logisticKey ?? c?.logistic_key ?? "outro") as LogisticKey,
+      logisticType: c?.logisticType ? String(c.logisticType) : undefined,
       source: c?.source ? String(c.source) : undefined,
       claimId: c?.claimId ? String(c.claimId) : null,
       orderId: c?.orderId ? String(c.orderId) : null,
@@ -790,6 +967,10 @@ export default function CasesPage() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
+  const [impactFilter, setImpactFilter] = useState<"all" | ReputationImpact>("all");
+  const [logisticFilter, setLogisticFilter] = useState<"all" | LogisticKey>("all");
+  const [filterCounts, setFilterCounts] = useState<FilterCounts | null>(null);
 
   const [apiCounts, setApiCounts] = useState<{
     reclamacoes: number;
@@ -838,6 +1019,10 @@ export default function CasesPage() {
         item.shipmentId,
         item.statusPill,
         item.itemTitle,
+        item.statusGroup,
+        item.reputationImpact,
+        item.removalEligible,
+        item.logisticType,
       ]
         .filter(Boolean)
         .join(" ")
@@ -922,8 +1107,18 @@ export default function CasesPage() {
         setSellerId(sid);
         setSellerName(resolvedSellerName);
 
+        const params = new URLSearchParams({
+          sellerId: sid,
+          page: String(page),
+          limit: "10",
+          type: activeTab,
+          statusFilter,
+          impactFilter,
+          logisticFilter,
+        });
+
         const res = await fetch(
-          `/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=${page}&limit=10&type=${activeTab}`,
+          `/api/ml/cases?${params.toString()}`,
           { cache: "no-store" }
         );
 
@@ -942,6 +1137,7 @@ export default function CasesPage() {
             mediacoes: Number(json.counts.mediacoes ?? 0),
           });
         }
+        setFilterCounts(json?.filterCounts ?? null);
 
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error ?? `Falha ao buscar cases (${res.status})`);
@@ -966,9 +1162,15 @@ export default function CasesPage() {
     return () => {
       alive = false;
     };
-}, [page, activeTab]);
+}, [page, activeTab, statusFilter, impactFilter, logisticFilter]);
 useEffect(() => {
   setPage(1);
+}, [activeTab, statusFilter, impactFilter, logisticFilter]);
+
+useEffect(() => {
+  setStatusFilter("all");
+  setImpactFilter("all");
+  setLogisticFilter("all");
 }, [activeTab]);
 
   useEffect(() => {
@@ -1243,6 +1445,120 @@ useEffect(() => {
               />
             </label>
         </div>
+
+          <div className="mt-4 space-y-3">
+            {(activeTab === "reclamacoes" || activeTab === "mediacoes") && (
+              <div>
+                <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-white/35">
+                  Situação
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <FilterChip
+                    active={statusFilter === "all"}
+                    label="Todas"
+                    count={filterCounts?.status?.all}
+                    onClick={() => setStatusFilter("all")}
+                  />
+                  <FilterChip
+                    active={statusFilter === "open"}
+                    label="Abertas"
+                    count={filterCounts?.status?.open}
+                    onClick={() => setStatusFilter("open")}
+                  />
+                  <FilterChip
+                    active={statusFilter === "closed"}
+                    label="Encerradas"
+                    count={filterCounts?.status?.closed}
+                    onClick={() => setStatusFilter("closed")}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-white/35">
+                Reputação
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <FilterChip
+                  active={impactFilter === "all"}
+                  label="Todos"
+                  count={filterCounts?.impact?.all}
+                  onClick={() => setImpactFilter("all")}
+                />
+                <FilterChip
+                  active={impactFilter === "impacting"}
+                  label="Impactando"
+                  count={filterCounts?.impact?.impacting}
+                  onClick={() => setImpactFilter("impacting")}
+                />
+                <FilterChip
+                  active={impactFilter === "not_impacting"}
+                  label="Não impactando"
+                  count={filterCounts?.impact?.not_impacting}
+                  onClick={() => setImpactFilter("not_impacting")}
+                />
+                <FilterChip
+                  active={impactFilter === "unknown"}
+                  label="Indefinido"
+                  count={filterCounts?.impact?.unknown}
+                  onClick={() => setImpactFilter("unknown")}
+                />
+              </div>
+            </div>
+
+            {activeTab === "atrasos" && (
+              <div>
+                <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-white/35">
+                  Logística do atraso
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <FilterChip
+                    active={logisticFilter === "all"}
+                    label="Todas"
+                    count={filterCounts?.logistics?.all}
+                    onClick={() => setLogisticFilter("all")}
+                  />
+                  <FilterChip
+                    active={logisticFilter === "flex"}
+                    label="Flex"
+                    count={filterCounts?.logistics?.flex}
+                    onClick={() => setLogisticFilter("flex")}
+                  />
+                  <FilterChip
+                    active={logisticFilter === "agencia_ml"}
+                    label="Agência ML"
+                    count={filterCounts?.logistics?.agencia_ml}
+                    onClick={() => setLogisticFilter("agencia_ml")}
+                  />
+                  <FilterChip
+                    active={logisticFilter === "correios"}
+                    label="Correios"
+                    count={filterCounts?.logistics?.correios}
+                    onClick={() => setLogisticFilter("correios")}
+                  />
+                  <FilterChip
+                    active={logisticFilter === "places"}
+                    label="Places"
+                    count={filterCounts?.logistics?.places}
+                    onClick={() => setLogisticFilter("places")}
+                  />
+                  <FilterChip
+                    active={logisticFilter === "mercado_envios"}
+                    label="Mercado Envios"
+                    count={filterCounts?.logistics?.mercado_envios}
+                    onClick={() => setLogisticFilter("mercado_envios")}
+                  />
+                  <FilterChip
+                    active={logisticFilter === "outro"}
+                    label="Não identificado"
+                    count={filterCounts?.logistics?.outro}
+                    onClick={() => setLogisticFilter("outro")}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
 
