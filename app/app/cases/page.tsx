@@ -2,6 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  Clock3,
+  Eye,
+  Hash,
+  MessageSquareText,
+  Package,
+  Search,
+  Truck,
+  UserRound,
+} from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
@@ -132,6 +144,20 @@ function displayText(v: any, fallback = "-") {
   return String(v);
 }
 
+function hasUsefulValue(v: any) {
+  return v !== null && v !== undefined && v !== "" && v !== "-" && v !== "â€”" && v !== "—";
+}
+
+function firstUseful(...values: any[]) {
+  return values.find(hasUsefulValue) ?? null;
+}
+
+function shortText(value: any, max = 120) {
+  const text = displayText(value, "").replace(/\s+/g, " ").trim();
+  if (!text) return "-";
+  return text.length > max ? `${text.slice(0, max - 1).trim()}...` : text;
+}
+
 function displayMoney(value?: number, currencyId?: string) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
   const n = Number(value);
@@ -151,6 +177,61 @@ function joinName(first?: string, last?: string) {
   const a = displayText(first, "").trim();
   const b = displayText(last, "").trim();
   return `${a} ${b}`.trim() || "-";
+}
+
+function impactLabel(type?: ImpactType | string | null) {
+  const labels: Record<string, string> = {
+    reclamacoes: "Reclamação",
+    atrasos: "Atraso",
+    cancelamentos: "Cancelamento",
+    mediacoes: "Mediação",
+  };
+
+  return labels[String(type ?? "")] ?? "Caso";
+}
+
+function impactTone(type?: ImpactType | string | null) {
+  const tones: Record<string, string> = {
+    reclamacoes: "border-emerald-400/25 bg-emerald-400/10 text-emerald-100",
+    atrasos: "border-amber-400/25 bg-amber-400/10 text-amber-100",
+    cancelamentos: "border-rose-400/25 bg-rose-400/10 text-rose-100",
+    mediacoes: "border-sky-400/25 bg-sky-400/10 text-sky-100",
+  };
+
+  return tones[String(type ?? "")] ?? "border-white/10 bg-white/5 text-white/70";
+}
+
+function getPriority(item?: ImpactItem | null, details?: CaseDetails | null) {
+  const raw = [
+    item?.type,
+    item?.statusPill,
+    item?.shippingStatus,
+    item?.shippingSubstatus,
+    details?.claim?.stage,
+    details?.claim?.status,
+    details?.shipment?.status,
+    details?.shipment?.substatus,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    raw.includes("cancel") ||
+    raw.includes("dispute") ||
+    raw.includes("mediacao") ||
+    raw.includes("mediação") ||
+    raw.includes("claim") ||
+    raw.includes("impactando")
+  ) {
+    return { label: "Alta", tone: "text-rose-100 bg-rose-500/15 border-rose-400/25" };
+  }
+
+  if (raw.includes("atras") || raw.includes("delayed") || raw.includes("pending")) {
+    return { label: "Atenção", tone: "text-amber-100 bg-amber-500/15 border-amber-400/25" };
+  }
+
+  return { label: "Monitorar", tone: "text-emerald-100 bg-emerald-500/15 border-emerald-400/25" };
 }
 
 function MetricCard({
@@ -255,56 +336,85 @@ function ImpactRow({
   item,
   selected,
   onSelect,
+  onOpenDetails,
 }: {
   item: ImpactItem;
   selected: boolean;
   onSelect: () => void;
+  onOpenDetails: () => void;
 }) {
-  const leftBorder = cn(selected ? "border-emerald-300" : "border-white/10", "border");
+  const priority = getPriority(item);
 
   return (
     <div
       onClick={onSelect}
       className={cn(
-        "cursor-pointer rounded-2xl bg-white/5 backdrop-blur-xl px-4 py-4 shadow-[0_16px_60px_rgba(0,0,0,0.25)] transition",
-        "hover:shadow-[0_22px_80px_rgba(0,0,0,0.35)]",
-        leftBorder
+        "cursor-pointer rounded-2xl border bg-white/5 px-4 py-4 transition",
+        "hover:border-emerald-300/30 hover:bg-white/[0.075]",
+        selected
+          ? "border-emerald-300/60 bg-emerald-400/[0.08] shadow-[0_18px_70px_rgba(16,185,129,0.14)]"
+          : "border-white/10 shadow-[0_16px_55px_rgba(0,0,0,0.22)]"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", impactTone(item.type))}>
+              {impactLabel(item.type)}
+            </span>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", priority.tone)}>
+              {priority.label}
+            </span>
             {item.chip && (
-              <span className="inline-flex items-center rounded-full bg-emerald-500/15 text-emerald-200 border border-white/10 px-2 py-0.5 text-[11px] font-semibold">
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-white/70">
                 {item.chip}
               </span>
             )}
-            <span className="text-[12px] text-white/60">{item.ageLabel}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-white/45">
+              <Clock3 className="h-3 w-3" />
+              {item.ageLabel}
+            </span>
           </div>
 
           <div className="mt-2 text-[15px] font-bold text-white leading-snug">
             {displayText(item.itemTitle, item.title)}
           </div>
-          <div className="mt-1 text-[12px] text-white/70 leading-relaxed line-clamp-2">{item.reason}</div>
+          <div className="mt-1 text-[12px] text-white/62 leading-relaxed line-clamp-2">
+            {shortText(item.reason, 150)}
+          </div>
 
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-white/60">
-            <div className="flex items-center gap-2">
-              <span className="opacity-70">Vendida:</span>
-              <span className="font-semibold text-white/75">{item.createdAt}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="opacity-70">Atual.:</span>
-              <span className="font-semibold text-white/75">{item.updatedAt}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="opacity-70">Status:</span>
-              <span className="font-semibold text-white/75">{item.statusPill ?? "-"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="opacity-70">Comprador:</span>
-              <span className="font-semibold text-white/75 truncate">
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-white/55 md:grid-cols-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 opacity-70">
+                <UserRound className="h-3 w-3" />
+                Comprador
+              </div>
+              <div className="mt-0.5 truncate font-semibold text-white/78">
                 {displayText(item.buyerNickname, item.buyerName)}
-              </span>
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 opacity-70">
+                <Hash className="h-3 w-3" />
+                Pedido
+              </div>
+              <div className="mt-0.5 truncate font-semibold text-white/78">{displayText(item.orderId)}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 opacity-70">
+                <Truck className="h-3 w-3" />
+                Envio
+              </div>
+              <div className="mt-0.5 truncate font-semibold text-white/78">
+                {displayText(item.shippingStatus, item.orderStatus)}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 opacity-70">
+                <AlertTriangle className="h-3 w-3" />
+                Status
+              </div>
+              <div className="mt-0.5 truncate font-semibold text-white/78">{displayText(item.statusPill)}</div>
             </div>
           </div>
         </div>
@@ -313,18 +423,14 @@ function ImpactRow({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onSelect();
+              onOpenDetails();
             }}
-            className="rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_14px_50px_rgba(16,185,129,0.18)] hover:from-emerald-700 hover:to-emerald-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-3 py-2 text-[12px] font-semibold text-white shadow-[0_14px_50px_rgba(16,185,129,0.18)] hover:from-emerald-700 hover:to-emerald-800"
           >
-            Ver detalhes
+            <Eye className="h-3.5 w-3.5" />
+            Abrir
           </button>
-          <button
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-semibold text-white/85 hover:bg-white/10"
-          >
-            WhatsApp
-          </button>
+          <ChevronRight className={cn("h-4 w-4 transition", selected ? "text-emerald-200" : "text-white/25")} />
         </div>
       </div>
     </div>
@@ -369,6 +475,206 @@ function ChatBubble({ msg }: { msg: Message }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function InfoTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-black/18 px-3 py-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-white/42">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-1 truncate text-[12px] font-semibold text-white/82">{value}</div>
+    </div>
+  );
+}
+
+function MessagePreview({
+  loading,
+  buyerMessages,
+  mediationMessages,
+}: {
+  loading: boolean;
+  buyerMessages: Message[];
+  mediationMessages: Message[];
+}) {
+  const lastBuyer = buyerMessages[buyerMessages.length - 1];
+  const lastMediation = mediationMessages[mediationMessages.length - 1];
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-black/18 p-4 text-[12px] text-white/55">
+        Carregando comunicação...
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/18 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[12px] font-black text-white">
+          <MessageSquareText className="h-4 w-4 text-sky-200" />
+          Comunicação
+        </div>
+        <div className="flex gap-1.5 text-[10px] font-bold">
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-white/62">
+            comprador {buyerMessages.length}
+          </span>
+          <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-sky-100/75">
+            mediação {mediationMessages.length}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2 text-[12px]">
+        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <div className="font-bold text-white/48">Última com comprador</div>
+          <div className="mt-1 leading-relaxed text-white/75">
+            {lastBuyer ? shortText(`${lastBuyer.name}: ${lastBuyer.text}`, 150) : "Sem mensagem carregada."}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <div className="font-bold text-white/48">Última mediação</div>
+          <div className="mt-1 leading-relaxed text-white/75">
+            {lastMediation
+              ? shortText(`${lastMediation.name}: ${lastMediation.text}`, 150)
+              : "Sem interação de mediação carregada."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CaseSidePanel({
+  selected,
+  details,
+  loadingDetails,
+  loadingMessages,
+  buyerMessages,
+  mediationMessages,
+  onOpenDetails,
+}: {
+  selected?: ImpactItem | null;
+  details: CaseDetails | null;
+  loadingDetails: boolean;
+  loadingMessages: boolean;
+  buyerMessages: Message[];
+  mediationMessages: Message[];
+  onOpenDetails: () => void;
+}) {
+  if (!selected) {
+    return (
+      <aside className="rounded-[26px] border border-white/10 bg-white/5 p-5 text-[13px] text-white/60">
+        Selecione um caso para ver a leitura operacional.
+      </aside>
+    );
+  }
+
+  const priority = getPriority(selected, details);
+  const itemTitle = displayText(details?.item?.title, selected.itemTitle || selected.title);
+  const thumbnail = displayText(details?.item?.thumbnail, selected.thumbnail);
+  const buyerName = firstUseful(
+    details?.buyer?.nickname,
+    selected.buyerNickname,
+    joinName(details?.buyer?.firstName ?? selected.buyerFirstName, details?.buyer?.lastName ?? selected.buyerLastName),
+    selected.buyerName
+  );
+  const claimStatus = firstUseful(details?.claim?.status, selected.statusPill);
+  const shipmentStatus = firstUseful(
+    details?.shipment?.substatus,
+    selected.shippingSubstatus,
+    details?.shipment?.status,
+    selected.shippingStatus
+  );
+
+  return (
+    <aside className="sticky top-28 space-y-4">
+      <div className="rounded-[26px] border border-white/10 bg-[#0d1520] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.32)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cn("rounded-full border px-2 py-1 text-[10px] font-black", impactTone(selected.type))}>
+                {impactLabel(selected.type)}
+              </span>
+              <span className={cn("rounded-full border px-2 py-1 text-[10px] font-black", priority.tone)}>
+                prioridade {priority.label}
+              </span>
+            </div>
+            <div className="mt-3 text-[18px] font-black leading-tight text-white">{itemTitle}</div>
+            <div className="mt-2 text-[12px] leading-relaxed text-white/62">
+              {shortText(displayText(details?.claim?.description, selected.reason), 220)}
+            </div>
+          </div>
+
+          {thumbnail && thumbnail !== "-" ? (
+            <img
+              src={thumbnail}
+              alt={itemTitle}
+              className="h-16 w-16 shrink-0 rounded-2xl border border-white/10 object-cover"
+            />
+          ) : (
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5">
+              <Package className="h-6 w-6 text-white/35" />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <InfoTile icon={<UserRound className="h-3.5 w-3.5" />} label="Comprador" value={displayText(buyerName)} />
+          <InfoTile icon={<Hash className="h-3.5 w-3.5" />} label="Pedido" value={displayText(details?.order?.id, selected.orderId)} />
+          <InfoTile icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Claim" value={displayText(details?.claim?.id, selected.claimId)} />
+          <InfoTile icon={<Truck className="h-3.5 w-3.5" />} label="Envio" value={displayText(details?.shipment?.id, selected.shipmentId)} />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-2 text-[12px]">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+            <span className="text-white/45">Status ML</span>
+            <span className="truncate font-semibold text-white/82">{displayText(claimStatus)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+            <span className="text-white/45">Rastreio</span>
+            <span className="truncate font-semibold text-white/82">
+              {displayText(details?.shipment?.trackingNumber, selected.trackingNumber)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+            <span className="text-white/45">Situação envio</span>
+            <span className="truncate font-semibold text-white/82">{displayText(shipmentStatus)}</span>
+          </div>
+        </div>
+
+        {loadingDetails && (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-[12px] text-white/55">
+            Atualizando dados completos...
+          </div>
+        )}
+
+        <div className="mt-4 flex gap-2">
+          <ButtonPrimary onClick={onOpenDetails}>
+            <span className="inline-flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Detalhe completo
+            </span>
+          </ButtonPrimary>
+        </div>
+      </div>
+
+      <MessagePreview
+        loading={loadingMessages}
+        buyerMessages={buyerMessages}
+        mediationMessages={mediationMessages}
+      />
+    </aside>
   );
 }
 
@@ -481,6 +787,7 @@ export default function CasesPage() {
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   const [apiCounts, setApiCounts] = useState<{
     reclamacoes: number;
@@ -494,7 +801,7 @@ export default function CasesPage() {
   const [messageTab, setMessageTab] = useState<"buyer" | "mediation">("buyer");
   const [details, setDetails] = useState<CaseDetails | null>(null);
   const [page, setPage] = useState(1);
-const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   function openDetails(itemId: string) {
     setSelectedId(itemId);
@@ -513,7 +820,41 @@ const [totalPages, setTotalPages] = useState(1);
     return base;
   }, [items, apiCounts]);
 
-  const selected = useMemo(() => items.find((x) => x.id === selectedId) ?? items[0], [items, selectedId]);
+  const visibleItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+
+    return items.filter((item) =>
+      [
+        item.title,
+        item.reason,
+        item.chip,
+        item.buyerName,
+        item.buyerNickname,
+        item.orderId,
+        item.claimId,
+        item.shipmentId,
+        item.statusPill,
+        item.itemTitle,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [items, query]);
+
+  const selected = useMemo(
+    () => visibleItems.find((x) => x.id === selectedId) ?? visibleItems[0] ?? items[0],
+    [items, selectedId, visibleItems]
+  );
+
+  useEffect(() => {
+    if (!visibleItems.length) return;
+    if (!visibleItems.some((item) => item.id === selectedId)) {
+      setSelectedId(visibleItems[0].id);
+    }
+  }, [selectedId, visibleItems]);
 
   useEffect(() => {
     let alive = true;
@@ -601,7 +942,7 @@ useEffect(() => {
     let alive = true;
 
     (async () => {
-      if (!sellerId || !selected || !detailsOpen) {
+      if (!sellerId || !selected) {
         setDetails(null);
         return;
       }
@@ -642,13 +983,13 @@ useEffect(() => {
     return () => {
       alive = false;
     };
-  }, [sellerId, selected, detailsOpen]);
+  }, [sellerId, selected]);
 
   useEffect(() => {
     let alive = true;
 
     (async () => {
-      if (!sellerId || !selected || !detailsOpen) {
+      if (!sellerId || !selected) {
         setBuyerMessages([]);
         setMediationMessages([]);
         return;
@@ -752,7 +1093,7 @@ useEffect(() => {
     return () => {
       alive = false;
     };
-  }, [sellerId, selected, detailsOpen]);
+  }, [sellerId, selected]);
 
   useEffect(() => {
     if (detailsOpen) setMessageTab("buyer");
@@ -785,7 +1126,7 @@ useEffect(() => {
   );
 
   return (
-    <div className="mx-auto max-w-[1120px] px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-[1480px] px-6 lg:px-8 py-8">
       <div className="flex items-start justify-between gap-6">
         <div>
           <Link
@@ -839,9 +1180,10 @@ useEffect(() => {
         </div>
       </section>
 
-      <section className="mt-6 rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_24px_100px_rgba(0,0,0,0.35)] overflow-hidden">
-        <div className="px-5 pt-4">
-          <div className="flex items-center gap-2">
+      <section className="mt-6 rounded-[26px] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)]">
+        <div className="border-b border-white/10 px-5 py-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <TabButton active={activeTab === "reclamacoes"} onClick={() => setActiveTab("reclamacoes")}>
               Reclamações
             </TabButton>
@@ -855,24 +1197,59 @@ useEffect(() => {
               Mediações
             </TabButton>
           </div>
+
+            <label className="relative block min-w-0 xl:w-[360px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar por pedido, comprador, claim ou status"
+                className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 pl-10 pr-4 text-[13px] font-semibold text-white outline-none placeholder:text-white/32 focus:border-emerald-300/50"
+              />
+            </label>
         </div>
 
-        <div className="p-5 space-y-4">
+        </div>
+
+        <div className="grid grid-cols-1 gap-0 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <div className="border-white/10 p-5 xl:border-r">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[12px] font-black text-white">Fila de triagem</div>
+              <div className="mt-1 text-[11px] font-semibold text-white/45">
+                {loading ? "Atualizando casos..." : `${visibleItems.length} de ${items.length} casos nesta visão`}
+              </div>
+            </div>
+            {selected && (
+              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-white/62">
+                Selecionado: {selected.chip ?? selected.claimId ?? selected.orderId ?? selected.id}
+              </span>
+            )}
+          </div>
+          <div className="space-y-3">
           {!loading && items.length === 0 && (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-[13px] text-white/70">
               Nenhum item nessa categoria.
             </div>
           )}
 
-          {items.map((it) => (
+          {!loading && items.length > 0 && visibleItems.length === 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-[13px] text-white/70">
+              Nenhum caso encontrado para essa busca.
+            </div>
+          )}
+
+          {visibleItems.map((it) => (
             <ImpactRow
               key={it.id}
               item={it}
-              selected={it.id === selectedId}
-              onSelect={() => openDetails(it.id)}
+              selected={it.id === selected?.id}
+              onSelect={() => setSelectedId(it.id)}
+              onOpenDetails={() => openDetails(it.id)}
             />
 
           ))}
+          </div>
           {totalPages > 1 && (
   <div className="flex justify-center gap-2 mt-4 flex-wrap">
     <button
@@ -920,6 +1297,18 @@ useEffect(() => {
 )}
         </div>
 
+          <div className="p-5">
+            <CaseSidePanel
+              selected={selected}
+              details={details}
+              loadingDetails={loadingDetails}
+              loadingMessages={loadingMessages}
+              buyerMessages={buyerMessages}
+              mediationMessages={mediationMessages}
+              onOpenDetails={() => selected && openDetails(selected.id)}
+            />
+          </div>
+        </div>
       </section>
 
       {detailsOpen && selected && (
@@ -1024,9 +1413,8 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <ButtonGhost>Suporte</ButtonGhost>
-                    <ButtonPrimary>Ação sugerida</ButtonPrimary>
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-[12px] leading-relaxed text-white/62">
+                    Use os blocos ao lado para conferir venda, envio, claim e histórico de mensagens antes de decidir a tratativa.
                   </div>
 
                   {loadingDetails && (
