@@ -1,8 +1,24 @@
 "use client";
-console.log("VERSAO NOVA");
-console.log("🔥🔥🔥 NOVO CODIGO /app RODANDO 🔥🔥🔥");
-import { useEffect, useMemo, useState } from "react";
+
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import Link from "next/link";
+import {
+  AlertTriangle,
+  Award,
+  BadgeCheck,
+  BarChart3,
+  CalendarClock,
+  CircleGauge,
+  Clock3,
+  Flag,
+  MessageSquareWarning,
+  RefreshCw,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Trophy,
+  XCircle,
+} from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import {
   ReputationThermometer,
@@ -10,13 +26,119 @@ import {
 } from "@/app/components/reputation/ReputationThermometer";
 import SellerSwitcher from "@/app/components/SellerSwitcher";
 
+type MlMetric = {
+  value?: number | string | null;
+  rate?: number | string | null;
+  period?: string | null;
+};
+
 type MlMe = {
+  id?: number | string;
   nickname?: string;
+  seller_experience?: string | null;
+  power_seller_status?: string | null;
+  tags?: string[];
   seller_reputation?: {
     level_id?: string | null;
-    metrics?: any;
+    power_seller_status?: string | null;
+    transactions?: {
+      completed?: number;
+      canceled?: number;
+      ratings?: {
+        positive?: number;
+        neutral?: number;
+        negative?: number;
+      };
+    };
+    metrics?: {
+      claims?: MlMetric;
+      delayed_handling_time?: MlMetric;
+      cancellations?: MlMetric;
+      [key: string]: MlMetric | undefined;
+    };
   };
 };
+
+type ImpactMetrics = {
+  claims: number;
+  mediations: number;
+  cancellations: number;
+  delays: number;
+};
+
+type MetricRates = {
+  claims: number | null;
+  cancellations: number | null;
+  delays: number | null;
+};
+
+type MedalInfo = {
+  label: string;
+  detail: string;
+  tone: "emerald" | "amber" | "sky" | "slate";
+  raw: string;
+};
+
+type SellerCommerce = {
+  completed: number;
+  canceled: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  experience: string;
+};
+
+type AlertItem = {
+  id: string | number;
+  ml_case_id?: string | null;
+  reason?: string | null;
+  status?: string | null;
+  synced_at?: string | null;
+};
+
+type CaseItem = {
+  id: string | number;
+  status?: string | null;
+  protocol_number?: string | null;
+  created_at?: string | null;
+};
+
+const emptyImpact: ImpactMetrics = {
+  claims: 0,
+  mediations: 0,
+  cancellations: 0,
+  delays: 0,
+};
+
+const emptyRates: MetricRates = {
+  claims: null,
+  cancellations: null,
+  delays: null,
+};
+
+const emptyCommerce: SellerCommerce = {
+  completed: 0,
+  canceled: 0,
+  positive: 0,
+  neutral: 0,
+  negative: 0,
+  experience: "-",
+};
+
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function numberValue(value: unknown) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
 function levelFromMl(levelId?: string | null): ReputationLevel {
   const raw = String(levelId ?? "").trim().toLowerCase();
@@ -33,8 +155,7 @@ function levelFromMl(levelId?: string | null): ReputationLevel {
 
   if (raw.includes("red") || raw.includes("vermelho")) return "vermelho";
   if (raw.includes("orange") || raw.includes("laranja")) return "laranja";
-  if (raw.includes("yellow") || raw.includes("amarelo") || raw.includes("amber"))
-    return "amarelo";
+  if (raw.includes("yellow") || raw.includes("amarelo") || raw.includes("amber")) return "amarelo";
   if (raw.includes("green") || raw.includes("verde")) return "verde";
 
   return "amarelo";
@@ -55,510 +176,691 @@ function repLabelFromLevel(level: ReputationLevel) {
 }
 
 function toneFromLevel(level: ReputationLevel) {
-  if (level === "vermelho") return "red";
+  if (level === "vermelho") return "rose";
   if (level === "laranja") return "orange";
-  if (level === "amarelo") return "yellow";
-  return "green";
+  if (level === "amarelo") return "amber";
+  return "emerald";
 }
 
-function toneGlow(tone: "red" | "orange" | "yellow" | "green") {
-  if (tone === "red") return "shadow-[0_0_70px_rgba(255,60,60,0.12)]";
-  if (tone === "orange") return "shadow-[0_0_70px_rgba(255,155,60,0.13)]";
-  if (tone === "yellow") return "shadow-[0_0_70px_rgba(255,220,90,0.12)]";
-  return "shadow-[0_0_70px_rgba(70,255,140,0.12)]";
+function medalFromMl(data: MlMe | null): MedalInfo {
+  const rep = data?.seller_reputation ?? {};
+  const rawCandidates = [
+    rep.power_seller_status,
+    data?.power_seller_status,
+    ...(Array.isArray(data?.tags) ? data.tags : []),
+  ]
+    .filter(Boolean)
+    .map((item) => String(item).toLowerCase());
+
+  const raw = rawCandidates.join(" ");
+
+  if (raw.includes("platinum")) {
+    return {
+      label: "Mercado Líder Platinum",
+      detail: "Maior faixa de medalha do Mercado Livre",
+      tone: "sky",
+      raw,
+    };
+  }
+
+  if (raw.includes("gold")) {
+    return {
+      label: "Mercado Líder Gold",
+      detail: "Medalha avançada de performance",
+      tone: "amber",
+      raw,
+    };
+  }
+
+  if (
+    raw.includes("silver") ||
+    raw.includes("mercadolider") ||
+    raw.includes("mercado_lider") ||
+    raw.includes("leader")
+  ) {
+    return {
+      label: "Mercado Líder",
+      detail: "Conta com medalha ativa",
+      tone: "emerald",
+      raw,
+    };
+  }
+
+  return {
+    label: "Sem medalha",
+    detail: "ML não retornou medalha ativa",
+    tone: "slate",
+    raw,
+  };
 }
 
-function toneLine(tone: "red" | "orange" | "yellow" | "green") {
-  if (tone === "red") return "from-red-500/70 via-red-500/22 to-transparent";
-  if (tone === "orange")
-    return "from-orange-500/70 via-orange-500/22 to-transparent";
-  if (tone === "yellow")
-    return "from-yellow-400/60 via-yellow-400/18 to-transparent";
-  return "from-emerald-400/60 via-emerald-400/18 to-transparent";
+function metricRate(metric?: MlMetric) {
+  return nullableNumber(metric?.rate);
 }
 
-function tonePill(tone: "red" | "orange" | "yellow" | "green") {
-  if (tone === "red") return "border-red-500/30 bg-red-500/10 text-red-200";
-  if (tone === "orange")
-    return "border-orange-500/35 bg-orange-500/10 text-orange-200";
-  if (tone === "yellow")
-    return "border-yellow-400/30 bg-yellow-400/10 text-yellow-100";
-  return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
+function formatPercent(value: number | null) {
+  if (value === null) return "-";
+  const normalized = value > 1 ? value : value * 100;
+  return `${normalized.toLocaleString("pt-BR", {
+    maximumFractionDigits: normalized >= 10 ? 1 : 2,
+  })}%`;
 }
 
-function panelSurface() {
-  return "border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/[0.25] backdrop-blur-md";
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value);
 }
 
-export default function SellerDashboardPage() {
-  console.log("### PAGE /app CARREGOU ###");
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function experienceLabel(value: string) {
+  const raw = value.toUpperCase();
+  if (raw === "NEWBIE") return "Nova";
+  if (raw === "INTERMEDIATE") return "Intermediária";
+  if (raw === "ADVANCED") return "Avançada";
+  if (raw === "EXPERT") return "Especialista";
+  return value && value !== "-" ? value : "-";
+}
+
+function panelClass(extra?: string) {
+  return cn(
+    "rounded-[1.6rem] border border-white/10 bg-white/[0.055] shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl",
+    extra
+  );
+}
+
+export default function SellerSummaryPage() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const [sellerId, setSellerId] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string>("—");
+  const [mlUserId, setMlUserId] = useState("");
+  const [storeName, setStoreName] = useState("-");
 
   const [repLevel, setRepLevel] = useState<ReputationLevel>("amarelo");
-  const [repText, setRepText] = useState<string>("Carregando...");
+  const [score, setScore] = useState<number | null>(null);
+  const [medal, setMedal] = useState<MedalInfo>(() => medalFromMl(null));
+  const [impactMetrics, setImpactMetrics] = useState<ImpactMetrics>(emptyImpact);
+  const [rates, setRates] = useState<MetricRates>(emptyRates);
+  const [commerce, setCommerce] = useState<SellerCommerce>(emptyCommerce);
 
-  const [claimsImpact, setClaimsImpact] = useState<number>(0);
-  const [delaysImpact, setDelaysImpact] = useState<number>(0);
-  const [claimsRecent, setClaimsRecent] = useState<number>(0);
-  const [ordersLate, setOrdersLate] = useState<number>(0);
-
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [inProgress, setInProgress] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [inProgress, setInProgress] = useState<CaseItem[]>([]);
+  const [mediationsSource, setMediationsSource] = useState("cases");
 
   useEffect(() => {
-    (async () => {
+    let alive = true;
+
+    async function load() {
       setLoading(true);
+      setLoadError("");
 
       const { data } = await supabaseBrowser.auth.getUser();
       const user = data?.user;
 
-      console.log("[/app] user =", user);
-
       if (!user) {
-        console.log("[/app] sem usuário logado");
+        if (!alive) return;
         setSellerId(null);
-        setStoreName("—");
+        setStoreName("-");
         setAlerts([]);
         setInProgress([]);
         setLoading(false);
         return;
       }
-
-      console.log(
-        "[/app] localStorage activeSellerId (antes) =",
-        localStorage.getItem("activeSellerId")
-      );
-
-      // 🔥 SEMPRE busca do backend a fonte da verdade
-      const r = await fetch(`/api/me/seller?userId=${user.id}`, {
-        cache: "no-store",
-      });
-
-      const j = await r.json().catch(() => ({}));
-
-      console.log("[/app] resposta /api/me/seller =", j);
-
-      if (!r.ok || !j?.sellerId) {
-        console.log("[/app] /api/me/seller não retornou seller válido");
-        setSellerId(null);
-        setStoreName("—");
-        setAlerts([]);
-        setInProgress([]);
-        setLoading(false);
-        return;
-      }
-
-      const sidBackend = String(j.sellerId);
-      let sidLocal: string | null = null;
 
       try {
-        sidLocal = localStorage.getItem("activeSellerId");
-      } catch (err) {
-        console.log("[/app] erro lendo localStorage", err);
-      }
+        const sellerRes = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+          cache: "no-store",
+        });
+        const sellerJson = await sellerRes.json().catch(() => ({}));
 
-      // 🔥 mantém o localStorage só como cache sincronizado
-      if (sidLocal !== sidBackend) {
-        try {
-          localStorage.setItem("activeSellerId", sidBackend);
-          console.log("[/app] localStorage corrigido para =", sidBackend);
-        } catch (err) {
-          console.log("[/app] erro salvando localStorage", err);
+        if (!sellerRes.ok || !sellerJson?.sellerId) {
+          throw new Error(sellerJson?.error ?? "Não foi possível identificar o seller ativo.");
         }
-      }
 
-      const sid = sidBackend;
+        const sid = String(sellerJson.sellerId);
 
-      console.log("[/app] sid final antes dos fetches =", sid);
+        try {
+          localStorage.setItem("activeSellerId", sid);
+        } catch {
+          // ignore
+        }
 
-      setSellerId(sid);
-      console.log("[/app] setSellerId =", sid);
+        if (!alive) return;
+        setSellerId(sid);
 
-      console.log("[/app] chamando /api/ml/account/me com sellerId =", sid);
+        const [meRes, mediationRes, compResult, casesResult] = await Promise.all([
+          fetch(`/api/ml/account/me?sellerId=${encodeURIComponent(sid)}`, {
+            cache: "no-store",
+          }),
+          fetch(
+            `/api/ml/cases?sellerId=${encodeURIComponent(
+              sid
+            )}&type=mediacoes&impactFilter=impacting&page=1&limit=1`,
+            { cache: "no-store" }
+          ),
+          supabaseBrowser
+            .from("complaints")
+            .select("id, ml_case_id, reason, status, impact_level, synced_at")
+            .eq("seller_id", sid)
+            .order("synced_at", { ascending: false })
+            .limit(6),
+          supabaseBrowser
+            .from("cases")
+            .select("id, status, protocol_number, created_at, complaint_id")
+            .eq("seller_id", sid)
+            .neq("status", "resolvido")
+            .order("created_at", { ascending: false })
+            .limit(5),
+        ]);
 
-      const meRes = await fetch(`/api/ml/account/me?sellerId=${sid}`, {
-        cache: "no-store",
-      });
+        const meJson = await meRes.json().catch(() => ({}));
 
-      const meJson = await meRes.json().catch(() => ({}));
+        if (alive && meRes.ok && meJson?.data) {
+          const d: MlMe = meJson.data;
+          const rep = d.seller_reputation ?? {};
+          const metrics = rep.metrics ?? {};
+          const transactions = rep.transactions ?? {};
+          const ratings = transactions.ratings ?? {};
 
-      console.log("[/app] resposta /api/ml/account/me =", meJson);
+          const nextLevel = levelFromMl(rep.level_id ?? null);
+          setStoreName(d.nickname ?? "-");
+          setMlUserId(d.id ? String(d.id) : "");
+          setRepLevel(nextLevel);
+          setScore(numberValue(meJson?.computed?.score) || null);
+          setMedal(medalFromMl(d));
+          setImpactMetrics({
+            claims: numberValue(metrics.claims?.value),
+            mediations: 0,
+            cancellations: numberValue(metrics.cancellations?.value),
+            delays: numberValue(metrics.delayed_handling_time?.value),
+          });
+          setRates({
+            claims: metricRate(metrics.claims),
+            cancellations: metricRate(metrics.cancellations),
+            delays: metricRate(metrics.delayed_handling_time),
+          });
+          setCommerce({
+            completed: numberValue(transactions.completed),
+            canceled: numberValue(transactions.canceled),
+            positive: numberValue(ratings.positive),
+            neutral: numberValue(ratings.neutral),
+            negative: numberValue(ratings.negative),
+            experience: String(d.seller_experience ?? "-"),
+          });
+        } else if (alive) {
+          setRepLevel("amarelo");
+          setScore(null);
+          setStoreName("-");
+          setMlUserId("");
+          setMedal(medalFromMl(null));
+          setImpactMetrics(emptyImpact);
+          setRates(emptyRates);
+          setCommerce(emptyCommerce);
+        }
 
-      if (meRes.ok && meJson?.data) {
-        const d: MlMe = meJson.data;
+        const mediationJson = await mediationRes.json().catch(() => ({}));
+        if (alive && mediationRes.ok && mediationJson?.ok) {
+          const impactingMediations = numberValue(
+            mediationJson.total ?? mediationJson.filterCounts?.impact?.impacting
+          );
+          const fallbackMediations = numberValue(mediationJson.counts?.mediacoes);
+          const mediations = impactingMediations || fallbackMediations;
+          setImpactMetrics((current) => ({ ...current, mediations }));
+          setMediationsSource(impactingMediations ? "impactantes" : "detectadas");
+        }
 
-        console.log("[/app] nickname vindo da API ML =", d.nickname);
-        console.log(
-          "[/app] reputation level vindo da API ML =",
-          d.seller_reputation?.level_id
-        );
-
-        setStoreName(d.nickname ?? "—");
-
-        const lvl = levelFromMl(d.seller_reputation?.level_id ?? null);
-        setRepLevel(lvl);
-        setRepText(repTextFromLevel(lvl));
-
-        const m = d.seller_reputation?.metrics ?? {};
-        const claims = Number(m?.claims?.value ?? 0);
-        const delays = Number(m?.delayed_handling_time?.value ?? 0);
-
-        console.log("[/app] metrics claims =", claims);
-        console.log("[/app] metrics delays =", delays);
-
-        setClaimsRecent(claims);
-        setDelaysImpact(delays);
-
-        setClaimsImpact(claims);
-        setOrdersLate(delays);
-      } else {
-        console.log("[/app] /api/ml/account/me falhou ou veio sem data");
-
-        setRepLevel("amarelo");
-        setRepText("Indisponível");
-        setStoreName("—");
-        setClaimsRecent(0);
-        setDelaysImpact(0);
-        setClaimsImpact(0);
-        setOrdersLate(0);
-      }
-
-      try {
-        console.log("[/app] consultando complaints com seller_id =", sid);
-
-        const { data: comp, error: compError } = await supabaseBrowser
-          .from("complaints")
-          .select("id, ml_case_id, reason, status, impact_level, synced_at")
-          .eq("seller_id", sid)
-          .order("synced_at", { ascending: false })
-          .limit(8);
-
-        console.log("[/app] resposta complaints =", comp);
-        console.log("[/app] erro complaints =", compError);
-
-        setAlerts(comp ?? []);
-
-        console.log("[/app] consultando cases com seller_id =", sid);
-
-        const { data: cs, error: csError } = await supabaseBrowser
-          .from("cases")
-          .select("id, status, protocol_number, created_at, complaint_id")
-          .eq("seller_id", sid)
-          .neq("status", "resolvido")
-          .order("created_at", { ascending: false })
-          .limit(6);
-
-        console.log("[/app] resposta cases =", cs);
-        console.log("[/app] erro cases =", csError);
-
-        setInProgress(cs ?? []);
-      } catch (err) {
-        console.log("[/app] erro geral consultando Supabase =", err);
+        if (alive) {
+          setAlerts(compResult.data ?? []);
+          setInProgress(casesResult.data ?? []);
+        }
+      } catch (err: unknown) {
+        if (!alive) return;
+        setLoadError(err instanceof Error ? err.message : "Não foi possível carregar o resumo.");
+        setSellerId(null);
         setAlerts([]);
         setInProgress([]);
+      } finally {
+        if (alive) setLoading(false);
       }
+    }
 
-      console.log("[/app] finalizou carregamento");
-      setLoading(false);
-    })();
+    load();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const repLabel = useMemo(() => repLabelFromLevel(repLevel), [repLevel]);
+  const repText = useMemo(() => repTextFromLevel(repLevel), [repLevel]);
   const tone = useMemo(() => toneFromLevel(repLevel), [repLevel]);
+
+  const totalImpact = useMemo(
+    () =>
+      impactMetrics.claims +
+      impactMetrics.mediations +
+      impactMetrics.cancellations +
+      impactMetrics.delays,
+    [impactMetrics]
+  );
+
+  const maxImpact = Math.max(
+    impactMetrics.claims,
+    impactMetrics.mediations,
+    impactMetrics.cancellations,
+    impactMetrics.delays,
+    1
+  );
+
+  const topRisk = useMemo(() => {
+    const ordered = [
+      { label: "reclamações", value: impactMetrics.claims },
+      { label: "mediações", value: impactMetrics.mediations },
+      { label: "cancelamentos", value: impactMetrics.cancellations },
+      { label: "atrasos", value: impactMetrics.delays },
+    ].sort((a, b) => b.value - a.value);
+
+    if (!ordered[0]?.value) return "Sem impacto ativo no termômetro.";
+    return `${ordered[0].value} ${ordered[0].label} puxando a prioridade.`;
+  }, [impactMetrics]);
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="text-sm text-white/60">Carregando dashboard…</div>
+      <div className="space-y-4">
+        <div className="h-8 w-44 animate-pulse rounded-full bg-white/10" />
+        <div className="h-[520px] animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.04]" />
       </div>
     );
   }
 
   if (!sellerId) {
     return (
-      <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-        <p className="text-sm text-white/60">
-          Você não tem seller conectado nesta conta.
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-          <Link
-            className="inline-flex rounded-xl border border-white/10 px-4 py-2 hover:bg-white/5 text-white/80"
-            href="/login"
-          >
-            Voltar ao login
-          </Link>
+      <div className={cn(panelClass("p-8"), "max-w-2xl")}>
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10 text-amber-100">
+          <AlertTriangle className="h-5 w-5" aria-hidden="true" />
         </div>
+        <h1 className="mt-5 text-2xl font-semibold text-white">Resumo indisponível</h1>
+        <p className="mt-2 text-sm leading-6 text-white/55">
+          {loadError || "Você não tem seller conectado nesta conta."}
+        </p>
+        <Link
+          className="mt-5 inline-flex rounded-xl border border-white/10 px-4 py-2 text-sm text-white/80 hover:bg-white/5"
+          href="/login"
+        >
+          Voltar ao login
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <section
-        className={[
-          "rounded-2xl overflow-hidden",
-          "border border-white/10",
-          "bg-black/25",
-          "backdrop-blur-md",
-          toneGlow(tone),
-        ].join(" ")}
-      >
-        <div className="relative">
-          <div className="pointer-events-none absolute -inset-20 bg-[radial-gradient(ellipse_at_top_left,rgba(90,255,140,0.10),transparent_55%),radial-gradient(ellipse_at_top_right,rgba(255,210,90,0.10),transparent_55%)]" />
-          <div className="relative">
-            <div className="px-4 py-3">
-              <div className={["rounded-xl", panelSurface(), "overflow-visible"].join(" ")}>
-                <div className={`h-1.5 bg-gradient-to-r ${toneLine(tone)}`} />
-                <div className="px-3 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="h-9 w-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
-                      <span className="text-yellow-300">⚠️</span>
-                    </div>
+      <section className={cn(panelClass("overflow-hidden"), "relative")}>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,0.18),transparent_35%),radial-gradient(circle_at_92%_6%,rgba(250,204,21,0.13),transparent_28%)]" />
+        <div className="relative p-5 lg:p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/70">
+                <span>Resumo</span>
+                <span className="h-1 w-1 rounded-full bg-emerald-300/60" />
+                <span>Seller selecionado</span>
+              </div>
+              <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end">
+                <h1 className="truncate text-3xl font-black text-white sm:text-4xl">
+                  {storeName}
+                </h1>
+                <StatusPill tone={tone} label={repText} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/50">
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                  sellerId: <span className="font-mono text-white/70">{sellerId}</span>
+                </span>
+                {mlUserId ? (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                    ML user: <span className="font-mono text-white/70">{mlUserId}</span>
+                  </span>
+                ) : null}
+              </div>
+            </div>
 
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white">
-                        ALERTA DA CONTA —{" "}
-                        <span className="text-yellow-200">{repLabel}</span>
-                      </div>
-                      <div className="text-[11px] text-white/50 truncate">
-                        {storeName} — sellerId:{" "}
-                        <span className="font-mono">{sellerId}</span>
-                      </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <SellerSwitcher />
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white/75 hover:bg-white/10"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                Atualizar
+              </button>
+              <Link
+                href="/app/cases"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-50 hover:bg-emerald-400/15"
+              >
+                Ver cases
+              </Link>
+            </div>
+          </div>
 
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span
-                          className={`text-[11px] px-2 py-1 rounded-full border ${tonePill(tone)}`}
-                        >
-                          {repText}
-                        </span>
+          <div className="mt-6 grid gap-4 xl:grid-cols-[1.05fr_.95fr]">
+            <div className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">Reputação do seller</div>
+                  <div className="mt-1 text-xs text-white/45">Termômetro oficial da conta ativa</div>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/55">
+                  {score ? `Score ${score}` : "Score -"}
+                </div>
+              </div>
 
-                        <span className="text-[11px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-white/70">
-                          Reclamações:{" "}
-                          <span className="text-white/90">{claimsRecent}</span>
-                        </span>
-
-                        <span className="text-[11px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-white/70">
-                          Atrasos:{" "}
-                          <span className="text-white/90">{delaysImpact}</span>
-                        </span>
-                      </div>
-
-                    </div>
-                  </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-  <SellerSwitcher />
-
-  <Link
-    href="/app/cases"
-    className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white/85 hover:bg-white/10"
-  >
-    Abrir defesa urgente →
-  </Link>
-</div>
+              <div className="flex justify-center">
+                <div className="w-full max-w-[620px]">
+                  <ReputationThermometer
+                    level={repLevel}
+                    label={repLabel}
+                    subtitle={repText}
+                    scoreText={score ? `Score ${score}` : "Score -"}
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="px-4 pb-4">
-              <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-3 items-stretch">
-                <div className={["rounded-2xl", panelSurface(), "overflow-hidden"].join(" ")}>
-                  <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <div className="text-sm font-semibold text-white/90">
-                      Reputação do seller
-                    </div>
-                    <div className="text-xs text-white/45 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                      Score —
-                    </div>
-                  </div>
-
-                  <div className="p-4 flex items-center justify-center">
-                    <div className="w-full flex justify-center origin-top scale-[0.90]">
-                      <ReputationThermometer
-                        level={repLevel}
-                        label={repLabel}
-                        subtitle={repText}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className={[
-                    "rounded-2xl overflow-hidden",
-                    "border border-white/10",
-                    "bg-gradient-to-b from-white/[0.07] to-black/[0.35]",
-                    "backdrop-blur-md",
-                    "relative",
-                  ].join(" ")}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,220,120,0.12),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(0,255,140,0.10),transparent_60%)]" />
-
-                  <div className="relative">
-                    <div className="px-4 py-3 border-b border-white/10">
-                      <div className="flex items-center gap-2">
-                        <span className="text-yellow-300">⚠️</span>
-                        <div className="text-sm font-semibold text-white/90">
-                          ALERTA DETECTADO HOJE:
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 space-y-3">
-                      <div className="space-y-2.5 text-sm text-white/80">
-                        <div className="flex gap-3">
-                          <div className="h-6 w-6 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/70">
-                            1
-                          </div>
-                          <div>Reclamação que pode virar impacto.</div>
-                        </div>
-
-                        <div className="flex gap-3">
-                          <div className="h-6 w-6 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/70">
-                            2
-                          </div>
-                          <div>Atrasos que podem virar impacto.</div>
-                        </div>
-                      </div>
-
-                      <Link
-                        href="/app/cases"
-                        className={[
-                          "w-full inline-flex items-center justify-center rounded-xl px-4 py-2.5",
-                          "border border-yellow-400/25",
-                          "bg-gradient-to-r from-yellow-400/15 via-yellow-300/10 to-transparent",
-                          "text-white font-semibold",
-                          "shadow-[0_0_40px_rgba(255,220,90,0.08)]",
-                          "hover:from-yellow-400/20 hover:via-yellow-300/12",
-                        ].join(" ")}
-                      >
-                        ABRIR DEFESA URGENTE →
-                      </Link>
-
-                    </div>
-                  </div>
-                </div>
+            <div className="grid gap-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MedalCard medal={medal} />
+                <FocusCard totalImpact={totalImpact} topRisk={topRisk} tone={tone} />
               </div>
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <KpiCardDark
-                  n="1"
-                  title="Reclamação"
-                  subtitle="Impactante"
-                  value={claimsImpact}
-                  hint="Em espaço de impacto"
-                />
-                <KpiCardDark
-                  n="2"
-                  title="Atrasos Flex"
-                  subtitle="Impactantes"
-                  value={delaysImpact}
-                  hint="Encaminhados"
-                  badge="RISCO"
-                />
-                <KpiCardDark
-                  n="6"
-                  title="Reclamações"
-                  subtitle="Recentes"
-                  value={claimsRecent}
-                  hint="Desde semana retrasada"
-                />
-                <KpiCardDark
-                  n="9"
-                  title="Pedidos"
-                  subtitle="Atrasados"
-                  value={ordersLate}
-                  hint="Ainda não enviados"
-                />
+              <div className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-white">Impactos no termômetro</div>
+                    <div className="mt-1 text-xs text-white/45">
+                      Reclamações, mediações, cancelamentos e atrasos
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/55">
+                    {formatNumber(totalImpact)} no total
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <ImpactRow
+                    icon={MessageSquareWarning}
+                    label="Reclamações"
+                    value={impactMetrics.claims}
+                    hint={`Taxa ${formatPercent(rates.claims)}`}
+                    color="emerald"
+                    max={maxImpact}
+                  />
+                  <ImpactRow
+                    icon={Flag}
+                    label="Mediações"
+                    value={impactMetrics.mediations}
+                    hint={mediationsSource === "impactantes" ? "Impactando reputação" : "Detectadas em cases"}
+                    color="sky"
+                    max={maxImpact}
+                  />
+                  <ImpactRow
+                    icon={XCircle}
+                    label="Cancelamentos"
+                    value={impactMetrics.cancellations}
+                    hint={`Taxa ${formatPercent(rates.cancellations)}`}
+                    color="rose"
+                    max={maxImpact}
+                  />
+                  <ImpactRow
+                    icon={Clock3}
+                    label="Atrasos"
+                    value={impactMetrics.delays}
+                    hint={`Taxa ${formatPercent(rates.delays)}`}
+                    color="amber"
+                    max={maxImpact}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+      <section className="grid gap-4 xl:grid-cols-[.95fr_1.05fr]">
+        <div className={panelClass("p-5")}>
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="font-semibold text-white/90">Alertas — ação necessária</div>
-              <div className="text-xs text-white/45">Itens recentes</div>
+              <h2 className="text-base font-semibold text-white">Leitura rápida</h2>
+              <p className="mt-1 text-sm text-white/45">O que merece atenção nesta conta agora.</p>
             </div>
-            <Link href="/app/cases" className="text-sm text-white/60 hover:text-white">
-              Ver todos →
-            </Link>
+            <Sparkles className="h-5 w-5 text-emerald-100/70" aria-hidden="true" />
           </div>
 
-          <div className="p-3">
-            {alerts.length === 0 ? (
-              <div className="p-4 text-sm text-white/60">Nenhum alerta por enquanto.</div>
-            ) : (
-              alerts.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 mb-2"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-white/90">
-                      {a.reason ?? "Reclamação"}
-                    </div>
-                    <div className="text-xs text-white/50">
-                      Caso ML: <span className="font-mono">{a.ml_case_id}</span>
-                    </div>
-                  </div>
-                  <Link
-                    href="/app/cases"
-                    className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
-                  >
-                    Abrir defesa
-                  </Link>
-                </div>
-              ))
-            )}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <InsightCard
+              icon={CircleGauge}
+              label="Prioridade"
+              value={topRisk}
+              tone={totalImpact > 0 ? "amber" : "emerald"}
+            />
+            <InsightCard
+              icon={Trophy}
+              label="Medalha"
+              value={`${medal.label} | ${medal.detail}`}
+              tone={medal.tone === "slate" ? "slate" : "emerald"}
+            />
+            <InsightCard
+              icon={ShoppingBag}
+              label="Vendas concluídas"
+              value={`${formatNumber(commerce.completed)} concluídas no histórico ML`}
+              tone="sky"
+            />
+            <InsightCard
+              icon={BadgeCheck}
+              label="Experiência ML"
+              value={experienceLabel(commerce.experience)}
+              tone="slate"
+            />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className={panelClass("p-5")}>
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="font-semibold text-white/90">Chamados em andamento</div>
-              <div className="text-xs text-white/45">Casos não finalizados</div>
+              <h2 className="text-base font-semibold text-white">Saúde comercial</h2>
+              <p className="mt-1 text-sm text-white/45">Volume, avaliações e sinal de confiança da conta.</p>
             </div>
-            <Link href="/app/cases" className="text-sm text-white/60 hover:text-white">
-              Ver casos →
-            </Link>
+            <BarChart3 className="h-5 w-5 text-emerald-100/70" aria-hidden="true" />
           </div>
 
-          <div className="p-3">
-            {inProgress.length === 0 ? (
-              <div className="p-4 text-sm text-white/60">Nenhum chamado em andamento.</div>
-            ) : (
-              inProgress.map((cs) => (
-                <div
-                  key={cs.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 mb-2"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-white/90">
-                      Caso #{String(cs.id).slice(0, 6)} — {cs.status}
-                    </div>
-                    <div className="text-xs text-white/50">
-                      Protocolo: <span className="font-mono">{cs.protocol_number ?? "-"}</span>
-                    </div>
-                  </div>
-                  <Link
-                    href="/app/cases"
-                    className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
-                  >
-                    Detalhar
-                  </Link>
-                </div>
-              ))
-            )}
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <CommerceStat label="Positivas" value={commerce.positive} tone="emerald" />
+            <CommerceStat label="Neutras" value={commerce.neutral} tone="amber" />
+            <CommerceStat label="Negativas" value={commerce.negative} tone="rose" />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-white/55">Canceladas no histórico</span>
+              <span className="font-semibold text-white">{formatNumber(commerce.canceled)}</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-300 via-amber-300 to-rose-300"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    commerce.completed > 0 ? (commerce.canceled / commerce.completed) * 100 : 0
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <TimelinePanel
+          title="Alertas recentes"
+          subtitle="Ocorrências sincronizadas para defesa"
+          icon={AlertTriangle}
+          empty="Nenhum alerta por enquanto."
+          items={alerts}
+          getTitle={(item) => item.reason ?? "Reclamação"}
+          getMeta={(item) =>
+            `Caso ML ${item.ml_case_id ?? "-"} | ${item.status ?? "sem status"} | ${formatDateTime(
+              item.synced_at
+            )}`
+          }
+        />
+        <TimelinePanel
+          title="Chamados em andamento"
+          subtitle="Casos ainda não finalizados"
+          icon={CalendarClock}
+          empty="Nenhum chamado em andamento."
+          items={inProgress}
+          getTitle={(item) => `Caso #${String(item.id).slice(0, 6)} | ${item.status ?? "aberto"}`}
+          getMeta={(item) =>
+            `Protocolo ${item.protocol_number ?? "-"} | ${formatDateTime(item.created_at)}`
+          }
+        />
+      </section>
+    </div>
+  );
+}
+
+function StatusPill({ tone, label }: { tone: string; label: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex rounded-full border px-3 py-1 text-xs font-semibold",
+        tone === "emerald" && "border-emerald-300/25 bg-emerald-400/10 text-emerald-50",
+        tone === "amber" && "border-amber-300/25 bg-amber-400/10 text-amber-50",
+        tone === "orange" && "border-orange-300/25 bg-orange-400/10 text-orange-50",
+        tone === "rose" && "border-rose-300/25 bg-rose-400/10 text-rose-50"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MedalCard({ medal }: { medal: MedalInfo }) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[1.4rem] border p-4",
+        medal.tone === "sky" && "border-sky-300/20 bg-sky-400/10",
+        medal.tone === "amber" && "border-amber-300/25 bg-amber-400/10",
+        medal.tone === "emerald" && "border-emerald-300/20 bg-emerald-400/10",
+        medal.tone === "slate" && "border-white/10 bg-white/[0.045]"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+            Medalha do seller
+          </div>
+          <div className="mt-2 text-xl font-black text-white">{medal.label}</div>
+          <div className="mt-1 text-sm text-white/50">{medal.detail}</div>
+        </div>
+        <Award className="h-6 w-6 text-white/65" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
+function FocusCard({
+  totalImpact,
+  topRisk,
+  tone,
+}: {
+  totalImpact: number;
+  topRisk: string;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+            Foco do dia
+          </div>
+          <div className="mt-2 text-3xl font-black text-white">{formatNumber(totalImpact)}</div>
+          <div className="mt-1 text-sm text-white/50">{topRisk}</div>
+        </div>
+        <ShieldCheck
+          className={cn(
+            "h-6 w-6",
+            tone === "emerald" && "text-emerald-200",
+            tone === "amber" && "text-amber-200",
+            tone === "orange" && "text-orange-200",
+            tone === "rose" && "text-rose-200"
+          )}
+          aria-hidden="true"
+        />
+      </div>
+    </div>
+  );
+}
+
+function ImpactRow({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  color,
+  max,
+}: {
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  value: number;
+  hint: string;
+  color: "emerald" | "sky" | "rose" | "amber";
+  max: number;
+}) {
+  const width = Math.max(4, Math.min(100, (value / max) * 100));
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+            color === "emerald" && "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+            color === "sky" && "border-sky-300/20 bg-sky-400/10 text-sky-100",
+            color === "rose" && "border-rose-300/20 bg-rose-400/10 text-rose-100",
+            color === "amber" && "border-amber-300/20 bg-amber-400/10 text-amber-100"
+          )}
+        >
+          <Icon className="h-5 w-5" aria-hidden={true} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-white">{label}</div>
+            <div className="text-xl font-black text-white">{formatNumber(value)}</div>
+          </div>
+          <div className="mt-1 text-xs text-white/45">{hint}</div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className={cn(
+                "h-full rounded-full",
+                color === "emerald" && "bg-emerald-300",
+                color === "sky" && "bg-sky-300",
+                color === "rose" && "bg-rose-300",
+                color === "amber" && "bg-amber-300"
+              )}
+              style={{ width: `${width}%` }}
+            />
           </div>
         </div>
       </div>
@@ -566,44 +868,125 @@ export default function SellerDashboardPage() {
   );
 }
 
-function KpiCardDark({
-  n,
-  title,
-  subtitle,
+function InsightCard({
+  icon: Icon,
+  label,
   value,
-  hint,
-  badge,
+  tone,
 }: {
-  n: string;
-  title: string;
-  subtitle: string;
-  value: number;
-  hint?: string;
-  badge?: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  value: string;
+  tone: "emerald" | "amber" | "sky" | "slate";
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/[0.30] backdrop-blur-md p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/70">
-            {n}
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+            tone === "emerald" && "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+            tone === "amber" && "border-amber-300/20 bg-amber-400/10 text-amber-100",
+            tone === "sky" && "border-sky-300/20 bg-sky-400/10 text-sky-100",
+            tone === "slate" && "border-white/10 bg-white/5 text-white/60"
+          )}
+        >
+          <Icon className="h-5 w-5" aria-hidden={true} />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">
+            {label}
           </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold text-white/90">{title}</div>
-            <div className="text-xs text-white/60">{subtitle}</div>
+          <div className="mt-1 text-sm font-semibold leading-5 text-white/85">{value}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommerceStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "emerald" | "amber" | "rose";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border p-4",
+        tone === "emerald" && "border-emerald-300/18 bg-emerald-400/10",
+        tone === "amber" && "border-amber-300/18 bg-amber-400/10",
+        tone === "rose" && "border-rose-300/18 bg-rose-400/10"
+      )}
+    >
+      <div className="text-xs text-white/45">{label}</div>
+      <div className="mt-2 text-2xl font-black text-white">{formatNumber(value)}</div>
+    </div>
+  );
+}
+
+function TimelinePanel<T extends { id: string | number }>({
+  title,
+  subtitle,
+  icon: Icon,
+  empty,
+  items,
+  getTitle,
+  getMeta,
+}: {
+  title: string;
+  subtitle: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  empty: string;
+  items: T[];
+  getTitle: (item: T) => string;
+  getMeta: (item: T) => string;
+}) {
+  return (
+    <div className={panelClass("overflow-hidden")}>
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70">
+            <Icon className="h-5 w-5" aria-hidden={true} />
+          </div>
+          <div>
+            <div className="font-semibold text-white/90">{title}</div>
+            <div className="text-xs text-white/45">{subtitle}</div>
           </div>
         </div>
-
-        {badge ? (
-          <span className="text-[11px] px-2 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-200">
-            {badge}
-          </span>
-        ) : null}
+        <Link href="/app/cases" className="text-sm text-white/55 hover:text-white">
+          Ver cases
+        </Link>
       </div>
 
-      <div className="mt-3 text-3xl font-semibold text-white">{value}</div>
-
-      {hint ? <div className="mt-1 text-xs text-white/45">{hint}</div> : null}
+      <div className="p-3">
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-white/50">
+            {empty}
+          </div>
+        ) : (
+          items.map((item) => (
+            <Link
+              key={item.id}
+              href="/app/cases"
+              className="mb-2 block rounded-2xl border border-white/10 bg-white/[0.045] p-4 transition hover:bg-white/[0.07]"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-white/90">{getTitle(item)}</div>
+                  <div className="mt-1 truncate text-xs text-white/45">{getMeta(item)}</div>
+                </div>
+                <span className="shrink-0 rounded-full border border-white/10 px-3 py-1 text-xs text-white/55">
+                  Abrir
+                </span>
+              </div>
+            </Link>
+          ))
+        )}
+      </div>
     </div>
   );
 }

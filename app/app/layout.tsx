@@ -186,7 +186,7 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
         <div className="mx-auto max-w-7xl px-6 pb-3">
           <nav className="flex items-center gap-2">
             <Link href="/app" className={navLinkClass(pathname === "/app")}>
-              Início
+              Resumo
             </Link>
 
             {isAdmin ? (
