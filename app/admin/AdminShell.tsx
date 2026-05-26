@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,6 +11,7 @@ import {
   LogOut,
   ShieldCheck,
 } from "lucide-react";
+import { applySpvTheme, readSpvTheme } from "@/lib/spvTheme";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -36,6 +38,19 @@ export default function AdminShell({
   email: string;
 }) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    const syncTheme = () => applySpvTheme(readSpvTheme());
+
+    syncTheme();
+    window.addEventListener("storage", syncTheme);
+    window.addEventListener("spv-theme-change", syncTheme);
+
+    return () => {
+      window.removeEventListener("storage", syncTheme);
+      window.removeEventListener("spv-theme-change", syncTheme);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#050707] text-white">

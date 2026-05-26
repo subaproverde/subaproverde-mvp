@@ -48,6 +48,92 @@ body {
   overflow-x: hidden;
 }
 
+html[data-spv-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-spv-theme="light"] {
+  --background: #eef7ec;
+  --foreground: #102018;
+  --glow-1: rgba(16, 185, 129, 0.24);
+  --glow-2: rgba(132, 204, 22, 0.18);
+  --glow-3: rgba(56, 189, 248, 0.12);
+  --dot: rgba(16, 32, 24, 0.08);
+  color-scheme: light;
+}
+
+html[data-spv-theme="light"] body {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(16,185,129,0.14), transparent 34%),
+    radial-gradient(circle at 90% 8%, rgba(56,189,248,0.12), transparent 32%),
+    linear-gradient(180deg, #f7fff7 0%, #eef7ec 44%, #e7f3f1 100%);
+  color: var(--foreground);
+}
+
+html[data-spv-theme="light"] [class*="bg-[#0a0f15]"],
+html[data-spv-theme="light"] [class*="bg-[#050707]"],
+html[data-spv-theme="light"] [class*="bg-[#07100d]"],
+html[data-spv-theme="light"] [class*="bg-[#07111b]"],
+html[data-spv-theme="light"] [class*="bg-[#0b1118]"],
+html[data-spv-theme="light"] [class*="bg-[linear-gradient"] {
+  background-color: rgba(248, 253, 246, 0.92) !important;
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(235,247,238,0.86)) !important;
+}
+
+html[data-spv-theme="light"] [class*="bg-black/"] {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+html[data-spv-theme="light"] [class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+html[data-spv-theme="light"] [class*="border-white/"] {
+  border-color: rgba(22, 78, 57, 0.16) !important;
+}
+
+html[data-spv-theme="light"] .text-white {
+  color: #102018 !important;
+}
+
+html[data-spv-theme="light"] [class*="text-white/"] {
+  color: rgba(16, 32, 24, 0.64) !important;
+}
+
+html[data-spv-theme="light"] [class*="text-emerald-50"],
+html[data-spv-theme="light"] [class*="text-emerald-100"] {
+  color: #07543f !important;
+}
+
+html[data-spv-theme="light"] [class*="text-sky-50"],
+html[data-spv-theme="light"] [class*="text-sky-100"] {
+  color: #075985 !important;
+}
+
+html[data-spv-theme="light"] [class*="text-amber-50"],
+html[data-spv-theme="light"] [class*="text-amber-100"] {
+  color: #8a4b08 !important;
+}
+
+html[data-spv-theme="light"] [class*="text-rose-50"],
+html[data-spv-theme="light"] [class*="text-rose-100"] {
+  color: #9f1239 !important;
+}
+
+html[data-spv-theme="light"] input,
+html[data-spv-theme="light"] textarea,
+html[data-spv-theme="light"] select,
+html[data-spv-theme="light"] pre {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(22, 78, 57, 0.16) !important;
+  color: #102018 !important;
+}
+
+html[data-spv-theme="light"] input::placeholder,
+html[data-spv-theme="light"] textarea::placeholder {
+  color: rgba(16, 32, 24, 0.38) !important;
+}
+
 /* ====== FUNDO PREMIUM (camadas + profundidade) ====== */
 
 /* camada de glows + vinheta */

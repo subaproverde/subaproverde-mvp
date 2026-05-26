@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/adminEmails";
+import { applySpvTheme, readSpvTheme } from "@/lib/spvTheme";
 
 function navLinkClass(active: boolean) {
   return [
@@ -32,6 +33,19 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [activeSellerId, setActiveSellerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncTheme = () => applySpvTheme(readSpvTheme());
+
+    syncTheme();
+    window.addEventListener("storage", syncTheme);
+    window.addEventListener("spv-theme-change", syncTheme);
+
+    return () => {
+      window.removeEventListener("storage", syncTheme);
+      window.removeEventListener("spv-theme-change", syncTheme);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;

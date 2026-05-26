@@ -7,11 +7,15 @@ import {
   ClipboardCheck,
   KeyRound,
   Mail,
+  MonitorCog,
+  Moon,
   RefreshCcw,
   ShieldCheck,
+  Sun,
   UserPlus,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { applySpvTheme, readSpvTheme, saveSpvTheme, type SpvTheme } from "@/lib/spvTheme";
 
 type StepKey = "email_ready" | "instructions_sent" | "seller_invited" | "invite_accepted" | "access_tested";
 
@@ -110,6 +114,7 @@ export default function AppSettingsPage() {
   const [error, setError] = useState("");
   const [state, setState] = useState<CollaboratorState | null>(null);
   const [copied, setCopied] = useState<"email" | "instructions" | "">("");
+  const [theme, setTheme] = useState<SpvTheme>("dark");
 
   const progress = useMemo(() => {
     if (!state) return 0;
@@ -160,6 +165,17 @@ export default function AppSettingsPage() {
     persist(next);
   }
 
+  function changeTheme(nextTheme: SpvTheme) {
+    setTheme(nextTheme);
+    saveSpvTheme(nextTheme);
+  }
+
+  useEffect(() => {
+    const currentTheme = readSpvTheme();
+    setTheme(currentTheme);
+    applySpvTheme(currentTheme);
+  }, []);
+
   useEffect(() => {
     let alive = true;
 
@@ -198,9 +214,9 @@ export default function AppSettingsPage() {
         }
 
         setState(loaded ?? emptyState(sid));
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!alive) return;
-        setError(e?.message ?? "Erro ao carregar configuração.");
+        setError(e instanceof Error ? e.message : "Erro ao carregar configuração.");
         setState(null);
       } finally {
         if (!alive) return;
@@ -263,6 +279,51 @@ export default function AppSettingsPage() {
           </div>
         </div>
       </div>
+
+      <section className="mt-6 overflow-hidden rounded-[26px] border border-emerald-300/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(56,189,248,0.08),rgba(255,255,255,0.055))] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.26)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-300/20 bg-emerald-400/12">
+              <MonitorCog className="h-5 w-5 text-emerald-100" />
+            </div>
+            <div>
+              <div className="text-sm font-black text-white">Aparência do painel</div>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/58">
+                Alterne entre o cockpit escuro e um modo claro mais leve, com fundo verde suave, vidro branco e acentos neon.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/20 p-1.5">
+            <button
+              type="button"
+              onClick={() => changeTheme("dark")}
+              className={cn(
+                "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition",
+                theme === "dark"
+                  ? "bg-slate-950 text-white shadow-[0_12px_32px_rgba(0,0,0,0.28)]"
+                  : "text-white/55 hover:bg-white/8 hover:text-white"
+              )}
+            >
+              <Moon className="h-4 w-4" />
+              Escuro
+            </button>
+            <button
+              type="button"
+              onClick={() => changeTheme("light")}
+              className={cn(
+                "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition",
+                theme === "light"
+                  ? "bg-white text-emerald-950 shadow-[0_12px_32px_rgba(16,185,129,0.18)]"
+                  : "text-white/55 hover:bg-white/8 hover:text-white"
+              )}
+            >
+              <Sun className="h-4 w-4" />
+              Claro
+            </button>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_100px_rgba(0,0,0,0.28)]">

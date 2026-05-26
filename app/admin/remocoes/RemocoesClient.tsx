@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -35,6 +35,14 @@ type ClientDraft = Pick<
   AdminClient,
   "name" | "document" | "contactName" | "phone" | "email" | "notes"
 >;
+
+type StoredAdminRemocoes = {
+  clients?: AdminClient[];
+  removals?: AdminRemoval[];
+  updatedAt?: string;
+};
+
+const ADMIN_REMOCOES_STORAGE_KEY = "spv:admin-remocoes:v1";
 
 const impactOptions: ImpactType[] = [
   "reclamacao",
@@ -143,6 +151,42 @@ function safeText(value: string) {
   });
 }
 
+function readStoredAdminRemocoes(): StoredAdminRemocoes | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ADMIN_REMOCOES_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as StoredAdminRemocoes;
+
+    return {
+      clients: Array.isArray(parsed.clients) ? parsed.clients : undefined,
+      removals: Array.isArray(parsed.removals) ? parsed.removals : undefined,
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAdminRemocoes(clients: AdminClient[], removals: AdminRemoval[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      ADMIN_REMOCOES_STORAGE_KEY,
+      JSON.stringify({
+        clients,
+        removals,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // Local mock persistence only; Supabase will own this later.
+  }
+}
+
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="mb-1 block text-xs font-medium text-white/55">{children}</label>;
 }
@@ -156,6 +200,7 @@ export default function RemocoesClient({
 }) {
   const [clients, setClients] = useState(initialClients);
   const [removals, setRemovals] = useState(initialRemovals);
+  const [storageReady, setStorageReady] = useState(false);
   const [query, setQuery] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<RemovalStatus | "all">("all");
@@ -167,6 +212,24 @@ export default function RemocoesClient({
   const [clientFormOpen, setClientFormOpen] = useState(false);
   const [clientDraft, setClientDraft] = useState<ClientDraft>(() => emptyClientDraft());
   const [form, setForm] = useState<RemovalForm>(() => defaultForm(initialClients[0]?.id ?? ""));
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const stored = readStoredAdminRemocoes();
+
+      if (stored?.clients) setClients(stored.clients);
+      if (stored?.removals) setRemovals(stored.removals);
+
+      setStorageReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    writeStoredAdminRemocoes(clients, removals);
+  }, [clients, removals, storageReady]);
 
   const clientById = useMemo(() => {
     const map = new Map<string, AdminClient>();
@@ -375,7 +438,7 @@ export default function RemocoesClient({
 
   function deleteRemoval(item: AdminRemoval) {
     const confirmed = window.confirm(
-      `Excluir o atendimento "${item.title}"? Esta ação remove apenas o registro local mockado.`
+      `Excluir o atendimento "${item.title}"? Esta ação remove o registro salvo neste navegador.`
     );
 
     if (!confirmed) return;
@@ -751,7 +814,7 @@ export default function RemocoesClient({
                   {editingId ? "Editar atendimento" : "Novo atendimento"}
                 </h2>
                 <p className="mt-1 text-sm text-white/48">
-                  Registro local com dados mockados. A persistência no Supabase vem na próxima etapa.
+                  Registro salvo neste navegador. A persistência no Supabase vem na próxima etapa.
                 </p>
               </div>
               <button

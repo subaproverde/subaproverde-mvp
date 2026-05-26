@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -20,11 +20,13 @@ import {
   Layers3,
   MousePointerClick,
   PauseCircle,
+  Pencil,
   RadioTower,
   Sparkles,
   Target,
   TimerReset,
   TrendingUp,
+  Trash2,
   X,
   Zap,
 } from "lucide-react";
@@ -69,6 +71,17 @@ type ClientDraft = Pick<
   "name" | "document" | "contactName" | "phone" | "email" | "notes"
 >;
 
+type StoredAdminRemocoes = {
+  clients?: AdminClient[];
+  removals?: AdminRemoval[];
+  updatedAt?: string;
+};
+
+type StoredAdminDashboard = {
+  appointments?: AdminAppointment[];
+  updatedAt?: string;
+};
+
 type CalendarDay = {
   iso: string;
   day: number;
@@ -80,6 +93,8 @@ type FocusMode = "hoje" | "semana" | "risco" | "cobranca";
 const DAILY_CAPACITY_MINUTES = 360;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const WEEK_DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
+const ADMIN_REMOCOES_STORAGE_KEY = "spv:admin-remocoes:v1";
+const ADMIN_DASHBOARD_STORAGE_KEY = "spv:admin-dashboard:v1";
 
 const FOCUS_MODES: Array<{
   id: FocusMode;
@@ -289,23 +304,121 @@ function statusTone(status: AdminAppointment["status"]) {
   return "border-white/10 bg-white/[0.05] text-white/65";
 }
 
+function readStoredAdminRemocoes(): StoredAdminRemocoes | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ADMIN_REMOCOES_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as StoredAdminRemocoes;
+
+    return {
+      clients: Array.isArray(parsed.clients) ? parsed.clients : undefined,
+      removals: Array.isArray(parsed.removals) ? parsed.removals : undefined,
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAdminRemocoes(clients: AdminClient[], removals: AdminRemoval[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      ADMIN_REMOCOES_STORAGE_KEY,
+      JSON.stringify({
+        clients,
+        removals,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // Local mock persistence only; Supabase will own this later.
+  }
+}
+
+function readStoredAdminDashboard(): StoredAdminDashboard | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ADMIN_DASHBOARD_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as StoredAdminDashboard;
+
+    return {
+      appointments: Array.isArray(parsed.appointments) ? parsed.appointments : undefined,
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAdminDashboard(appointments: AdminAppointment[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      ADMIN_DASHBOARD_STORAGE_KEY,
+      JSON.stringify({
+        appointments,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // Local mock persistence only; Supabase will own this later.
+  }
+}
+
 export default function DashboardClient({
   initialAppointments,
   clients: initialClients,
-  removals,
+  removals: initialRemovals,
 }: DashboardClientProps) {
   const today = todayIso();
   const [clients, setClients] = useState(initialClients);
+  const [removals, setRemovals] = useState(initialRemovals);
   const [appointments, setAppointments] = useState(initialAppointments);
+  const [storageReady, setStorageReady] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [visibleMonth, setVisibleMonth] = useState(monthStart(today));
   const [showScheduler, setShowScheduler] = useState(false);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState<FocusMode>("hoje");
   const [clientFormOpen, setClientFormOpen] = useState(false);
   const [clientDraft, setClientDraft] = useState<ClientDraft>(() => emptyClientDraft());
   const [form, setForm] = useState<AppointmentForm>(() =>
     defaultForm(today, initialClients[0]?.id ?? "")
   );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedAdmin = readStoredAdminRemocoes();
+      const storedDashboard = readStoredAdminDashboard();
+
+      if (storedAdmin?.clients) setClients(storedAdmin.clients);
+      if (storedAdmin?.removals) setRemovals(storedAdmin.removals);
+      if (storedDashboard?.appointments) setAppointments(storedDashboard.appointments);
+
+      setStorageReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    writeStoredAdminDashboard(appointments);
+  }, [appointments, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    writeStoredAdminRemocoes(clients, removals);
+  }, [clients, removals, storageReady]);
 
   const clientById = useMemo(() => {
     const map = new Map<string, AdminClient>();
@@ -635,10 +748,49 @@ export default function DashboardClient({
 
   function openScheduler(iso = selectedDate, type: AppointmentType = "tarefa") {
     setSelectedDate(iso);
+    setEditingAppointmentId(null);
     setForm(defaultForm(iso, clients[0]?.id ?? "", type));
     setClientFormOpen(false);
     setClientDraft(emptyClientDraft());
     setShowScheduler(true);
+  }
+
+  function closeScheduler() {
+    setShowScheduler(false);
+    setEditingAppointmentId(null);
+  }
+
+  function openEditAppointment(appointment: AdminAppointment) {
+    setEditingAppointmentId(appointment.id);
+    setSelectedDate(appointment.scheduledDate);
+    setVisibleMonth(monthStart(appointment.scheduledDate));
+    setClientFormOpen(false);
+    setClientDraft(emptyClientDraft());
+    setForm({
+      clientId: appointment.clientId,
+      title: appointment.title,
+      type: appointment.type,
+      scheduledDate: appointment.scheduledDate,
+      scheduledTime: appointment.scheduledTime,
+      durationMinutes: appointment.durationMinutes,
+      priority: appointment.priority,
+      notes: appointment.notes ?? "",
+    });
+    setShowScheduler(true);
+  }
+
+  function deleteAppointment(appointment: AdminAppointment) {
+    const confirmed = window.confirm(
+      `Excluir o agendamento "${appointment.title}"? Esta ação remove o registro local.`
+    );
+
+    if (!confirmed) return;
+
+    setAppointments((current) => current.filter((item) => item.id !== appointment.id));
+
+    if (editingAppointmentId === appointment.id) {
+      closeScheduler();
+    }
   }
 
   function updateForm<K extends keyof AppointmentForm>(key: K, value: AppointmentForm[K]) {
@@ -686,13 +838,16 @@ export default function DashboardClient({
 
   function saveAppointment() {
     const clientId = ensureClientId(form.clientId);
+    const existing = editingAppointmentId
+      ? appointments.find((appointment) => appointment.id === editingAppointmentId)
+      : null;
 
     const next: AdminAppointment = {
-      id: `apt-local-${Date.now()}`,
+      id: editingAppointmentId ?? `apt-local-${Date.now()}`,
       clientId,
       title: form.title.trim() || (form.type === "tarefa" ? "Tarefa sem título" : "Atendimento sem título"),
       type: form.type,
-      status: "agendado",
+      status: existing?.status ?? "agendado",
       scheduledDate: form.scheduledDate,
       scheduledTime: form.scheduledTime,
       durationMinutes: Number(form.durationMinutes || 30),
@@ -700,14 +855,20 @@ export default function DashboardClient({
       notes: form.notes.trim(),
     };
 
-    setAppointments((current) => [...current, next].sort((a, b) => {
-      return `${a.scheduledDate} ${a.scheduledTime}`.localeCompare(
-        `${b.scheduledDate} ${b.scheduledTime}`
-      );
-    }));
+    setAppointments((current) => {
+      const rows = editingAppointmentId
+        ? current.map((appointment) => (appointment.id === editingAppointmentId ? next : appointment))
+        : [...current, next];
+
+      return rows.sort((a, b) => {
+        return `${a.scheduledDate} ${a.scheduledTime}`.localeCompare(
+          `${b.scheduledDate} ${b.scheduledTime}`
+        );
+      });
+    });
     setSelectedDate(form.scheduledDate);
     setVisibleMonth(monthStart(form.scheduledDate));
-    setShowScheduler(false);
+    closeScheduler();
   }
 
   return (
@@ -994,14 +1155,17 @@ export default function DashboardClient({
             dueRemovals={selectedDueRemovals}
             getClientName={clientNameById}
             onSchedule={() => openScheduler(selectedDate, "tarefa")}
+            onEditAppointment={openEditAppointment}
+            onDeleteAppointment={deleteAppointment}
           />
           <SchedulerPanel
             open={showScheduler}
+            editing={!!editingAppointmentId}
             clients={clients}
             form={form}
             clientDraft={clientDraft}
             clientFormOpen={clientFormOpen}
-            onClose={() => setShowScheduler(false)}
+            onClose={closeScheduler}
             onSave={saveAppointment}
             onChange={updateForm}
             onClientDraftChange={updateClientDraft}
@@ -1261,12 +1425,16 @@ function DayAgendaPanel({
   dueRemovals,
   getClientName,
   onSchedule,
+  onEditAppointment,
+  onDeleteAppointment,
 }: {
   selectedDate: string;
   appointments: AdminAppointment[];
   dueRemovals: AdminRemoval[];
   getClientName: (clientId: string) => string;
   onSchedule: () => void;
+  onEditAppointment: (appointment: AdminAppointment) => void;
+  onDeleteAppointment: (appointment: AdminAppointment) => void;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
@@ -1295,9 +1463,29 @@ function DayAgendaPanel({
                   {appointment.scheduledTime} | {getClientName(appointment.clientId)}
                 </div>
               </div>
-              <span className={cn("rounded-full border px-2 py-1 text-[11px]", statusTone(appointment.status))}>
-                {appointmentStatusLabel[appointment.status]}
-              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <span className={cn("rounded-full border px-2 py-1 text-[11px]", statusTone(appointment.status))}>
+                  {appointmentStatusLabel[appointment.status]}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onEditAppointment(appointment)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+                  title="Editar agendamento"
+                  aria-label="Editar agendamento"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeleteAppointment(appointment)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/15 bg-rose-400/[0.08] text-rose-100/75 transition hover:bg-rose-400/[0.14] hover:text-rose-50"
+                  title="Excluir agendamento"
+                  aria-label="Excluir agendamento"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/50">
               <span>{appointmentTypeLabel[appointment.type]}</span>
@@ -1333,6 +1521,7 @@ function DayAgendaPanel({
 
 function SchedulerPanel({
   open,
+  editing,
   clients,
   form,
   clientDraft,
@@ -1345,6 +1534,7 @@ function SchedulerPanel({
   onClientCreate,
 }: {
   open: boolean;
+  editing: boolean;
   clients: AdminClient[];
   form: AppointmentForm;
   clientDraft: ClientDraft;
@@ -1374,9 +1564,13 @@ function SchedulerPanel({
     <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.055] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Novo agendamento</h2>
+          <h2 className="text-sm font-semibold text-white">
+            {editing ? "Editar agendamento" : "Novo agendamento"}
+          </h2>
           <p className="mt-1 text-xs text-white/45">
-            Crie uma tarefa, follow-up, cobrança ou atendimento nesta etapa mockada.
+            {editing
+              ? "Ajuste data, horário, cliente, prioridade e notas do compromisso."
+              : "Crie uma tarefa, follow-up, cobrança ou atendimento nesta etapa mockada."}
           </p>
         </div>
         <button
@@ -1482,7 +1676,7 @@ function SchedulerPanel({
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/14 px-4 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-400/18"
         >
           <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-          Salvar na agenda
+          {editing ? "Salvar alterações" : "Salvar na agenda"}
         </button>
       </div>
     </div>
