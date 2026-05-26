@@ -26,6 +26,13 @@ import {
   isRemovalOpen,
   statusLabel,
 } from "../admin-data";
+import {
+  deleteAdminRemoval,
+  loadAdminOperations,
+  saveAdminClient,
+  saveAdminRemoval,
+  syncAdminOperations,
+} from "@/lib/adminOperationsClient";
 
 type RemovalForm = Omit<AdminRemoval, "id" | "success" | "evidenceLinks"> & {
   evidenceText: string;
@@ -201,6 +208,8 @@ export default function RemocoesClient({
   const [clients, setClients] = useState(initialClients);
   const [removals, setRemovals] = useState(initialRemovals);
   const [storageReady, setStorageReady] = useState(false);
+  const [remoteLoading, setRemoteLoading] = useState(true);
+  const [syncError, setSyncError] = useState("");
   const [query, setQuery] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<RemovalStatus | "all">("all");
@@ -215,12 +224,38 @@ export default function RemocoesClient({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const stored = readStoredAdminRemocoes();
+      void (async () => {
+        const stored = readStoredAdminRemocoes();
 
-      if (stored?.clients) setClients(stored.clients);
-      if (stored?.removals) setRemovals(stored.removals);
+        if (stored?.clients) setClients(stored.clients);
+        if (stored?.removals) setRemovals(stored.removals);
 
-      setStorageReady(true);
+        try {
+          let remote = await loadAdminOperations();
+          const storedClients = stored?.clients ?? [];
+          const storedRemovals = stored?.removals ?? [];
+          const shouldSyncLocal =
+            (remote.clients.length === 0 && storedClients.length > 0) ||
+            (remote.removals.length === 0 && storedRemovals.length > 0);
+
+          if (shouldSyncLocal) {
+            remote = await syncAdminOperations({
+              clients: storedClients,
+              removals: storedRemovals,
+              appointments: [],
+            });
+          }
+
+          setClients(remote.clients);
+          setRemovals(remote.removals);
+          setSyncError("");
+        } catch (error: unknown) {
+          setSyncError(error instanceof Error ? error.message : "Falha ao carregar dados do Supabase.");
+        } finally {
+          setStorageReady(true);
+          setRemoteLoading(false);
+        }
+      })();
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -359,6 +394,12 @@ export default function RemocoesClient({
     setClientDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function persistClient(client: AdminClient) {
+    void saveAdminClient(client).catch((error: unknown) => {
+      setSyncError(error instanceof Error ? error.message : "Falha ao salvar cliente no Supabase.");
+    });
+  }
+
   function createClientFromDraft() {
     const nextClient: AdminClient = {
       id: `cli-local-${Date.now()}`,
@@ -374,11 +415,12 @@ export default function RemocoesClient({
     setForm((current) => ({ ...current, clientId: nextClient.id }));
     setClientDraft(emptyClientDraft());
     setClientFormOpen(false);
+    persistClient(nextClient);
   }
 
-  function ensureClientId(clientId: string) {
-    if (clientId) return clientId;
-    if (clients[0]?.id) return clients[0].id;
+  function ensureClient(clientId: string) {
+    if (clientId) return { clientId };
+    if (clients[0]?.id) return { clientId: clients[0].id };
 
     const nextClient: AdminClient = {
       id: `cli-local-${Date.now()}`,
@@ -391,11 +433,12 @@ export default function RemocoesClient({
     };
 
     setClients((current) => [nextClient, ...current]);
-    return nextClient.id;
+    return { clientId: nextClient.id, createdClient: nextClient };
   }
 
-  function saveRemoval() {
-    const clientId = ensureClientId(form.clientId);
+  async function saveRemoval() {
+    const ensured = ensureClient(form.clientId);
+    const clientId = ensured.clientId;
     const title =
       form.title.trim() ||
       form.mlOrderId.trim() ||
@@ -434,20 +477,41 @@ export default function RemocoesClient({
     });
 
     setDrawerOpen(false);
+
+    try {
+      if (ensured.createdClient) {
+        await saveAdminClient(ensured.createdClient);
+      }
+
+      const saved = await saveAdminRemoval(payload);
+      setRemovals((current) => current.map((item) => (item.id === payload.id ? saved : item)));
+      setSyncError("");
+    } catch (error: unknown) {
+      setSyncError(error instanceof Error ? error.message : "Falha ao salvar remoção no Supabase.");
+    }
   }
 
-  function deleteRemoval(item: AdminRemoval) {
+  async function deleteRemoval(item: AdminRemoval) {
     const confirmed = window.confirm(
-      `Excluir o atendimento "${item.title}"? Esta ação remove o registro salvo neste navegador.`
+      `Excluir o atendimento "${item.title}"? Esta ação remove o registro salvo no Supabase.`
     );
 
     if (!confirmed) return;
 
+    const previous = removals;
     setRemovals((current) => current.filter((row) => row.id !== item.id));
 
     if (editingId === item.id) {
       setEditingId(null);
       setDrawerOpen(false);
+    }
+
+    try {
+      await deleteAdminRemoval(item.id);
+      setSyncError("");
+    } catch (error: unknown) {
+      setRemovals(previous);
+      setSyncError(error instanceof Error ? error.message : "Falha ao excluir remoção no Supabase.");
     }
   }
 
@@ -552,7 +616,7 @@ export default function RemocoesClient({
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Remoções</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">
             Controle interno para clientes, vendas atendidas, impactos removidos, status,
-            valores e relatórios premium. Esta versão usa dados mockados.
+            valores e relatórios premium. Agora conectado ao Supabase.
           </p>
         </div>
 
@@ -575,6 +639,21 @@ export default function RemocoesClient({
           </button>
         </div>
       </section>
+
+      {remoteLoading || syncError ? (
+        <section
+          className={cn(
+            "rounded-2xl border p-4 text-sm",
+            syncError
+              ? "border-amber-300/20 bg-amber-400/[0.08] text-amber-50"
+              : "border-emerald-300/16 bg-emerald-400/[0.07] text-emerald-50"
+          )}
+        >
+          {syncError
+            ? `Supabase: ${syncError} Os dados locais continuam visíveis como fallback.`
+            : "Carregando dados do Supabase..."}
+        </section>
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <SummaryCard label="Atendimentos" value={String(summary.total)} />
@@ -814,7 +893,7 @@ export default function RemocoesClient({
                   {editingId ? "Editar atendimento" : "Novo atendimento"}
                 </h2>
                 <p className="mt-1 text-sm text-white/48">
-                  Registro salvo neste navegador. A persistência no Supabase vem na próxima etapa.
+                  Registro salvo no Supabase. O navegador fica apenas como cache de segurança.
                 </p>
               </div>
               <button

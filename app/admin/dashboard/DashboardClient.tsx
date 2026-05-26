@@ -45,6 +45,13 @@ import {
   isRemovalOpen,
   statusLabel,
 } from "../admin-data";
+import {
+  deleteAdminAppointment,
+  loadAdminOperations,
+  saveAdminAppointment,
+  saveAdminClient,
+  syncAdminOperations,
+} from "@/lib/adminOperationsClient";
 import NotificationCenter from "./NotificationCenter";
 
 type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -384,6 +391,8 @@ export default function DashboardClient({
   const [removals, setRemovals] = useState(initialRemovals);
   const [appointments, setAppointments] = useState(initialAppointments);
   const [storageReady, setStorageReady] = useState(false);
+  const [remoteLoading, setRemoteLoading] = useState(true);
+  const [syncError, setSyncError] = useState("");
   const [selectedDate, setSelectedDate] = useState(today);
   const [visibleMonth, setVisibleMonth] = useState(monthStart(today));
   const [showScheduler, setShowScheduler] = useState(false);
@@ -397,14 +406,43 @@ export default function DashboardClient({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const storedAdmin = readStoredAdminRemocoes();
-      const storedDashboard = readStoredAdminDashboard();
+      void (async () => {
+        const storedAdmin = readStoredAdminRemocoes();
+        const storedDashboard = readStoredAdminDashboard();
 
-      if (storedAdmin?.clients) setClients(storedAdmin.clients);
-      if (storedAdmin?.removals) setRemovals(storedAdmin.removals);
-      if (storedDashboard?.appointments) setAppointments(storedDashboard.appointments);
+        if (storedAdmin?.clients) setClients(storedAdmin.clients);
+        if (storedAdmin?.removals) setRemovals(storedAdmin.removals);
+        if (storedDashboard?.appointments) setAppointments(storedDashboard.appointments);
 
-      setStorageReady(true);
+        try {
+          let remote = await loadAdminOperations();
+          const storedClients = storedAdmin?.clients ?? [];
+          const storedRemovals = storedAdmin?.removals ?? [];
+          const storedAppointments = storedDashboard?.appointments ?? [];
+          const shouldSyncLocal =
+            (remote.clients.length === 0 && storedClients.length > 0) ||
+            (remote.removals.length === 0 && storedRemovals.length > 0) ||
+            (remote.appointments.length === 0 && storedAppointments.length > 0);
+
+          if (shouldSyncLocal) {
+            remote = await syncAdminOperations({
+              clients: storedClients,
+              removals: storedRemovals,
+              appointments: storedAppointments,
+            });
+          }
+
+          setClients(remote.clients);
+          setRemovals(remote.removals);
+          setAppointments(remote.appointments);
+          setSyncError("");
+        } catch (error: unknown) {
+          setSyncError(error instanceof Error ? error.message : "Falha ao carregar dados do Supabase.");
+        } finally {
+          setStorageReady(true);
+          setRemoteLoading(false);
+        }
+      })();
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -779,17 +817,26 @@ export default function DashboardClient({
     setShowScheduler(true);
   }
 
-  function deleteAppointment(appointment: AdminAppointment) {
+  async function deleteAppointment(appointment: AdminAppointment) {
     const confirmed = window.confirm(
-      `Excluir o agendamento "${appointment.title}"? Esta ação remove o registro local.`
+      `Excluir o agendamento "${appointment.title}"? Esta ação remove o registro salvo no Supabase.`
     );
 
     if (!confirmed) return;
 
+    const previous = appointments;
     setAppointments((current) => current.filter((item) => item.id !== appointment.id));
 
     if (editingAppointmentId === appointment.id) {
       closeScheduler();
+    }
+
+    try {
+      await deleteAdminAppointment(appointment.id);
+      setSyncError("");
+    } catch (error: unknown) {
+      setAppointments(previous);
+      setSyncError(error instanceof Error ? error.message : "Falha ao excluir agendamento no Supabase.");
     }
   }
 
@@ -799,6 +846,12 @@ export default function DashboardClient({
 
   function updateClientDraft<K extends keyof ClientDraft>(key: K, value: ClientDraft[K]) {
     setClientDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function persistClient(client: AdminClient) {
+    void saveAdminClient(client).catch((error: unknown) => {
+      setSyncError(error instanceof Error ? error.message : "Falha ao salvar cliente no Supabase.");
+    });
   }
 
   function createClientFromDraft() {
@@ -816,11 +869,12 @@ export default function DashboardClient({
     setForm((current) => ({ ...current, clientId: nextClient.id }));
     setClientDraft(emptyClientDraft());
     setClientFormOpen(false);
+    persistClient(nextClient);
   }
 
-  function ensureClientId(clientId: string) {
-    if (clientId) return clientId;
-    if (clients[0]?.id) return clients[0].id;
+  function ensureClient(clientId: string) {
+    if (clientId) return { clientId };
+    if (clients[0]?.id) return { clientId: clients[0].id };
 
     const nextClient: AdminClient = {
       id: `cli-local-${Date.now()}`,
@@ -833,11 +887,12 @@ export default function DashboardClient({
     };
 
     setClients((current) => [nextClient, ...current]);
-    return nextClient.id;
+    return { clientId: nextClient.id, createdClient: nextClient };
   }
 
-  function saveAppointment() {
-    const clientId = ensureClientId(form.clientId);
+  async function saveAppointment() {
+    const ensured = ensureClient(form.clientId);
+    const clientId = ensured.clientId;
     const existing = editingAppointmentId
       ? appointments.find((appointment) => appointment.id === editingAppointmentId)
       : null;
@@ -869,6 +924,24 @@ export default function DashboardClient({
     setSelectedDate(form.scheduledDate);
     setVisibleMonth(monthStart(form.scheduledDate));
     closeScheduler();
+
+    try {
+      if (ensured.createdClient) {
+        await saveAdminClient(ensured.createdClient);
+      }
+
+      const saved = await saveAdminAppointment(next);
+      setAppointments((current) =>
+        current
+          .map((appointment) => (appointment.id === next.id ? saved : appointment))
+          .sort((a, b) =>
+            `${a.scheduledDate} ${a.scheduledTime}`.localeCompare(`${b.scheduledDate} ${b.scheduledTime}`)
+          )
+      );
+      setSyncError("");
+    } catch (error: unknown) {
+      setSyncError(error instanceof Error ? error.message : "Falha ao salvar agendamento no Supabase.");
+    }
   }
 
   return (
@@ -884,7 +957,7 @@ export default function DashboardClient({
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
             Controle visual da rotina: agenda, prazos, gargalos, valor parado e onde
-            seu tempo esta escapando. Dados mockados por enquanto.
+            seu tempo esta escapando. Dados operacionais conectados ao Supabase.
           </p>
         </div>
 
@@ -906,6 +979,21 @@ export default function DashboardClient({
           </button>
         </div>
       </section>
+
+      {remoteLoading || syncError ? (
+        <section
+          className={cn(
+            "rounded-2xl border p-4 text-sm",
+            syncError
+              ? "border-amber-300/20 bg-amber-400/[0.08] text-amber-50"
+              : "border-emerald-300/16 bg-emerald-400/[0.07] text-emerald-50"
+          )}
+        >
+          {syncError
+            ? `Supabase: ${syncError} Os dados locais continuam visíveis como fallback.`
+            : "Carregando dados do Supabase..."}
+        </section>
+      ) : null}
 
       <NotificationCenter appointments={appointments} clients={clients} removals={removals} />
 

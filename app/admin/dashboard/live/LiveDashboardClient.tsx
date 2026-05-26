@@ -30,6 +30,7 @@ import {
   isRemovalOpen,
   statusLabel,
 } from "../../admin-data";
+import { loadAdminOperations } from "@/lib/adminOperationsClient";
 
 type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 type Tone = "emerald" | "sky" | "amber" | "rose" | "violet" | "lime";
@@ -188,15 +189,47 @@ function toneForPercent(percent: number): Tone {
 }
 
 export default function LiveDashboardClient({
-  appointments,
-  clients,
-  removals,
+  appointments: initialAppointments,
+  clients: initialClients,
+  removals: initialRemovals,
 }: LiveDashboardClientProps) {
   const [now, setNow] = useState(() => new Date());
+  const [appointments, setAppointments] = useState(initialAppointments);
+  const [clients, setClients] = useState(initialClients);
+  const [removals, setRemovals] = useState(initialRemovals);
+  const [syncError, setSyncError] = useState("");
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function refresh() {
+      try {
+        const remote = await loadAdminOperations();
+        if (!alive) return;
+        setAppointments(remote.appointments);
+        setClients(remote.clients);
+        setRemovals(remote.removals);
+        setSyncError("");
+      } catch (error: unknown) {
+        if (!alive) return;
+        setSyncError(error instanceof Error ? error.message : "Falha ao carregar Supabase.");
+      }
+    }
+
+    void refresh();
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 30000);
+
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const referenceDate = now;
@@ -505,6 +538,12 @@ export default function LiveDashboardClient({
           </Link>
         </div>
       </header>
+
+      {syncError ? (
+        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/[0.08] p-4 text-sm text-amber-50">
+          Supabase: {syncError} Mantendo os últimos dados carregados na tela ao vivo.
+        </div>
+      ) : null}
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.08fr_.92fr]">
         <div className={cn("relative overflow-hidden rounded-2xl border p-5", TONES[heroTone].card)}>
