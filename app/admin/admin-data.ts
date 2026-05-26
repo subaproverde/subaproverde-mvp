@@ -70,6 +70,7 @@ export type AdminAppointment = {
   scheduledDate: string;
   scheduledTime: string;
   durationMinutes: number;
+  potentialAmount: number;
   priority: "alta" | "media" | "baixa";
   notes: string;
 };
@@ -273,6 +274,7 @@ export const mockAdminAppointments: AdminAppointment[] = [
     scheduledDate: "2026-05-20",
     scheduledTime: "10:30",
     durationMinutes: 45,
+    potentialAmount: 360,
     priority: "alta",
     notes: "Separar comprovante de coleta e print da janela Flex.",
   },
@@ -285,6 +287,7 @@ export const mockAdminAppointments: AdminAppointment[] = [
     scheduledDate: "2026-05-20",
     scheduledTime: "14:00",
     durationMinutes: 25,
+    potentialAmount: 90,
     priority: "media",
     notes: "Enviar mensagem curta pedindo documento original.",
   },
@@ -297,6 +300,7 @@ export const mockAdminAppointments: AdminAppointment[] = [
     scheduledDate: "2026-05-21",
     scheduledTime: "09:15",
     durationMinutes: 50,
+    potentialAmount: 240,
     priority: "alta",
     notes: "Incluir timeline e resumo do risco.",
   },
@@ -309,6 +313,7 @@ export const mockAdminAppointments: AdminAppointment[] = [
     scheduledDate: "2026-05-22",
     scheduledTime: "16:30",
     durationMinutes: 35,
+    potentialAmount: 420,
     priority: "media",
     notes: "Gerar lista de casos com sucesso e valor.",
   },
@@ -321,6 +326,7 @@ export const mockAdminAppointments: AdminAppointment[] = [
     scheduledDate: "2026-05-25",
     scheduledTime: "11:00",
     durationMinutes: 60,
+    potentialAmount: 180,
     priority: "baixa",
     notes: "Revisar se o cliente ainda precisa deste atendimento.",
   },

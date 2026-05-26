@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 export type ReputationLevel = "verde" | "amarelo" | "laranja" | "vermelho";
 
@@ -17,7 +17,7 @@ type Props = {
   scoreText?: string;
 
   /** se quiser forçar dark/light no gauge */
-  theme?: "dark" | "light";
+  theme?: "auto" | "dark" | "light";
 
   /** controla tamanho sem esticar grid */
   size?: "sm" | "md";
@@ -69,14 +69,21 @@ function levelColor(level: ReputationLevel) {
   return "#22c55e";
 }
 
-function subtitleAccent(level: ReputationLevel) {
+function readThemePreference(): "dark" | "light" {
+  if (typeof document === "undefined") return "dark";
+  return document.documentElement.dataset.spvTheme === "light" ? "light" : "dark";
+}
+
+function subtitleAccent(level: ReputationLevel, isDark: boolean) {
+  const lightFg = "rgba(15,23,42,0.86)";
+
   if (level === "vermelho")
-    return { bg: "rgba(255,77,77,0.16)", bd: "rgba(255,77,77,0.35)", fg: "rgba(255,255,255,0.92)" };
+    return { bg: "rgba(255,77,77,0.16)", bd: "rgba(255,77,77,0.35)", fg: isDark ? "rgba(255,255,255,0.92)" : lightFg };
   if (level === "laranja")
-    return { bg: "rgba(255,122,0,0.16)", bd: "rgba(255,122,0,0.35)", fg: "rgba(255,255,255,0.92)" };
+    return { bg: "rgba(255,122,0,0.16)", bd: "rgba(255,122,0,0.35)", fg: isDark ? "rgba(255,255,255,0.92)" : lightFg };
   if (level === "amarelo")
-    return { bg: "rgba(255,212,0,0.18)", bd: "rgba(255,212,0,0.38)", fg: "rgba(255,255,255,0.92)" };
-  return { bg: "rgba(34,197,94,0.16)", bd: "rgba(34,197,94,0.35)", fg: "rgba(255,255,255,0.92)" };
+    return { bg: "rgba(255,212,0,0.18)", bd: "rgba(255,212,0,0.38)", fg: isDark ? "rgba(255,255,255,0.92)" : lightFg };
+  return { bg: "rgba(34,197,94,0.14)", bd: "rgba(34,197,94,0.30)", fg: isDark ? "rgba(255,255,255,0.92)" : "#07543f" };
 }
 
 function subtitleIcon(subtitle: string) {
@@ -92,10 +99,31 @@ export function ReputationThermometer({
   label = level.toUpperCase(),
   subtitle = "",
   scoreText = "Score —",
-  theme = "dark",
+  theme = "auto",
   size = "md",
 }: Props) {
-  const isDark = theme === "dark";
+  const [autoTheme, setAutoTheme] = useState<"dark" | "light">(() =>
+    theme === "auto" ? readThemePreference() : theme
+  );
+
+  useEffect(() => {
+    if (theme !== "auto") {
+      setAutoTheme(theme);
+      return;
+    }
+
+    const sync = () => setAutoTheme(readThemePreference());
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener("spv-theme-change", sync);
+
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("spv-theme-change", sync);
+    };
+  }, [theme]);
+
+  const isDark = autoTheme === "dark";
 
   // área interna do SVG (gauge)
   const svgW = size === "sm" ? 360 : 420;
@@ -114,19 +142,19 @@ export function ReputationThermometer({
   const tip = polar(cx, cy, needleLen, angleDeg);
 
   // ✅ card totalmente preto no dark
-  const cardBg = isDark ? "bg-black" : "bg-white";
-  const cardBorder = isDark ? "border-white/10" : "border-slate-200";
+  const cardBg = isDark ? "bg-black" : "bg-[#f8fbf7]";
+  const cardBorder = isDark ? "border-white/10" : "border-emerald-950/10";
 
   // ✅ aqui é a chave: no dark o “painel” do svg vira transparente
-  const innerFill = isDark ? "transparent" : "#f8fafc";
-  const innerStroke = isDark ? "rgba(255,255,255,0.04)" : "#e5e7eb";
+  const innerFill = isDark ? "transparent" : "#f3f8f2";
+  const innerStroke = isDark ? "rgba(255,255,255,0.04)" : "rgba(22,78,57,0.12)";
 
-  const baseArc = isDark ? "#1f2937" : "#e5e7eb";
+  const baseArc = isDark ? "#1f2937" : "#d9e8dd";
   const tick = isDark ? "rgba(255,255,255,0.18)" : "rgba(15,23,42,0.25)";
   const needle = isDark ? "white" : "#0f172a";
 
   const labelColor = levelColor(level);
-  const subA = subtitleAccent(level);
+  const subA = subtitleAccent(level, isDark);
   const subI = subtitleIcon(subtitle);
 
   // ✅ SEGMENTOS (os seus, NÃO mexi)

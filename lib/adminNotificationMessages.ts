@@ -61,6 +61,10 @@ export function buildDailySummaryMessage({
   const completedToday = removals.filter(
     (removal) => removal.success === true && removal.completedAt === dayIso
   );
+  const dayPotential = dayAppointments.reduce(
+    (acc, appointment) => acc + Number(appointment.potentialAmount || 0),
+    0
+  );
   const receivable = removals
     .filter((removal) => removal.success === true && removal.chargedAmount > 0)
     .reduce((acc, removal) => acc + removal.chargedAmount, 0);
@@ -72,7 +76,11 @@ export function buildDailySummaryMessage({
             return `- ${appointment.scheduledTime} | ${appointmentTypeLabel[appointment.type]} | ${getClientName(
               clients,
               appointment.clientId
-            )}: ${appointment.title}`;
+            )}: ${appointment.title}${
+              Number(appointment.potentialAmount || 0) > 0
+                ? ` | potencial ${formatCurrency(Number(appointment.potentialAmount || 0))}`
+                : ""
+            }`;
           })
           .join("\n")
       : "- Nenhum agendamento cadastrado para hoje.";
@@ -103,6 +111,7 @@ export function buildDailySummaryMessage({
     "",
     "METRICAS DO DIA",
     `- Agendamentos: ${dayAppointments.length}`,
+    `- Potencial agendado: ${formatCurrency(dayPotential)}`,
     `- Prazos de hoje: ${dueToday.length}`,
     `- Vencidos: ${overdue.length}`,
     `- Aguardando cliente: ${awaitingClient.length}`,
@@ -134,6 +143,9 @@ export function buildAppointmentReminderMessage({
     "",
     `${appointment.scheduledTime} | ${appointmentTypeLabel[appointment.type]}`,
     `${getClientName(clients, appointment.clientId)} - ${appointment.title}`,
+    Number(appointment.potentialAmount || 0) > 0
+      ? `Potencial a receber: ${formatCurrency(Number(appointment.potentialAmount || 0))}`
+      : "Sem valor potencial informado.",
     appointment.notes ? `Notas: ${appointment.notes}` : "Sem notas adicionais.",
   ].join("\n");
 }

@@ -64,6 +64,7 @@ type AdminAppointmentRow = {
   scheduled_date: string | null;
   scheduled_time: string | null;
   duration_minutes: number | null;
+  potential_amount: number | string | null;
   priority: "alta" | "media" | "baixa" | null;
   notes: string | null;
 };
@@ -194,6 +195,7 @@ function dbAppointmentToApp(row: AdminAppointmentRow): AdminAppointment {
     scheduledDate: row.scheduled_date ?? "",
     scheduledTime: row.scheduled_time ?? "09:00",
     durationMinutes: row.duration_minutes ?? 30,
+    potentialAmount: numberValue(row.potential_amount),
     priority: row.priority ?? "media",
     notes: row.notes ?? "",
   };
@@ -252,6 +254,7 @@ function appAppointmentToDb(value: unknown) {
     scheduled_date: text(row.scheduledDate),
     scheduled_time: text(row.scheduledTime, "09:00"),
     duration_minutes: numberValue(row.durationMinutes, 30),
+    potential_amount: numberValue(row.potentialAmount),
     priority: text(row.priority, "media"),
     notes: text(row.notes).trim(),
   };
@@ -277,7 +280,7 @@ async function listState() {
       .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("admin_appointments")
-      .select("id, client_id, title, type, status, scheduled_date, scheduled_time, duration_minutes, priority, notes")
+      .select("id, client_id, title, type, status, scheduled_date, scheduled_time, duration_minutes, potential_amount, priority, notes")
       .order("scheduled_date", { ascending: true })
       .order("scheduled_time", { ascending: true }),
   ]);
@@ -341,7 +344,7 @@ async function upsertEntity(entity: OperationEntity, row: unknown) {
   const { data, error } = await supabaseAdmin
     .from("admin_appointments")
     .upsert(payload, { onConflict: "id" })
-    .select("id, client_id, title, type, status, scheduled_date, scheduled_time, duration_minutes, priority, notes")
+    .select("id, client_id, title, type, status, scheduled_date, scheduled_time, duration_minutes, potential_amount, priority, notes")
     .single();
 
   if (error) return { ok: false as const, error };

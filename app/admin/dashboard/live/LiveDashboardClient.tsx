@@ -290,6 +290,9 @@ export default function LiveDashboardClient({
     (acc, appointment) => acc + appointment.durationMinutes,
     0
   );
+  const appointmentPotential = appointments
+    .filter((appointment) => appointment.status !== "concluido")
+    .reduce((acc, appointment) => acc + Number(appointment.potentialAmount || 0), 0);
   const todayDueMinutes = dueToday.length * 35;
   const capacityPercent = Math.round(
     (Math.min(todayMinutes + todayDueMinutes, DAILY_CAPACITY_MINUTES) / DAILY_CAPACITY_MINUTES) *
@@ -597,6 +600,13 @@ export default function LiveDashboardClient({
             value={formatCurrency(receivable)}
             hint="valor pronto para relatório"
             tone="violet"
+          />
+          <LiveMetric
+            icon={TimerReset}
+            label="Potencial agenda"
+            value={formatCurrency(appointmentPotential)}
+            hint="valor previsto nos encaixes"
+            tone="amber"
           />
           <LiveMetric
             icon={Gauge}

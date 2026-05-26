@@ -71,6 +71,7 @@ create table if not exists public.admin_appointments (
   scheduled_date date not null default current_date,
   scheduled_time text not null default '09:00',
   duration_minutes integer not null default 30,
+  potential_amount numeric(12, 2) not null default 0,
   priority text not null default 'media',
   notes text not null default '',
   created_at timestamptz not null default now(),

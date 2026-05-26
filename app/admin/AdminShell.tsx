@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
@@ -9,7 +10,6 @@ import {
   CheckCircle2,
   LayoutDashboard,
   LogOut,
-  ShieldCheck,
 } from "lucide-react";
 import { applySpvTheme, readSpvTheme } from "@/lib/spvTheme";
 
@@ -58,13 +58,20 @@ export default function AdminShell({
         <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050707]/82 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/10">
-                <ShieldCheck className="h-5 w-5 text-emerald-200" aria-hidden="true" />
-              </div>
+              <Link href="/admin/dashboard" className="relative h-10 w-[152px] shrink-0">
+                <Image
+                  src="/brand/suba-logo.png"
+                  alt="Suba Pro Verde"
+                  fill
+                  sizes="152px"
+                  className="object-contain"
+                  priority
+                />
+              </Link>
 
-              <div className="min-w-0">
+              <div className="hidden min-w-0 sm:block">
                 <div className="text-sm font-semibold tracking-wide text-white">
-                  SUBA PRO VERDE
+                  RADAR SPV
                 </div>
                 <div className="truncate text-xs text-white/50">Admin operacional</div>
               </div>

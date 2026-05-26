@@ -69,6 +69,7 @@ type AppointmentForm = {
   scheduledDate: string;
   scheduledTime: string;
   durationMinutes: number;
+  potentialAmount: number;
   priority: "alta" | "media" | "baixa";
   notes: string;
 };
@@ -280,6 +281,7 @@ function defaultForm(
     scheduledDate: selectedDate,
     scheduledTime: "09:00",
     durationMinutes: 30,
+    potentialAmount: 0,
     priority: "media",
     notes: "",
   };
@@ -577,6 +579,11 @@ export default function DashboardClient({
   const overdueRemovals = openRemovals.filter((removal) => removal.dueDate < today);
   const dueToday = openRemovals.filter((removal) => removal.dueDate === today);
   const awaitingClient = openRemovals.filter((removal) => removal.status === "aguardando_cliente");
+  const activeAppointments = appointments.filter((appointment) => appointment.status !== "concluido");
+  const appointmentPotential = activeAppointments.reduce(
+    (acc, appointment) => acc + Number(appointment.potentialAmount || 0),
+    0
+  );
   const receivable = removals
     .filter((removal) => removal.success === true && removal.chargedAmount > 0)
     .reduce((acc, removal) => acc + removal.chargedAmount, 0);
@@ -588,21 +595,76 @@ export default function DashboardClient({
   const successRate =
     closedRows.length > 0 ? Math.round((successRows.length / closedRows.length) * 100) : 0;
   const contextSwitches = new Set(todayAppointments.map((appointment) => appointment.clientId)).size;
-  const focusScore = Math.max(
-    35,
-    100 - overdueRemovals.length * 14 - contextSwitches * 7 - Math.max(capacityPercent - 85, 0)
-  );
   const stalledDays = openRemovals.reduce(
     (acc, removal) => acc + Math.max(diffDays(removal.serviceDate, today), 0),
     0
   );
 
+  const clientOpportunities = clients
+    .map((client) => {
+      const clientRemovals = openRemovals.filter((removal) => removal.clientId === client.id);
+      const clientAppointments = activeAppointments.filter(
+        (appointment) => appointment.clientId === client.id
+      );
+      const futureAppointments = clientAppointments
+        .filter((appointment) => appointment.scheduledDate >= today)
+        .sort((a, b) =>
+          `${a.scheduledDate} ${a.scheduledTime}`.localeCompare(`${b.scheduledDate} ${b.scheduledTime}`)
+        );
+      const pastAppointments = clientAppointments
+        .filter((appointment) => appointment.scheduledDate < today)
+        .sort((a, b) =>
+          `${b.scheduledDate} ${b.scheduledTime}`.localeCompare(`${a.scheduledDate} ${a.scheduledTime}`)
+        );
+      const openValue = clientRemovals.reduce((acc, removal) => acc + Number(removal.chargedAmount || 0), 0);
+      const plannedValue = clientAppointments.reduce(
+        (acc, appointment) => acc + Number(appointment.potentialAmount || 0),
+        0
+      );
+      const lastTouchDate =
+        pastAppointments[0]?.scheduledDate ??
+        clientRemovals.sort((a, b) => b.serviceDate.localeCompare(a.serviceDate))[0]?.serviceDate ??
+        "";
+      const daysIdle = futureAppointments[0] ? 0 : lastTouchDate ? Math.max(diffDays(lastTouchDate, today), 0) : 0;
+      const potential = openValue + plannedValue;
+      const pressure = potential > 0 ? Math.min(100, daysIdle * 9 + clientRemovals.length * 12 + potential / 35) : 0;
+
+      return {
+        client,
+        openCount: clientRemovals.length,
+        openValue,
+        plannedValue,
+        potential,
+        nextAppointment: futureAppointments[0],
+        daysIdle,
+        pressure,
+      };
+    })
+    .filter((item) => item.potential > 0 || item.openCount > 0)
+    .sort((a, b) => b.pressure - a.pressure);
+
+  const neglectedClients = clientOpportunities.filter(
+    (item) => !item.nextAppointment && (item.daysIdle >= 5 || item.potential >= 300 || item.openCount >= 2)
+  );
+  const neglectedValue = neglectedClients.reduce((acc, item) => acc + item.potential, 0);
+  const focusScore = Math.max(
+    25,
+    Math.round(
+      100 -
+        overdueRemovals.length * 14 -
+        contextSwitches * 7 -
+        neglectedClients.length * 8 -
+        Math.min(neglectedValue / 120, 18) -
+        Math.max(capacityPercent - 85, 0)
+    )
+  );
+
   const bottlenecks = [
     {
-      label: "Cliente parado",
-      value: awaitingClient.length,
-      percent: Math.min(awaitingClient.length * 34, 100),
-      detail: `${awaitingClient.length} item(ns) aguardando resposta`,
+      label: "Cliente esquecido",
+      value: neglectedClients.length,
+      percent: Math.min(neglectedClients.length * 34, 100),
+      detail: `${formatCurrency(neglectedValue)} sem proximo encaixe`,
       icon: PauseCircle,
     },
     {
@@ -653,6 +715,11 @@ export default function DashboardClient({
       detail: `${awaitingClient.length} pendencia(s) travadas por retorno`,
     },
     {
+      label: "Cliente rentavel sem agenda",
+      value: Math.round(neglectedValue / 8),
+      detail: `${formatCurrency(neglectedValue)} parado em clientes sem encaixe`,
+    },
+    {
       label: "Prazo vencido",
       value: overdueRemovals.length * 55,
       detail: `${overdueRemovals.length} item(ns) exigem replanejamento`,
@@ -692,6 +759,12 @@ export default function DashboardClient({
       tone: "sky",
     },
     {
+      label: "Sem próximo encaixe",
+      value: neglectedClients.length,
+      detail: `${formatCurrency(neglectedValue)} pode esfriar`,
+      tone: "rose",
+    },
+    {
       label: "Ganhos para reportar",
       value: successRows.length,
       detail: "Oportunidade de relatório/cobrança",
@@ -712,7 +785,7 @@ export default function DashboardClient({
     },
     risco: {
       title: "Modo Risco",
-      body: `${overdueRemovals.length} vencido(s), ${dueToday.length} vencendo hoje e ${formatCurrency(revenueAtRisk)} em jogo.`,
+      body: `${overdueRemovals.length} vencido(s), ${dueToday.length} vencendo hoje, ${formatCurrency(revenueAtRisk)} em jogo e ${formatCurrency(neglectedValue)} sem encaixe.`,
       color: 3,
     },
     cobranca: {
@@ -793,6 +866,21 @@ export default function DashboardClient({
     setShowScheduler(true);
   }
 
+  function openOpportunityScheduler(clientId: string, clientName: string, potential: number, iso = today) {
+    setSelectedDate(iso);
+    setEditingAppointmentId(null);
+    setForm({
+      ...defaultForm(iso, clientId, "defesa"),
+      title: `Remover impactos - ${clientName}`,
+      potentialAmount: potential,
+      priority: potential >= 500 ? "alta" : "media",
+      notes: "Cliente com carteira de impactos para encaixar ao longo das semanas.",
+    });
+    setClientFormOpen(false);
+    setClientDraft(emptyClientDraft());
+    setShowScheduler(true);
+  }
+
   function closeScheduler() {
     setShowScheduler(false);
     setEditingAppointmentId(null);
@@ -811,6 +899,7 @@ export default function DashboardClient({
       scheduledDate: appointment.scheduledDate,
       scheduledTime: appointment.scheduledTime,
       durationMinutes: appointment.durationMinutes,
+      potentialAmount: appointment.potentialAmount ?? 0,
       priority: appointment.priority,
       notes: appointment.notes ?? "",
     });
@@ -906,6 +995,7 @@ export default function DashboardClient({
       scheduledDate: form.scheduledDate,
       scheduledTime: form.scheduledTime,
       durationMinutes: Number(form.durationMinutes || 30),
+      potentialAmount: Number(form.potentialAmount || 0),
       priority: form.priority,
       notes: form.notes.trim(),
     };
@@ -1062,7 +1152,7 @@ export default function DashboardClient({
       </section>
 
       <section className="rounded-2xl border border-emerald-300/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.13),rgba(255,255,255,0.045))] p-4">
-        <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr_.9fr_.9fr]">
+        <div className="grid gap-4 lg:grid-cols-[1.1fr_.8fr_.8fr_.8fr_.9fr]">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-300/20 bg-black/22">
               <RadioTower className="h-5 w-5 text-emerald-100" aria-hidden="true" />
@@ -1084,6 +1174,7 @@ export default function DashboardClient({
 
           <AlertStat label="Hoje" value={String(todayAppointments.length)} detail={`${minutesToLabel(todayMinutes)} agendados`} />
           <AlertStat label="Semana" value={String(weekAppointments.length)} detail="atendimentos planejados" />
+          <AlertStat label="Potencial agenda" value={formatCurrency(appointmentPotential)} detail="a receber previsto" />
           <AlertStat
             label="Carga do dia"
             value={`${capacityPercent}%`}
@@ -1093,7 +1184,7 @@ export default function DashboardClient({
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           icon={Gauge}
           label="Score de foco"
@@ -1109,6 +1200,13 @@ export default function DashboardClient({
           tone={stalledDays > 3 ? "amber" : "default"}
         />
         <MetricCard
+          icon={PauseCircle}
+          label="Dinheiro esquecido"
+          value={formatCurrency(neglectedValue)}
+          hint={`${neglectedClients.length} cliente(s) sem proximo encaixe`}
+          tone={neglectedValue > 0 ? "amber" : "default"}
+        />
+        <MetricCard
           icon={CircleDollarSign}
           label="Valor em risco"
           value={formatCurrency(revenueAtRisk)}
@@ -1122,6 +1220,56 @@ export default function DashboardClient({
           hint={`${successRows.length}/${closedRows.length} casos fechados`}
           tone="green"
         />
+      </section>
+
+      <section className="rounded-2xl border border-amber-300/16 bg-amber-400/[0.055] p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Clientes para não deixar esfriar</h2>
+            <p className="mt-1 text-xs text-white/45">
+              Cruza remoções abertas, potencial dos agendamentos e tempo sem próximo encaixe.
+            </p>
+          </div>
+          <div className="text-sm font-semibold text-amber-50">
+            {formatCurrency(neglectedValue)} sem agenda futura clara
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+          {clientOpportunities.slice(0, 4).map((item) => (
+            <button
+              key={item.client.id}
+              type="button"
+              onClick={() =>
+                openOpportunityScheduler(
+                  item.client.id,
+                  item.client.name,
+                  item.potential,
+                  item.nextAppointment?.scheduledDate ?? today
+                )
+              }
+              className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-amber-300/25 hover:bg-white/[0.06]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">{item.client.name}</div>
+                  <div className="mt-1 text-xs text-white/45">
+                    {item.openCount} impacto(s) aberto(s)
+                  </div>
+                </div>
+                <div className="rounded-full border border-amber-300/18 bg-amber-400/10 px-2 py-1 text-[11px] font-semibold text-amber-50">
+                  {Math.round(item.pressure)}
+                </div>
+              </div>
+              <div className="mt-3 text-lg font-semibold text-white">{formatCurrency(item.potential)}</div>
+              <div className="mt-1 text-xs leading-5 text-white/45">
+                {item.nextAppointment
+                  ? `Próximo encaixe em ${formatDate(item.nextAppointment.scheduledDate)}`
+                  : `${item.daysIdle} dia(s) sem próximo encaixe`}
+              </div>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1578,6 +1726,9 @@ function DayAgendaPanel({
             <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/50">
               <span>{appointmentTypeLabel[appointment.type]}</span>
               <span>{minutesToLabel(appointment.durationMinutes)}</span>
+              {Number(appointment.potentialAmount || 0) > 0 ? (
+                <span>{formatCurrency(Number(appointment.potentialAmount || 0))}</span>
+              ) : null}
               <span className={cn("rounded-full border px-2 py-0.5", priorityTone(appointment.priority))}>
                 {appointment.priority}
               </span>
@@ -1642,7 +1793,7 @@ function SchedulerPanel({
           Agenda rapida
         </div>
         <p className="mt-2 text-sm leading-6 text-white/45">
-          Selecione um dia no calendário e clique em Agendar para criar uma tarefa ou atendimento mockado.
+          Selecione um dia no calendário e clique em Agendar para criar uma tarefa ou atendimento.
         </p>
       </div>
     );
@@ -1658,7 +1809,7 @@ function SchedulerPanel({
           <p className="mt-1 text-xs text-white/45">
             {editing
               ? "Ajuste data, horário, cliente, prioridade e notas do compromisso."
-              : "Crie uma tarefa, follow-up, cobrança ou atendimento nesta etapa mockada."}
+              : "Crie uma tarefa, follow-up, cobrança ou atendimento com valor potencial."}
           </p>
         </div>
         <button
@@ -1736,6 +1887,18 @@ function SchedulerPanel({
             />
           </Field>
         </div>
+
+        <Field label="Valor potencial a receber">
+          <input
+            type="number"
+            min="0"
+            step="10"
+            value={form.potentialAmount}
+            onChange={(event) => onChange("potentialAmount", Number(event.target.value))}
+            placeholder="Ex: 500"
+            className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30"
+          />
+        </Field>
 
         <Field label="Prioridade">
           <select
