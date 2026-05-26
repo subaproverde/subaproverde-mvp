@@ -109,7 +109,86 @@ function normalizeInvoice(invoice: any) {
   };
 }
 
-function normalizeDispatchDates(shipment: any, leadTime: any, sla?: any) {
+function asArray<T = any>(value: any): T[] {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.results)) return value.results;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  return [];
+}
+
+function normalizeFiscalDocuments(fiscalDocuments: any) {
+  const docs = [
+    ...(Array.isArray(fiscalDocuments?.fiscal_documents)
+      ? fiscalDocuments.fiscal_documents
+      : []),
+    ...(Array.isArray(fiscalDocuments?.results) ? fiscalDocuments.results : []),
+    ...(Array.isArray(fiscalDocuments?.data) ? fiscalDocuments.data : []),
+    ...(Array.isArray(fiscalDocuments) ? fiscalDocuments : []),
+  ].filter(Boolean);
+
+  const primary = docs[0] ?? null;
+
+  return {
+    issued: docs.length > 0,
+    status: docs.length > 0 ? "fiscal_document_attached" : "—",
+    issuedAt: toIsoOrDash(
+      firstValue(
+        primary?.date,
+        primary?.date_created,
+        primary?.created_at,
+        findFirstValueByKey(primary, ["date", "date_created", "created_at"])
+      )
+    ),
+    number: safeStr(
+      firstValue(
+        primary?.id,
+        primary?.filename,
+        primary?.file_name,
+        findFirstValueByKey(primary, ["id", "filename", "file_name"])
+      )
+    ),
+  };
+}
+
+function mergeInvoiceData(
+  invoice: ReturnType<typeof normalizeInvoice>,
+  fiscal: ReturnType<typeof normalizeFiscalDocuments>
+) {
+  if (fiscal.issued) return fiscal;
+  if (invoice.issued) return invoice;
+  if (invoice.number !== "—" || invoice.status !== "—" || invoice.issuedAt !== "—") return invoice;
+  return fiscal;
+}
+
+function historyDate(history: any, needles: string[]) {
+  const events = asArray(history).filter(Boolean);
+  const found = events.find((event: any) => {
+    const raw = [event?.status, event?.substatus].filter(Boolean).join(" ").toLowerCase();
+    return needles.some((needle) => raw.includes(needle));
+  });
+
+  return found?.date ?? found?.date_created ?? found?.created_at ?? null;
+}
+
+function delayDate(delays: any) {
+  const items = asArray(delays?.delays ?? delays).filter(Boolean);
+  const found =
+    items.find((item: any) => {
+      const raw = String(item?.type ?? "").toLowerCase();
+      return raw.includes("handling") || raw.includes("sla");
+    }) ?? items[0];
+
+  return found?.date ?? found?.date_created ?? null;
+}
+
+function normalizeDispatchDates(
+  shipment: any,
+  leadTime: any,
+  sla?: any,
+  history?: any,
+  delays?: any
+) {
   return {
     expectedDispatchDate: toIsoOrDash(
       firstValue(
@@ -123,12 +202,14 @@ function normalizeDispatchDates(shipment: any, leadTime: any, sla?: any) {
         shipment?.estimated_handling_limit?.date,
         shipment?.estimated_handling_limit,
         shipment?.lead_time?.estimated_handling_limit?.date,
-        shipment?.lead_time?.estimated_handling_limit
+        shipment?.lead_time?.estimated_handling_limit,
+        delayDate(delays)
       )
     ),
     shippedAt: toIsoOrDash(
       firstValue(
         shipment?.date_shipped,
+        historyDate(history, ["shipped", "delivered"]),
         shipment?.date_first_printed,
         shipment?.shipping_option?.date_shipped
       )
@@ -203,6 +284,8 @@ export async function GET(req: NextRequest) {
     let shipment: any = null;
     let leadTime: any = null;
     let sla: any = null;
+    let history: any = null;
+    let delays: any = null;
     let invoice: ReturnType<typeof normalizeInvoice> | null = null;
     let claim: any = null;
 
@@ -218,8 +301,14 @@ export async function GET(req: NextRequest) {
     let leadTimeBody: any = null;
     let slaStatus: number | null = null;
     let slaBody: any = null;
+    let historyStatus: number | null = null;
+    let historyBody: any = null;
+    let delaysStatus: number | null = null;
+    let delaysBody: any = null;
     let invoiceStatus: number | null = null;
     let invoiceBody: any = null;
+    let fiscalDocumentsStatus: number | null = null;
+    let fiscalDocumentsBody: any = null;
 
     // 1) Claim
     if (claimId) {
@@ -323,26 +412,63 @@ export async function GET(req: NextRequest) {
       if (slaRes.ok) {
         sla = slaJson;
       }
-    }
 
-    if (order?.id) {
-      const { res, json } = await fetchJson(
-        `https://api.mercadolibre.com/users/${encodeURIComponent(
-          mlUserId
-        )}/invoices/orders/${encodeURIComponent(String(order.id))}`,
+      const { res: historyRes, json: historyJson } = await fetchJson(
+        `https://api.mercadolibre.com/shipments/${encodeURIComponent(String(resolvedShipmentId))}/history`,
         accessToken
       );
 
+      historyStatus = historyRes.status;
+      historyBody = historyJson;
+
+      if (historyRes.ok) {
+        history = historyJson;
+      }
+
+      const { res: delaysRes, json: delaysJson } = await fetchJson(
+        `https://api.mercadolibre.com/shipments/${encodeURIComponent(String(resolvedShipmentId))}/delays`,
+        accessToken
+      );
+
+      delaysStatus = delaysRes.status;
+      delaysBody = delaysJson;
+
+      if (delaysRes.ok) {
+        delays = delaysJson;
+      }
+    }
+
+    if (order?.id) {
+      const packId = String(order?.pack_id ?? order.id);
+      const invoiceUrl = `https://api.mercadolibre.com/users/${encodeURIComponent(
+        mlUserId
+      )}/invoices/orders/${encodeURIComponent(String(order.id))}`;
+      const fiscalUrl = `https://api.mercadolibre.com/packs/${encodeURIComponent(
+        packId
+      )}/fiscal_documents`;
+
+      const [{ res, json }, { res: fiscalRes, json: fiscalJson }] = await Promise.all([
+        fetchJson(invoiceUrl, accessToken),
+        fetchJson(fiscalUrl, accessToken),
+      ]);
+
       invoiceStatus = res.status;
       invoiceBody = json;
-      invoice = res.ok ? normalizeInvoice(json) : normalizeInvoice(null);
+      fiscalDocumentsStatus = fiscalRes.status;
+      fiscalDocumentsBody = fiscalJson;
+      invoice = mergeInvoiceData(
+        res.ok ? normalizeInvoice(json) : normalizeInvoice(null),
+        fiscalRes.ok
+          ? normalizeFiscalDocuments(fiscalJson)
+          : normalizeFiscalDocuments(null)
+      );
     }
 
     const orderItem = order?.order_items?.[0] ?? {};
     const item = orderItem?.item ?? {};
     const buyer = order?.buyer ?? {};
     const phone = buyer?.phone?.number ?? buyer?.phone ?? null;
-    const dispatchDates = normalizeDispatchDates(shipment, leadTime, sla);
+    const dispatchDates = normalizeDispatchDates(shipment, leadTime, sla, history, delays);
 
     const details = {
       claim: {
@@ -405,7 +531,7 @@ export async function GET(req: NextRequest) {
         trackingMethod: safeStr(shipment?.tracking_method),
         lastUpdated: toIsoOrDash(shipment?.last_updated),
         dateCreated: toIsoOrDash(shipment?.date_created),
-        dateShipped: toIsoOrDash(shipment?.date_shipped),
+        dateShipped: toIsoOrDash(firstValue(shipment?.date_shipped, dispatchDates.shippedAt)),
         expectedDispatchDate: dispatchDates.expectedDispatchDate,
         shippedAt: dispatchDates.shippedAt,
         dateDelivered: toIsoOrDash(
@@ -448,13 +574,21 @@ export async function GET(req: NextRequest) {
         leadTimeBody,
         slaStatus,
         slaBody,
+        historyStatus,
+        historyBody,
+        delaysStatus,
+        delaysBody,
         invoiceStatus,
         invoiceBody,
+        fiscalDocumentsStatus,
+        fiscalDocumentsBody,
 
         orderRaw: order,
         shipmentRaw: shipment,
         leadTimeRaw: leadTime,
         slaRaw: sla,
+        historyRaw: history,
+        delaysRaw: delays,
         claimRaw: claim,
       },
     });

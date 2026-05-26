@@ -210,6 +210,23 @@ function displayMoney(value?: number, currencyId?: string) {
   }
 }
 
+function displayDateTime(value: any, fallback = "-") {
+  const raw = displayText(value, "");
+  if (!raw) return fallback;
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function invoiceStatusLabel(issued?: boolean, status?: string) {
   if (issued) return "NF emitida";
   const raw = displayText(status, "").toLowerCase();
@@ -614,22 +631,22 @@ function ImpactRow({
           {item.type === "atrasos" && (
             <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-white/55 md:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
-                <div className="font-bold text-white/38">Despachar até</div>
+                <div className="font-bold text-white/38">Prazo despacho ML</div>
                 <div className="mt-0.5 truncate font-semibold text-white/78">
-                  {displayText(item.expectedDispatchDate)}
+                  {displayDateTime(item.expectedDispatchDate)}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
-                <div className="font-bold text-white/38">Despachado em</div>
+                <div className="font-bold text-white/38">Despacho realizado</div>
                 <div className="mt-0.5 truncate font-semibold text-white/78">
-                  {displayText(item.shippedAt, item.dateShipped)}
+                  {displayDateTime(item.shippedAt || item.dateShipped)}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
                 <div className="font-bold text-white/38">Nota fiscal</div>
                 <div className="mt-0.5 truncate font-semibold text-white/78">
                   {invoiceStatusLabel(item.invoiceIssued, item.invoiceStatus)}
-                  {hasUsefulValue(item.invoiceIssuedAt) ? ` • ${item.invoiceIssuedAt}` : ""}
+                  {hasUsefulValue(item.invoiceIssuedAt) ? ` • ${displayDateTime(item.invoiceIssuedAt)}` : ""}
                 </div>
               </div>
             </div>
@@ -893,15 +910,15 @@ function CaseSidePanel({
           {selected.type === "atrasos" && (
             <>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-                <span className="text-white/45">Despachar até</span>
+                <span className="text-white/45">Prazo despacho ML</span>
                 <span className="truncate font-semibold text-white/82">
-                  {displayText(details?.shipment?.expectedDispatchDate, selected.expectedDispatchDate)}
+                  {displayDateTime(details?.shipment?.expectedDispatchDate || selected.expectedDispatchDate)}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-                <span className="text-white/45">Despachado em</span>
+                <span className="text-white/45">Despacho realizado</span>
                 <span className="truncate font-semibold text-white/82">
-                  {displayText(details?.shipment?.shippedAt, selected.shippedAt || selected.dateShipped)}
+                  {displayDateTime(details?.shipment?.shippedAt || selected.shippedAt || selected.dateShipped)}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
@@ -913,7 +930,7 @@ function CaseSidePanel({
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
                 <span className="text-white/45">Emissão NF</span>
                 <span className="truncate font-semibold text-white/82">
-                  {displayText(details?.invoice?.issuedAt, selected.invoiceIssuedAt)}
+                  {displayDateTime(details?.invoice?.issuedAt || selected.invoiceIssuedAt)}
                 </span>
               </div>
             </>
@@ -2020,31 +2037,31 @@ useEffect(() => {
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Data de envio</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayText(details?.shipment?.dateShipped, selected?.dateShipped)}
+                        {displayDateTime(details?.shipment?.dateShipped || selected?.dateShipped)}
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Despachar até</div>
+                      <div className="text-white/50">Prazo despacho ML</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayText(details?.shipment?.expectedDispatchDate, selected?.expectedDispatchDate)}
+                        {displayDateTime(details?.shipment?.expectedDispatchDate || selected?.expectedDispatchDate)}
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Despachado em</div>
+                      <div className="text-white/50">Despacho realizado</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayText(details?.shipment?.shippedAt, selected?.shippedAt || selected?.dateShipped)}
+                        {displayDateTime(details?.shipment?.shippedAt || selected?.shippedAt || selected?.dateShipped)}
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Entrega estimada</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayText(details?.shipment?.estimatedDelivery, selected?.dateEstimatedDelivery)}
+                        {displayDateTime(details?.shipment?.estimatedDelivery || selected?.dateEstimatedDelivery)}
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Data entregue</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayText(details?.shipment?.dateDelivered, selected?.dateDelivered)}
+                        {displayDateTime(details?.shipment?.dateDelivered || selected?.dateDelivered)}
                       </div>
                     </div>
                   </div>
@@ -2063,7 +2080,7 @@ useEffect(() => {
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="text-white/50">Emissão</div>
                       <div className="mt-1 font-semibold text-white">
-                        {displayText(details?.invoice?.issuedAt, selected?.invoiceIssuedAt)}
+                        {displayDateTime(details?.invoice?.issuedAt || selected?.invoiceIssuedAt)}
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
