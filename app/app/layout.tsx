@@ -199,6 +199,13 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
                 </Link>
 
                 <Link
+                  href="/app/visao-geral"
+                  className={navLinkClass(!!pathname?.startsWith("/app/visao-geral"))}
+                >
+                  Visão Geral
+                </Link>
+
+                <Link
                   href="/admin/remocoes"
                   className={navLinkClass(!!pathname?.startsWith("/admin/remocoes"))}
                 >

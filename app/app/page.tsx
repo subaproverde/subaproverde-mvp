@@ -68,6 +68,7 @@ type ImpactMetrics = {
 
 type MetricRates = {
   claims: number | null;
+  mediations: number | null;
   cancellations: number | null;
   delays: number | null;
 };
@@ -112,6 +113,7 @@ const emptyImpact: ImpactMetrics = {
 
 const emptyRates: MetricRates = {
   claims: null,
+  mediations: null,
   cancellations: null,
   delays: null,
 };
@@ -295,7 +297,7 @@ export default function SellerSummaryPage() {
 
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [inProgress, setInProgress] = useState<CaseItem[]>([]);
-  const [mediationsSource, setMediationsSource] = useState("cases");
+  const [mediationsPeriod, setMediationsPeriod] = useState("60 dias");
 
   useEffect(() => {
     let alive = true;
@@ -342,12 +344,9 @@ export default function SellerSummaryPage() {
           fetch(`/api/ml/account/me?sellerId=${encodeURIComponent(sid)}`, {
             cache: "no-store",
           }),
-          fetch(
-            `/api/ml/cases?sellerId=${encodeURIComponent(
-              sid
-            )}&type=mediacoes&impactFilter=impacting&page=1&limit=1`,
-            { cache: "no-store" }
-          ),
+          fetch(`/api/ml/reputation/mediations?sellerId=${encodeURIComponent(sid)}`, {
+            cache: "no-store",
+          }),
           supabaseBrowser
             .from("complaints")
             .select("id, ml_case_id, reason, status, impact_level, synced_at")
@@ -386,6 +385,7 @@ export default function SellerSummaryPage() {
           });
           setRates({
             claims: metricRate(metrics.claims),
+            mediations: null,
             cancellations: metricRate(metrics.cancellations),
             delays: metricRate(metrics.delayed_handling_time),
           });
@@ -410,13 +410,12 @@ export default function SellerSummaryPage() {
 
         const mediationJson = await mediationRes.json().catch(() => ({}));
         if (alive && mediationRes.ok && mediationJson?.ok) {
-          const impactingMediations = numberValue(
-            mediationJson.total ?? mediationJson.filterCounts?.impact?.impacting
-          );
-          const fallbackMediations = numberValue(mediationJson.counts?.mediacoes);
-          const mediations = impactingMediations || fallbackMediations;
+          const mediations = numberValue(mediationJson.metric?.value);
+          const mediationRate = nullableNumber(mediationJson.metric?.rate);
+          const periodDays = numberValue(mediationJson.metric?.periodDays);
           setImpactMetrics((current) => ({ ...current, mediations }));
-          setMediationsSource(impactingMediations ? "impactantes" : "detectadas");
+          setRates((current) => ({ ...current, mediations: mediationRate }));
+          setMediationsPeriod(periodDays > 0 ? `${periodDays} dias` : "período do ML");
         }
 
         if (alive) {
@@ -608,7 +607,7 @@ export default function SellerSummaryPage() {
                     icon={Flag}
                     label="Mediações"
                     value={impactMetrics.mediations}
-                    hint={mediationsSource === "impactantes" ? "Impactando reputação" : "Detectadas em cases"}
+                    hint={`Taxa ${formatPercent(rates.mediations)} | ${mediationsPeriod}`}
                     color="sky"
                     max={maxImpact}
                   />
