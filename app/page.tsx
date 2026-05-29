@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,6 +16,7 @@ import {
   Gauge,
   LineChart,
   LockKeyhole,
+  Mail,
   MessageCircle,
   MonitorCheck,
   ShieldCheck,
@@ -22,6 +24,7 @@ import {
   Target,
   TrendingUp,
   Users,
+  X,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -116,6 +119,7 @@ export default function LandingPage() {
         </main>
 
         <Footer />
+        <MascotChatWidget />
       </div>
     </>
   );
@@ -528,6 +532,105 @@ function Footer() {
         <div>© {new Date().getFullYear()} Suba Pro Verde. Todos os direitos reservados.</div>
       </div>
     </footer>
+  );
+}
+
+function MascotChatWidget() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-5 right-5 z-[80] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+      {open && (
+        <div className="w-[min(360px,calc(100vw-40px))] overflow-hidden rounded-lg border border-emerald-300/20 bg-[#07100d]/95 shadow-[0_28px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-emerald-300/20 bg-emerald-300/10">
+                <Image
+                  src="/landing/spv-mascot.png"
+                  alt="Mascote Suba Pro Verde"
+                  width={72}
+                  height={72}
+                  className="absolute -bottom-3 left-1/2 h-16 w-16 -translate-x-1/2 object-contain"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">Verdinho da Suba</div>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-100/70">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                  Radar de reputação ativo
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/62 hover:bg-white/10 hover:text-white"
+              aria-label="Fechar chat"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-3 p-4">
+            <div className="rounded-lg rounded-tl-sm border border-white/10 bg-white/[0.055] p-4">
+              <p className="text-sm font-semibold leading-6 text-white">
+                Oi, eu sou o Verdinho. Quer enxergar riscos de reputação, atrasos,
+                reclamações e oportunidades na sua operação?
+              </p>
+              <p className="mt-2 text-xs leading-5 text-white/54">
+                Posso te levar direto para uma conversa com a Suba Pro Verde.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <a
+                href={WHATSAPP_LINK}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-[#062016] hover:bg-emerald-300"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Falar no WhatsApp
+              </a>
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/6 px-4 py-3 text-sm font-bold text-white/82 hover:bg-white/10"
+              >
+                <Mail className="h-4 w-4" />
+                Enviar e-mail
+              </a>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/6 px-4 py-3 text-sm font-bold text-white/82 hover:bg-white/10"
+              >
+                Acessar plataforma
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="group relative flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300/24 bg-[#07100d] shadow-[0_22px_80px_rgba(16,185,129,0.28)] transition hover:-translate-y-1 hover:border-emerald-200/50 sm:h-24 sm:w-24"
+        aria-label={open ? "Fechar contato com a Suba" : "Abrir contato com a Suba"}
+      >
+        <span className="absolute inset-0 rounded-full bg-emerald-300/12 blur-xl transition group-hover:bg-emerald-300/18" />
+        <span className="absolute -right-1 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-[#07100d] bg-emerald-300 text-[#062016] shadow-[0_8px_24px_rgba(52,211,153,0.28)]">
+          <MessageCircle className="h-3.5 w-3.5" />
+        </span>
+        <Image
+          src="/landing/spv-mascot.png"
+          alt=""
+          width={120}
+          height={120}
+          className="relative h-[86px] w-[86px] translate-y-1 object-contain transition group-hover:scale-105 sm:h-[104px] sm:w-[104px]"
+          priority
+        />
+      </button>
+    </div>
   );
 }
 
