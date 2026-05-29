@@ -15,10 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Suba Pro Verde",
   description:
-    "Radar inteligente de reputação para vendedores do Mercado Livre.",
+    "Plataforma de gestão de reputação, performance operacional e customer experience para sellers Mercado Livre.",
   openGraph: {
     title: "Suba Pro Verde",
-    description: "Proteja sua reputação antes que impactos virem prejuízo.",
+    description:
+      "Inteligência operacional para sellers Mercado Livre acompanharem reputação, riscos, atendimento e performance.",
     url: "https://www.subaproverde.com",
     images: [
       {
@@ -37,9 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
     </html>
