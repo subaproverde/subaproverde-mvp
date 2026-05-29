@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { getMediationImpactMetric } from "@/lib/mlReputation";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
 type CaseStatus = "open" | "closed" | "unknown";
@@ -748,6 +749,14 @@ export async function GET(req: NextRequest) {
       meJson?.seller_reputation?.metrics?.cancellations?.value ?? 0
     );
 
+    const officialMediationMetric = await getMediationImpactMetric({
+      accessToken,
+      me: meJson,
+    });
+    const officialMediationCount = Number(officialMediationMetric.value ?? 0);
+    const officialMediationClaimIds = new Set(officialMediationMetric.affectedClaimIds ?? []);
+    const officialMediationSales = new Set(officialMediationMetric.affectedSales ?? []);
+
     const ordersUrl = `https://api.mercadolibre.com/orders/search?seller=${encodeURIComponent(
       mlUserId
     )}&limit=50&sort=date_desc`;
@@ -901,7 +910,8 @@ export async function GET(req: NextRequest) {
     );
 
     const normalizedClaims = claims.map((c: any) => {
-      const type = claimTypeOf(c);
+      const detectedType = claimTypeOf(c);
+      const type = detectedType === "mediacoes" ? "reclamacoes" : detectedType;
       const orderId =
         c?.resource_id ?? c?.order_id ?? c?.resource?.id ?? null;
 
@@ -973,6 +983,93 @@ export async function GET(req: NextRequest) {
         raw: c,
       };
     });
+
+    const normalizedMediationItems = normalizedClaims
+      .filter((item: any) => {
+        const claimId = item.claimId ? String(item.claimId) : "";
+        const orderId = item.orderId ? String(item.orderId) : "";
+        return (
+          (claimId && officialMediationClaimIds.has(claimId)) ||
+          (orderId && officialMediationSales.has(orderId))
+        );
+      })
+      .map((item: any) => ({
+        ...item,
+        id: `mediation-${item.claimId ?? item.orderId ?? item.id}`,
+        type: "mediacoes" as ImpactType,
+        title: item.title !== "â€”" ? item.title : "Mediação impactando reputação",
+        reason: "Intervenção do Mercado Livre sem benefício ao seller.",
+        reputationImpact: "impacting" as ReputationImpact,
+        removalEligible: "eligible" as RemovalEligibility,
+        source: "claim",
+        raw: {
+          ...item.raw,
+          metric: "mediations",
+          source: officialMediationMetric.source,
+        },
+      }));
+
+    const missingMediationCount = Math.max(
+      0,
+      officialMediationCount - normalizedMediationItems.length
+    );
+    const fallbackMediationItems =
+      missingMediationCount > 0
+        ? Array.from({ length: missingMediationCount }).map((_, i) => ({
+            id: `mediation-metric-${i + 1}`,
+            type: "mediacoes" as ImpactType,
+            title: "Mediação impactando reputação",
+            reason: "Item vindo da métrica inferida de mediações do Mercado Livre.",
+            createdAt: "â€”",
+            updatedAt: "â€”",
+            ageLabel: "métrica ML",
+            buyerName: "Comprador",
+            statusPill: "impactando",
+            statusGroup: "unknown" as CaseStatus,
+            reputationImpact: "impacting" as ReputationImpact,
+            removalEligible: "eligible" as RemovalEligibility,
+            logisticKey: "outro" as LogisticKey,
+            logisticType: "Não identificado",
+            chip: `ML-M${i + 1}`,
+            source: "metric",
+            claimId: null,
+            orderId: null,
+            shipmentId: null,
+            itemTitle: "â€”",
+            itemId: null,
+            variationId: null,
+            quantity: 0,
+            unitPrice: 0,
+            currencyId: "â€”",
+            thumbnail: "â€”",
+            buyerNickname: "Comprador",
+            buyerFirstName: "â€”",
+            buyerLastName: "â€”",
+            buyerPhone: "â€”",
+            buyerEmail: "â€”",
+            orderStatus: "â€”",
+            packId: null,
+            shippingMode: "â€”",
+            shippingLogisticType: "â€”",
+            trackingNumber: "â€”",
+            shippingStatus: "impactando",
+            shippingSubstatus: "â€”",
+            dateDelivered: "â€”",
+            dateEstimatedDelivery: "â€”",
+            dateShipped: "â€”",
+            expectedDispatchDate: "â€”",
+            shippedAt: "â€”",
+            invoiceIssued: false,
+            invoiceStatus: "â€”",
+            invoiceIssuedAt: "â€”",
+            invoiceNumber: "â€”",
+            raw: {
+              metric: "mediations",
+              officialMediationCount,
+              source: officialMediationMetric.source,
+            },
+          }))
+        : [];
 
     const normalizedCancelledOrders = orders
       .filter((o: any) => orderIsCancelled(o))
@@ -1326,6 +1423,8 @@ export async function GET(req: NextRequest) {
 
     const items = [
       ...normalizedClaims,
+      ...normalizedMediationItems,
+      ...fallbackMediationItems,
       ...fallbackClaimItems,
       ...normalizedCancelledOrders,
       ...fallbackCancelItems,
@@ -1376,12 +1475,13 @@ export async function GET(req: NextRequest) {
           claimsAttempt2: claims2.length,
           reclamacoes: Math.max(officialClaimsCount, detectedReclamacoes),
           atrasos: Math.max(officialDelayCount, detectedAtrasos),
-          cancelamentos: Math.max(officialCancelCount, detectedCancelamentos),
-          mediacoes: detectedMediacoes,
+          cancelamentos: officialCancelCount,
+          mediacoes: officialMediationCount,
           detectedReclamacoes,
           detectedMediacoes,
           detectedCancelamentos,
           detectedAtrasos,
+          officialMediationCount,
           items: items.length,
         },
         filterCounts,
