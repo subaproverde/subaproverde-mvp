@@ -37,6 +37,7 @@ type MlAccountMeResp =
 const ACTIVE = ["novo", "em_analise", "aguardando_cliente", "chamado_aberto"];
 const PAGE_SIZE_ALERTS = 5;
 const PAGE_SIZE_ONGOING = 5;
+const ML_DEFENSE_HELP_URL = "https://www.mercadolivre.com.br/ajuda/hub/25040";
 
 function niceKind(kind: string) {
   if (kind === "impact_claims" || kind === "impact_claims_metric") return "Reclamação";
@@ -386,7 +387,9 @@ export default function DashboardHome() {
           </div>
 
           <Link
-            href={`/dashboard/cases?sellerId=${sellerId}`}
+            href={ML_DEFENSE_HELP_URL}
+            target="_blank"
+            rel="noreferrer"
             className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700"
           >
             Abrir defesa urgente →

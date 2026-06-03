@@ -9,6 +9,8 @@ import {
   type ReputationLevel,
 } from "@/app/components/reputation/ReputationThermometer";
 
+const ML_DEFENSE_HELP_URL = "https://www.mercadolivre.com.br/ajuda/hub/25040";
+
 type MlMe = {
   nickname?: string;
   seller_reputation?: {
@@ -262,7 +264,9 @@ export default function SellerDashboardPage() {
 
                   <div className="flex gap-2">
                     <Link
-                      href={`/app/sellers/${encodeURIComponent(sellerId)}`}
+                      href={ML_DEFENSE_HELP_URL}
+                      target="_blank"
+                      rel="noreferrer"
                       className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white/85 hover:bg-white/10"
                     >
                       Abrir defesa urgente →
@@ -326,7 +330,9 @@ export default function SellerDashboardPage() {
                       </div>
 
                       <Link
-                        href={`/app/sellers/${encodeURIComponent(sellerId)}`}
+                        href={ML_DEFENSE_HELP_URL}
+                        target="_blank"
+                        rel="noreferrer"
                         className={[
                           "w-full inline-flex items-center justify-center rounded-xl px-4 py-2.5",
                           "border border-yellow-400/25",
@@ -385,7 +391,9 @@ export default function SellerDashboardPage() {
                     </div>
                   </div>
                   <Link
-                    href={`/app/sellers/${encodeURIComponent(sellerId)}`}
+                    href={ML_DEFENSE_HELP_URL}
+                    target="_blank"
+                    rel="noreferrer"
                     className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
                   >
                     Abrir defesa
