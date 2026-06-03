@@ -1569,15 +1569,27 @@ useEffect(() => {
             </TabButton>
           </div>
 
-            <label className="relative block min-w-0 xl:w-[360px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por pedido, comprador, claim ou status"
-                className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 pl-10 pr-4 text-[13px] font-semibold text-white outline-none placeholder:text-white/32 focus:border-emerald-300/50"
-              />
-            </label>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center xl:w-auto">
+              <a
+                href={ML_DEFENSE_HELP_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-500/18 px-4 text-[12px] font-extrabold uppercase tracking-wide text-emerald-50 shadow-[0_18px_70px_rgba(16,185,129,0.12)] hover:bg-emerald-500/26"
+              >
+                <MessageSquareText className="h-4 w-4" />
+                Abrir chamado no ML
+              </a>
+
+              <label className="relative block min-w-0 sm:w-[360px]">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por pedido, comprador, claim ou status"
+                  className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 pl-10 pr-4 text-[13px] font-semibold text-white outline-none placeholder:text-white/32 focus:border-emerald-300/50"
+                />
+              </label>
+            </div>
         </div>
 
           <div className="mt-4 space-y-3">
