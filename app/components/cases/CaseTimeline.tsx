@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { authFetch } from "@/lib/authFetch";
 
 type CaseEventRow = {
   id: string;
@@ -19,7 +20,6 @@ function fmt(iso?: string) {
     return String(iso);
   }
 }
-
 function titleFor(type: string) {
   if (type === "note_added") return "Nota adicionada";
   if (type === "protocol_set") return "Protocolo atualizado";
@@ -59,7 +59,7 @@ export function CaseTimeline({ caseId }: { caseId: string }) {
     setErr("");
 
     try {
-      const r = await fetch(`/api/cases/events/list?caseId=${encodeURIComponent(caseId)}`, {
+      const r = await authFetch(`/api/cases/events/list?caseId=${encodeURIComponent(caseId)}`, {
         cache: "no-store",
       });
 
@@ -121,4 +121,3 @@ export function CaseTimeline({ caseId }: { caseId: string }) {
     </div>
   );
 }
-  

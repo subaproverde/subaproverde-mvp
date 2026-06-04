@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { authFetch } from "@/lib/authFetch";
 
 export default function SignupPage() {
   const [sellerFullName, setSellerFullName] = useState("");
@@ -36,7 +37,7 @@ export default function SignupPage() {
 
       // cria seller_accounts (seu ensure já existe)
       if (userId) {
-        const r = await fetch("/api/seller_accounts/ensure", {
+        const r = await authFetch("/api/seller_accounts/ensure", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ userId }),
@@ -51,7 +52,7 @@ export default function SignupPage() {
         // aplica cupom/vínculo (não trava fluxo se falhar)
         const coupon = normCoupon(couponCode);
         if (coupon) {
-          const rr = await fetch("/api/referral/apply", {
+          const rr = await authFetch("/api/referral/apply", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({

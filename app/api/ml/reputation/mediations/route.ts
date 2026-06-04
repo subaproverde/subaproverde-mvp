@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 import { getMediationImpactMetric, type MlUserMe } from "@/lib/mlReputation";
 
 async function fetchJson(url: string, accessToken: string) {
@@ -17,6 +18,9 @@ export async function GET(req: NextRequest) {
   if (!sellerId) {
     return NextResponse.json({ ok: false, error: "sellerId obrigatorio" }, { status: 400 });
   }
+
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
 
   try {
     const { accessToken } = await getValidMlAccessToken(sellerId);

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +13,9 @@ export async function GET(req: NextRequest) {
   if (!sellerId) return Response.json({ error: "sellerId obrigatório" }, { status: 400 });
 
   // pega último snapshot
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
+
   const { data: snap, error } = await supabaseAdmin
     .from("seller_reputation_snapshots")
     .select("id, ml_user_id, payload, created_at")

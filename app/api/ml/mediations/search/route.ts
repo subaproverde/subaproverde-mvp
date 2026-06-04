@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 export async function GET(req: Request) {
   try {
@@ -9,6 +10,9 @@ export async function GET(req: Request) {
     if (!sellerId) {
       return NextResponse.json({ error: "sellerId obrigatorio" }, { status: 400 });
     }
+
+    const access = await requireSellerAccess(req, sellerId);
+    if (!access.ok) return authErrorResponse(access);
 
     const { accessToken } = await getValidMlAccessToken(sellerId);
     const url = "https://api.mercadolibre.com/mediations/search";

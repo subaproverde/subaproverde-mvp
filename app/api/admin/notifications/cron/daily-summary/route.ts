@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
   const adminPhone = process.env.ADMIN_WHATSAPP_TO ?? "554388231544";
   const response = await fetch(`${origin}/api/admin/notifications/whatsapp`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.ADMIN_NOTIFICATIONS_CRON_SECRET || process.env.CRON_SECRET || ""}`,
+    },
     body: JSON.stringify({
       phone: adminPhone,
       message,

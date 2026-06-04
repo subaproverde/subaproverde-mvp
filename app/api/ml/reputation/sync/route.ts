@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,6 +14,9 @@ export async function GET(req: NextRequest) {
   if (!sellerId) return Response.json({ error: "sellerId obrigatório" }, { status: 400 });
 
   const ttlSeconds = Number(sp.get("ttlSeconds") ?? "180"); // 3 min
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
+
   const force = sp.get("force") === "1";
 
   // 1) Cache: snapshot recente

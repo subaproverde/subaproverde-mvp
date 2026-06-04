@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizePhone } from "@/lib/adminNotificationMessages";
+import {
+  authErrorResponse,
+  hasInternalSecret,
+  requireAdminRequest,
+  type ApiAuthFailure,
+} from "@/lib/apiAuth";
 
 type WhatsAppRequestBody = {
   phone?: string;
@@ -199,7 +205,27 @@ async function sendViaMetaCloudApi(phone: string, message: string, body: WhatsAp
   };
 }
 
-export async function GET() {
+async function requireWhatsAppAccess(request: NextRequest): Promise<ApiAuthFailure | null> {
+  if (
+    hasInternalSecret(
+      request,
+      "ADMIN_NOTIFICATIONS_WHATSAPP_SECRET",
+      "ADMIN_NOTIFICATIONS_CRON_SECRET",
+      "CRON_SECRET"
+    )
+  ) {
+    return null;
+  }
+
+  const admin = await requireAdminRequest(request);
+  if (admin.ok === true) return null;
+  return { ok: false, status: admin.status, error: admin.error };
+}
+
+export async function GET(request: NextRequest) {
+  const denied = await requireWhatsAppAccess(request);
+  if (denied) return authErrorResponse(denied);
+
   const hasAccessToken = Boolean(process.env.WHATSAPP_ACCESS_TOKEN);
   const hasPhoneNumberId = Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID);
   const hasDefaultTo = Boolean(process.env.ADMIN_WHATSAPP_TO);
@@ -221,6 +247,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const denied = await requireWhatsAppAccess(request);
+    if (denied) return authErrorResponse(denied);
+
     const body = (await request.json().catch(() => ({}))) as WhatsAppRequestBody;
     const phone = normalizePhone(body.phone ?? process.env.ADMIN_WHATSAPP_TO ?? "");
     const message = body.message?.trim();

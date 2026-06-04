@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { isAdminEmail } from "@/lib/adminEmails";
+import { authFetch } from "@/lib/authFetch";
 
 type TokenStatus = "connected" | "expiring" | "needs_reconnect" | "not_connected";
 type ReputationLevel = "verde" | "amarelo" | "laranja" | "vermelho";
@@ -289,10 +290,10 @@ export default function AdminOverviewPage() {
       const hydrated = await Promise.all(
         sellers.slice(0, 24).map(async (seller) => {
           const [meResponse, mediationResponse] = await Promise.all([
-            fetch(`/api/ml/account/me?sellerId=${encodeURIComponent(seller.id)}`, {
+            authFetch(`/api/ml/account/me?sellerId=${encodeURIComponent(seller.id)}`, {
               cache: "no-store",
             }),
-            fetch(`/api/ml/reputation/mediations?sellerId=${encodeURIComponent(seller.id)}`, {
+            authFetch(`/api/ml/reputation/mediations?sellerId=${encodeURIComponent(seller.id)}`, {
               cache: "no-store",
             }),
           ]);
@@ -390,7 +391,7 @@ export default function AdminOverviewPage() {
   async function sendToAdminWhatsapp() {
     if (!message.trim()) return;
     setSendStatus("Enviando...");
-    const response = await fetch("/api/admin/notifications/whatsapp", {
+    const response = await authFetch("/api/admin/notifications/whatsapp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: message.trim(), forceText: true }),

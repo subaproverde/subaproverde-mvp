@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { applySpvTheme, readSpvTheme, saveSpvTheme, type SpvTheme } from "@/lib/spvTheme";
+import { authFetch } from "@/lib/authFetch";
 
 type StepKey = "email_ready" | "instructions_sent" | "seller_invited" | "invite_accepted" | "access_tested";
 
@@ -191,7 +192,7 @@ export default function AppSettingsPage() {
           throw new Error("Você não está logado.");
         }
 
-        const res = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+        const res = await authFetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => ({}));

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { authFetch } from "@/lib/authFetch";
 
 type Counts = {
   reclamacoes: number;
@@ -108,7 +109,7 @@ export default function ReportsPage() {
         throw new Error("Você não está logado. Faça login novamente.");
       }
 
-      const sellerRes = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+      const sellerRes = await authFetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
         cache: "no-store",
       });
       const sellerJson = await sellerRes.json().catch(() => ({}));
@@ -120,7 +121,7 @@ export default function ReportsPage() {
       const sid = String(sellerJson.sellerId);
       setSellerId(sid);
 
-      const casesRes = await fetch(`/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=1&limit=1&type=reclamacoes`, {
+      const casesRes = await authFetch(`/api/ml/cases?sellerId=${encodeURIComponent(sid)}&page=1&limit=1&type=reclamacoes`, {
         cache: "no-store",
       });
       const casesJson = await casesRes.json().catch(() => ({}));

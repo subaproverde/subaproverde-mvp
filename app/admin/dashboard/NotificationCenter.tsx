@@ -23,6 +23,7 @@ import {
   minutesUntilAppointment,
   todayIso,
 } from "@/lib/adminNotificationMessages";
+import { authFetch } from "@/lib/authFetch";
 
 const DEFAULT_WHATSAPP_PHONE = "554388231544";
 const REMINDER_WINDOWS = [30, 10, 5, 1];
@@ -110,7 +111,7 @@ export default function NotificationCenter({
       return { ok: true, skipped: true };
     }
 
-    const response = await fetch("/api/admin/notifications/whatsapp", {
+    const response = await authFetch("/api/admin/notifications/whatsapp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, message }),
@@ -217,7 +218,7 @@ export default function NotificationCenter({
   useEffect(() => {
     let alive = true;
 
-    fetch("/api/admin/notifications/whatsapp", { cache: "no-store" })
+    authFetch("/api/admin/notifications/whatsapp", { cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
         if (!alive) return;

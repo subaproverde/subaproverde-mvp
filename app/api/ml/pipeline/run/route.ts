@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { authErrorResponse, getBearerToken, requireSellerAccess } from "@/lib/apiAuth";
 
 type StepResult = {
   ok: boolean;
@@ -36,9 +37,12 @@ function getBaseUrl(req: NextRequest) {
   return `${proto}://${host}`;
 }
 
-async function hit(url: string): Promise<StepResult> {
+async function hit(url: string, token: string): Promise<StepResult> {
   try {
-    const r = await fetch(url, { cache: "no-store" });
+    const r = await fetch(url, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
 
     let data: any = null;
     const ct = r.headers.get("content-type") || "";
@@ -73,24 +77,28 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "sellerId obrigatório" }, { status: 400 });
   }
 
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
+
+  const token = getBearerToken(req);
   const base = getBaseUrl(req);
 
-  const s1 = await hit(`${base}/api/ml/reputation/sync?sellerId=${sellerId}&force=1`);
+  const s1 = await hit(`${base}/api/ml/reputation/sync?sellerId=${sellerId}&force=1`, token);
   if (!s1.ok) return Response.json({ ok: false, failed_at: "reputation_sync", step: s1 }, { status: 500 });
 
-  const s2 = await hit(`${base}/api/ml/reputation/normalize?sellerId=${sellerId}`);
+  const s2 = await hit(`${base}/api/ml/reputation/normalize?sellerId=${sellerId}`, token);
   if (!s2.ok) return Response.json({ ok: false, failed_at: "normalize", step: s2 }, { status: 500 });
 
-  const s3 = await hit(`${base}/api/ml/reputation/issues/build-from-claims?sellerId=${sellerId}&windowDays=365`);
+  const s3 = await hit(`${base}/api/ml/reputation/issues/build-from-claims?sellerId=${sellerId}&windowDays=365`, token);
   if (!s3.ok) return Response.json({ ok: false, failed_at: "issues_claims", step: s3 }, { status: 500 });
 
-  const s4 = await hit(`${base}/api/ml/reputation/issues/build-from-summary?sellerId=${sellerId}`);
+  const s4 = await hit(`${base}/api/ml/reputation/issues/build-from-summary?sellerId=${sellerId}`, token);
   if (!s4.ok) return Response.json({ ok: false, failed_at: "issues_summary", step: s4 }, { status: 500 });
 
-  const s5 = await hit(`${base}/api/ml/cases/generate?sellerId=${sellerId}`);
+  const s5 = await hit(`${base}/api/ml/cases/generate?sellerId=${sellerId}`, token);
   if (!s5.ok) return Response.json({ ok: false, failed_at: "cases_generate", step: s5 }, { status: 500 });
 
-  const s6 = await hit(`${base}/api/ml/cases/reconcile?sellerId=${sellerId}`);
+  const s6 = await hit(`${base}/api/ml/cases/reconcile?sellerId=${sellerId}`, token);
   if (!s6.ok) return Response.json({ ok: false, failed_at: "cases_reconcile", step: s6 }, { status: 500 });
 
   return Response.json({

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/adminEmails";
 import { applySpvTheme, readSpvTheme } from "@/lib/spvTheme";
+import { authFetch } from "@/lib/authFetch";
 
 function navLinkClass(active: boolean) {
   return [
@@ -87,7 +88,7 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
       }
 
       try {
-        const r = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+        const r = await authFetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
           cache: "no-store",
         });
 
@@ -123,15 +124,23 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
     };
   }, [pathname]);
 
-  function handleConnectMl() {
+  async function handleConnectMl() {
     if (!currentUserId) {
       window.location.href = "/login";
       return;
     }
 
-    const params = new URLSearchParams({ userId: currentUserId });
+    const params = new URLSearchParams({ json: "1" });
     if (activeSellerId && !isAdmin) params.set("sellerId", activeSellerId);
-    window.location.href = `/api/ml/connect?${params.toString()}`;
+
+    const response = await authFetch(`/api/ml/connect?${params.toString()}`, { cache: "no-store" });
+    const json = await response.json().catch(() => ({}));
+    if (response.ok && json?.authUrl) {
+      window.location.href = json.authUrl;
+      return;
+    }
+
+    window.location.href = "/login";
   }
 
   return (

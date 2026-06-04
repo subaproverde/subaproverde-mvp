@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 type MlFetchOpts = { accessToken: string };
 
@@ -132,6 +133,9 @@ export async function GET(req: Request) {
     if (!sellerUuid) {
       return NextResponse.json({ ok: false, error: "missing seller_id" }, { status: 400 });
     }
+
+    const access = await requireSellerAccess(req, sellerUuid);
+    if (!access.ok) return authErrorResponse(access);
 
     const { accessToken, mlUserId } = await getSellerMlAuth(sellerUuid);
 

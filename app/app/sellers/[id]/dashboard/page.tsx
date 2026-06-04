@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { authFetch } from "@/lib/authFetch";
 import {
   ReputationThermometer,
   type ReputationLevel,
@@ -126,7 +127,7 @@ export default function SellerDashboardPage() {
       }
 
       // 1) reputação / me do ML
-      const meRes = await fetch(`/api/ml/account/me?sellerId=${sellerId}`, {
+      const meRes = await authFetch(`/api/ml/account/me?sellerId=${sellerId}`, {
         cache: "no-store",
       });
       const meJson = await meRes.json().catch(() => ({}));

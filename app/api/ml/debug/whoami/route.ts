@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireAdminRequest } from "@/lib/apiAuth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,9 @@ const supabase = createClient(
 
 export async function GET(req: Request) {
   try {
+    const admin = await requireAdminRequest(req);
+    if (!admin.ok) return authErrorResponse(admin);
+
     const { searchParams } = new URL(req.url);
     const sellerId = String(searchParams.get("sellerId") ?? "").trim();
     if (!sellerId) {

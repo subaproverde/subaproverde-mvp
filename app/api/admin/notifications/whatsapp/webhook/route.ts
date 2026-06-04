@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import { authErrorResponse, requireAdminRequest } from "@/lib/apiAuth";
 
 type MetaWebhookValue = {
   messaging_product?: string;
@@ -53,7 +55,6 @@ type MetaWebhookBody = {
 const webhookEvents: Array<{
   receivedAt: string;
   summary: unknown;
-  payload: MetaWebhookBody;
 }> = [];
 
 const defaultVerifyToken = "subaproverde_whatsapp_webhook";
@@ -72,7 +73,7 @@ function summarizePayload(payload: MetaWebhookBody) {
         from: message.from,
         id: message.id,
         type: message.type,
-        text: message.text?.body,
+        hasText: Boolean(message.text?.body),
       })),
       statuses: value?.statuses?.map((status) => ({
         id: status.id,
@@ -89,6 +90,23 @@ function summarizePayload(payload: MetaWebhookBody) {
   });
 }
 
+async function hasValidMetaSignature(request: NextRequest, rawBody: string) {
+  const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
+  if (!appSecret) return true;
+
+  const signature = request.headers.get("x-hub-signature-256") ?? "";
+  const expected =
+    "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
+
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+
+  return (
+    signatureBuffer.length === expectedBuffer.length &&
+    crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+  );
+}
+
 export async function GET(request: NextRequest) {
   const mode = request.nextUrl.searchParams.get("hub.mode");
   const token = request.nextUrl.searchParams.get("hub.verify_token");
@@ -96,6 +114,9 @@ export async function GET(request: NextRequest) {
   const expectedToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || defaultVerifyToken;
 
   if (!mode && !token && !challenge) {
+    const admin = await requireAdminRequest(request);
+    if (!admin.ok) return authErrorResponse(admin);
+
     return NextResponse.json({
       ok: true,
       recentEvents: webhookEvents.slice(-10).reverse(),
@@ -113,13 +134,23 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const payload = (await request.json().catch(() => ({}))) as MetaWebhookBody;
+  const rawBody = await request.text();
+
+  if (!(await hasValidMetaSignature(request, rawBody))) {
+    return NextResponse.json({ ok: false, error: "Invalid webhook signature." }, { status: 401 });
+  }
+
+  let payload: MetaWebhookBody;
+  try {
+    payload = JSON.parse(rawBody || "{}") as MetaWebhookBody;
+  } catch {
+    return NextResponse.json({ ok: false, error: "Invalid JSON." }, { status: 400 });
+  }
   const summary = summarizePayload(payload);
 
   webhookEvents.push({
     receivedAt: new Date().toISOString(),
     summary,
-    payload,
   });
 
   if (webhookEvents.length > 50) {

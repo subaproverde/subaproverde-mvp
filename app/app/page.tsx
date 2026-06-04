@@ -20,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { authFetch } from "@/lib/authFetch";
 import {
   ReputationThermometer,
   type ReputationLevel,
@@ -320,7 +321,7 @@ export default function SellerSummaryPage() {
       }
 
       try {
-        const sellerRes = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+        const sellerRes = await authFetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
           cache: "no-store",
         });
         const sellerJson = await sellerRes.json().catch(() => ({}));
@@ -341,10 +342,10 @@ export default function SellerSummaryPage() {
         setSellerId(sid);
 
         const [meRes, mediationRes, compResult, casesResult] = await Promise.all([
-          fetch(`/api/ml/account/me?sellerId=${encodeURIComponent(sid)}`, {
+          authFetch(`/api/ml/account/me?sellerId=${encodeURIComponent(sid)}`, {
             cache: "no-store",
           }),
-          fetch(`/api/ml/reputation/mediations?sellerId=${encodeURIComponent(sid)}`, {
+          authFetch(`/api/ml/reputation/mediations?sellerId=${encodeURIComponent(sid)}`, {
             cache: "no-store",
           }),
           supabaseBrowser

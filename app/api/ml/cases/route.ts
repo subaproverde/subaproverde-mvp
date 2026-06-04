@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
 import { getMediationImpactMetric } from "@/lib/mlReputation";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 type ImpactType = "reclamacoes" | "atrasos" | "cancelamentos" | "mediacoes";
 type CaseStatus = "open" | "closed" | "unknown";
@@ -712,6 +713,9 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const access = await requireSellerAccess(req, sellerId);
+    if (!access.ok) return authErrorResponse(access);
 
     const { accessToken } = await getValidMlAccessToken(sellerId);
 

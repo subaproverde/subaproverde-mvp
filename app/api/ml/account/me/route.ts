@@ -1,6 +1,7 @@
 // app/api/ml/account/me/route.ts
 import { NextRequest } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken"; // ajuste se o caminho for outro
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 type ReputationLevel = "verde" | "amarelo" | "laranja" | "vermelho";
 
@@ -126,6 +127,9 @@ export async function GET(req: NextRequest) {
   if (!sellerId) {
     return Response.json({ ok: false, error: "sellerId obrigatório" }, { status: 400 });
   }
+
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
 
   try {
     const { accessToken } = await getValidMlAccessToken(sellerId);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 function safeStr(v: any, fallback = "—") {
   if (v === null || v === undefined || v === "") return fallback;
@@ -249,6 +250,9 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const access = await requireSellerAccess(req, sellerId);
+    if (!access.ok) return authErrorResponse(access);
 
     if (!orderId && !shipmentId && !claimId) {
       return NextResponse.json(

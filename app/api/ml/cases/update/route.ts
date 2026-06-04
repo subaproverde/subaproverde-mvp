@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase-admin"; // ajuste se o seu nome for outro
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 // ✅ lista única de status aceitos no backend
 const CASE_STATUS_ENUM = z.enum([
@@ -30,6 +31,8 @@ const BodySchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = BodySchema.parse(await req.json());
+    const access = await requireSellerAccess(req, body.sellerId);
+    if (!access.ok) return authErrorResponse(access);
 
     const update: Record<string, any> = {};
     if (body.status) update.status = body.status;

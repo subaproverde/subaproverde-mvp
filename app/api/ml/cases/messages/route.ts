@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 type MessageSender = "seller" | "buyer" | "mercadolivre";
 
@@ -807,6 +808,9 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const access = await requireSellerAccess(req, sellerId);
+    if (!access.ok) return authErrorResponse(access);
 
     const claimId = rawCaseId ? normalizeClaimId(rawCaseId) : "";
     let packId = normalizePackId(rawPackId);

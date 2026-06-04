@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 export async function GET(req: Request) {
   try {
@@ -9,6 +10,9 @@ export async function GET(req: Request) {
     if (!sellerId) {
       return NextResponse.json({ ok: false, error: "sellerId é obrigatório" }, { status: 400 });
     }
+
+    const access = await requireSellerAccess(req, sellerId);
+    if (!access.ok) return authErrorResponse(access);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest) {
 
   if (!sellerId) return Response.json({ error: "sellerId obrigatório" }, { status: 400 });
   if (!notificationId) return Response.json({ error: "notificationId obrigatório" }, { status: 400 });
+
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
 
   const { error } = await supabaseAdmin
     .from("notifications")

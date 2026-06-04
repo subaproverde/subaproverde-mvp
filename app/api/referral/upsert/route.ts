@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireRequestUser } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,9 +20,17 @@ function norm(v: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireRequestUser(req);
+    if (!auth.ok) return authErrorResponse(auth);
+
     const body = (await req.json().catch(() => ({}))) as Body;
 
-    const userId = String(body?.userId ?? "").trim();
+    const requestedUserId = String(body?.userId ?? "").trim();
+    if (requestedUserId && requestedUserId !== auth.user.id) {
+      return Response.json({ ok: false, error: "userId nao pertence a sessao" }, { status: 403 });
+    }
+
+    const userId = auth.user.id;
     const sellerFullName = String(body?.sellerFullName ?? "").trim();
     const storeName = String(body?.storeName ?? "").trim();
     const couponCodeRaw = String(body?.couponCode ?? "").trim();

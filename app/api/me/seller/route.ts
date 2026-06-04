@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireRequestUser } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,8 +8,10 @@ const supabaseAdmin = createClient(
 );
 
 export async function GET(req: NextRequest) {
-  const sp = req.nextUrl.searchParams;
-  const userId = sp.get("userId");
+  const auth = await requireRequestUser(req);
+  if (!auth.ok) return authErrorResponse(auth);
+
+  const userId = auth.user.id;
 
   if (!userId) {
     return Response.json(

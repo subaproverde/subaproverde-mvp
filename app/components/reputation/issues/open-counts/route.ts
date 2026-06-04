@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,6 +20,9 @@ export async function GET(req: NextRequest) {
   }
 
   // Puxa só issues abertas do seller
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
+
   const { data, error } = await supabaseAdmin
     .from("reputation_issues")
     .select("kind")

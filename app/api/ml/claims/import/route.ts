@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 type TokenRow = {
   id?: any;
@@ -41,6 +42,9 @@ async function handler(req: NextRequest) {
   if (!sellerId) {
     return Response.json({ error: "sellerId obrigatório" }, { status: 400 });
   }
+
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
 
   const limit = sp.get("limit") ?? "20";
   const offset = sp.get("offset") ?? "0";

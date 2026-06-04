@@ -1,8 +1,7 @@
 // app/api/referral/apply/route.ts
 import { NextRequest } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireRequestUser } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,34 +19,13 @@ function normCoupon(v: string) {
   return v.trim().toUpperCase();
 }
 
-async function supabaseFromCookies() {
-  // ✅ Next 15+: cookies() é async
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        // ✅ em Route Handler não precisamos set/remove pra autenticar leitura
-        set() {},
-        remove() {},
-      },
-    }
-  );
-}
-
 export async function POST(req: NextRequest) {
   try {
-    // 1) user logado via cookies
-    const supabase = await supabaseFromCookies();
-    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    // 1) user logado via token da sessao
+    const auth = await requireRequestUser(req);
 
-    if (userErr || !userData?.user) {
-      return Response.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    if (!auth.ok) {
+      return authErrorResponse(auth);
     }
 
     // 2) body
@@ -85,7 +63,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: false, error: "sellerAccount não encontrado" }, { status: 404 });
     }
 
-    if (sellerAcc.owner_user_id !== userData.user.id) {
+    if (sellerAcc.owner_user_id !== auth.user.id) {
       return Response.json({ ok: false, error: "Sem permissão para esse seller" }, { status: 403 });
     }
 

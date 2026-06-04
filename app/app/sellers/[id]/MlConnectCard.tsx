@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/authFetch";
 
 export default function MlConnectCard({ sellerId }: { sellerId: string }) {
   const [meLoading, setMeLoading] = useState(true);
@@ -18,7 +19,7 @@ export default function MlConnectCard({ sellerId }: { sellerId: string }) {
       }
 
       // tenta buscar /me do ML (se token existir)
-      const r = await fetch(`/api/ml/account/me?sellerId=${sellerId}`, { cache: "no-store" });
+      const r = await authFetch(`/api/ml/account/me?sellerId=${sellerId}`, { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
       if (r.ok && j?.data) setMlUser(j.data);
       else setMlUser(null);

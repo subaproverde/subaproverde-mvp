@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { authFetch } from "@/lib/authFetch";
 
 type SellerItem = {
   sellerId: string;
@@ -52,10 +53,10 @@ export default function SellerSwitcher() {
         setUserId(user.id);
 
         const [rList, rActive] = await Promise.all([
-          fetch(`/api/me/sellers?userId=${encodeURIComponent(user.id)}`, {
+          authFetch(`/api/me/sellers?userId=${encodeURIComponent(user.id)}`, {
             cache: "no-store",
           }),
-          fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+          authFetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
             cache: "no-store",
           }),
         ]);

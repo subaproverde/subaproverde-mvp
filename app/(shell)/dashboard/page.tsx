@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabaseClient";
+import { authFetch } from "@/lib/authFetch";
 
 type CaseRow = {
   id: string;
@@ -139,7 +140,7 @@ export default function DashboardHome() {
 
       console.log("[dashboard] chamando cases/list =", url.toString());
 
-      const rCases = await fetch(url.toString(), { cache: "no-store" });
+      const rCases = await authFetch(url.toString(), { cache: "no-store" });
       const jCases = await rCases.json().catch(() => ({}));
 
       console.log("[dashboard] resposta cases/list =", jCases);
@@ -148,7 +149,7 @@ export default function DashboardHome() {
 
       console.log("[dashboard] chamando /api/ml/account/me com sellerId =", currentSellerId);
 
-      const rMe = await fetch(`/api/ml/account/me?sellerId=${currentSellerId}`, {
+      const rMe = await authFetch(`/api/ml/account/me?sellerId=${currentSellerId}`, {
         cache: "no-store",
       });
       const jMe = (await rMe.json().catch(() => ({}))) as MlAccountMeResp;
@@ -201,7 +202,7 @@ export default function DashboardHome() {
 
       console.log("[dashboard] resolvendo seller real via /api/me/seller");
 
-      const r = await fetch(`/api/me/seller?userId=${user.id}`, {
+      const r = await authFetch(`/api/me/seller?userId=${user.id}`, {
         cache: "no-store",
       });
       const j = (await r.json().catch(() => ({}))) as MeSellerResp;

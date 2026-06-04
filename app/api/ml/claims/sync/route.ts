@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,6 +73,9 @@ export async function GET(req: Request) {
   const onlyOpened = String(searchParams.get("onlyOpened") ?? "false") === "true";
 
   if (!sellerId) return jsonError("sellerId ausente");
+
+  const access = await requireSellerAccess(req, sellerId);
+  if (!access.ok) return authErrorResponse(access);
 
   // 1) pega tokens do banco
   const { data: t, error: tErr } = await supabase

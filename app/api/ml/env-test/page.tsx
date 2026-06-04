@@ -1,4 +1,8 @@
+import { notFound } from "next/navigation";
+
 export default function EnvTest() {
+  if (process.env.NODE_ENV === "production") notFound();
+
   return (
     <pre style={{ padding: 16 }}>
       {JSON.stringify(

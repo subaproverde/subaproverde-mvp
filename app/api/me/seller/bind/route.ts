@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireRequestUser } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,9 +8,12 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRequestUser(req);
+  if (!auth.ok) return authErrorResponse(auth);
+
   const body = await req.json().catch(() => ({}));
-  const userId = body?.userId as string | undefined;
   const sellerId = body?.sellerId as string | undefined;
+  const userId = auth.user.id;
 
   if (!userId) return Response.json({ error: "userId obrigatório" }, { status: 400 });
   if (!sellerId) return Response.json({ error: "sellerId obrigatório" }, { status: 400 });

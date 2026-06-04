@@ -1,7 +1,12 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireAdminRequest } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    const admin = await requireAdminRequest(req);
+    if (admin.ok !== true) return authErrorResponse(admin);
+  }
+
   // ⚠️ Essa rota roda no server, mas a sessão do seu setup está no browser/localStorage.
   // Então aqui a gente só devolve info do request (cookies) pra diagnosticar.
   const cookies = req.cookies.getAll().map((c) => ({ name: c.name, hasValue: !!c.value }));

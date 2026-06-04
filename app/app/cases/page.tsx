@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { isAdminEmail } from "@/lib/adminEmails";
+import { authFetch } from "@/lib/authFetch";
 
 const ML_DEFENSE_HELP_URL = "https://www.mercadolivre.com.br/ajuda/hub/25040";
 
@@ -1205,7 +1206,7 @@ export default function CasesPage() {
         if (requestedSellerId && canUseRequestedSeller) {
           sidBackend = requestedSellerId;
         } else {
-          const rSeller = await fetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
+          const rSeller = await authFetch(`/api/me/seller?userId=${encodeURIComponent(user.id)}`, {
             cache: "no-store",
           });
 
@@ -1242,7 +1243,7 @@ export default function CasesPage() {
           logisticFilter,
         });
 
-        const res = await fetch(
+        const res = await authFetch(
           `/api/ml/cases?${params.toString()}`,
           { cache: "no-store" }
         );
@@ -1317,7 +1318,7 @@ useEffect(() => {
         if (selected.shipmentId) params.set("shipmentId", selected.shipmentId);
         if (selected.claimId) params.set("claimId", selected.claimId);
 
-        const res = await fetch(`/api/ml/cases/details?${params.toString()}`, {
+        const res = await authFetch(`/api/ml/cases/details?${params.toString()}`, {
           cache: "no-store",
         });
 
@@ -1379,7 +1380,7 @@ useEffect(() => {
           return;
         }
 
-        const res = await fetch(`/api/ml/cases/messages?${params.toString()}`, {
+        const res = await authFetch(`/api/ml/cases/messages?${params.toString()}`, {
           cache: "no-store",
         });
 

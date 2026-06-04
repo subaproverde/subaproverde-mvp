@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +15,26 @@ export async function GET(req: NextRequest) {
   if (!caseId) return Response.json({ error: "caseId obrigatório" }, { status: 400 });
 
   const limit = Math.min(parseInt(sp.get("limit") ?? "200", 10) || 200, 500);
+
+  const { data: caseRow, error: caseErr } = await supabaseAdmin
+    .from("cases")
+    .select("seller_id")
+    .eq("id", caseId)
+    .maybeSingle();
+
+  if (caseErr) {
+    return Response.json(
+      { ok: false, error: "Falha ao validar case", details: caseErr.message },
+      { status: 500 }
+    );
+  }
+
+  if (!caseRow?.seller_id) {
+    return Response.json({ ok: false, error: "Case nao encontrado" }, { status: 404 });
+  }
+
+  const access = await requireSellerAccess(req, caseRow.seller_id);
+  if (!access.ok) return authErrorResponse(access);
 
   const { data, error } = await supabaseAdmin
     .from("case_events")

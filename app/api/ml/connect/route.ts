@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { authErrorResponse, requireRequestUser } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,9 +10,13 @@ const supabaseAdmin = createClient(
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireRequestUser(req);
+    if (!auth.ok) return authErrorResponse(auth);
+
     const sp = req.nextUrl.searchParams;
-    const userId = sp.get("userId");
+    const userId = auth.user.id;
     const sellerId = sp.get("sellerId")?.trim() || "";
+    const wantsJson = sp.get("json") === "1";
 
     if (!userId) {
       return NextResponse.json(
@@ -88,6 +93,10 @@ export async function GET(req: NextRequest) {
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&state=${encodeURIComponent(state)}` +
       `&scope=${encodeURIComponent(scope)}`;
+
+    if (wantsJson) {
+      return NextResponse.json({ ok: true, authUrl }, { headers: { "Cache-Control": "no-store" } });
+    }
 
     return NextResponse.redirect(authUrl);
   } catch (err: any) {

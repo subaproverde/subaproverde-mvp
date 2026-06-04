@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getValidMlAccessToken } from "@/lib/mlToken";
+import { authErrorResponse, requireAdminRequest } from "@/lib/apiAuth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,6 +22,9 @@ function isExpiredOrSoon(expiresAt: string | null, skewSec = 120) {
 }
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdminRequest(req);
+  if (!admin.ok) return authErrorResponse(admin);
+
   const sp = req.nextUrl.searchParams;
   const sellerId = sp.get("sellerId");
 
