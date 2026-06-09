@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
   Download,
   FileText,
   Filter,
@@ -621,6 +623,13 @@ export default function RemocoesClient({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/remocoes/estacao"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-sky-300/20 bg-sky-400/12 px-4 text-sm font-semibold text-sky-50 transition hover:bg-sky-400/18"
+          >
+            <ClipboardList className="h-4 w-4" aria-hidden="true" />
+            Estação de trabalho
+          </Link>
           <button
             type="button"
             onClick={openPrintableReport}
