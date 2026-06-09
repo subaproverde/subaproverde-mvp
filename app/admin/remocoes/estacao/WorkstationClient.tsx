@@ -6,17 +6,25 @@ import {
   useState,
   type ClipboardEvent,
   type ComponentType,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import Link from "next/link";
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ArrowLeft,
+  Bold,
   CalendarDays,
   CheckCircle2,
   Code2,
+  PaintBucket,
+  Palette,
   Plus,
   Search,
   Table2,
+  Type,
   Trash2,
   Users,
   X,
@@ -29,11 +37,36 @@ type SheetRow = {
   cells: string[];
 };
 
+type TextAlign = "left" | "center" | "right";
+type TextSize = "sm" | "md" | "lg";
+type TextWeight = "regular" | "bold";
+type BoardFont = "mono" | "sans";
+
+type BoardStyle = {
+  color: string;
+  background: string;
+  align: TextAlign;
+  size: TextSize;
+  weight: TextWeight;
+  font: BoardFont;
+};
+
+type SheetStyle = {
+  color: string;
+  background: string;
+  align: TextAlign;
+  size: TextSize;
+  weight: TextWeight;
+};
+
 type WorkstationEntry = {
   clientId: string;
   date: string;
   boardText: string;
+  boardStyle?: Partial<BoardStyle>;
   rows: SheetRow[];
+  sheetStyle?: Partial<SheetStyle>;
+  sheetCellStyles?: Record<string, Partial<SheetStyle>>;
   updatedAt: string;
 };
 
@@ -48,6 +81,52 @@ type StoredWorkstation = {
 const ADMIN_REMOCOES_STORAGE_KEY = "spv:admin-remocoes:v1";
 const WORKSTATION_STORAGE_KEY = "spv:admin-workstation:v1";
 const columns = ["Venda / ID", "Data", "Valor", "Status", "Próximo passo", "Observação"];
+
+const DEFAULT_BOARD_STYLE: BoardStyle = {
+  color: "var(--ws-board-text)",
+  background: "transparent",
+  align: "left",
+  size: "md",
+  weight: "regular",
+  font: "mono",
+};
+
+const DEFAULT_SHEET_STYLE: SheetStyle = {
+  color: "var(--ws-sheet-text)",
+  background: "transparent",
+  align: "left",
+  size: "md",
+  weight: "regular",
+};
+
+const textSizePx: Record<TextSize, string> = {
+  sm: "12px",
+  md: "14px",
+  lg: "16px",
+};
+
+const boardFontFamily: Record<BoardFont, string> = {
+  mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+  sans: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+};
+
+const textSwatches = [
+  { label: "Verde", value: "#d1fae5" },
+  { label: "Branco", value: "#f8fafc" },
+  { label: "Azul", value: "#bfdbfe" },
+  { label: "Amarelo", value: "#fde68a" },
+  { label: "Rosa", value: "#fecdd3" },
+  { label: "Grafite", value: "#12372b" },
+];
+
+const fillSwatches = [
+  { label: "Sem preenchimento", value: "transparent" },
+  { label: "Verde", value: "rgba(16, 185, 129, 0.16)" },
+  { label: "Azul", value: "rgba(56, 189, 248, 0.16)" },
+  { label: "Amarelo", value: "rgba(245, 158, 11, 0.18)" },
+  { label: "Rosa", value: "rgba(244, 63, 94, 0.16)" },
+  { label: "Preto", value: "rgba(2, 6, 4, 0.55)" },
+];
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -82,6 +161,44 @@ function parsePastedGrid(raw: string) {
     .split("\n")
     .map((line) => line.split("\t").map((cell) => cell.trim()))
     .filter((row) => row.some(Boolean));
+}
+
+function resolveBoardStyle(style?: Partial<BoardStyle>): BoardStyle {
+  return { ...DEFAULT_BOARD_STYLE, ...(style ?? {}) };
+}
+
+function resolveSheetStyle(style?: Partial<SheetStyle>): SheetStyle {
+  return { ...DEFAULT_SHEET_STYLE, ...(style ?? {}) };
+}
+
+function boardStyleToCss(style: BoardStyle): CSSProperties {
+  return {
+    color: style.color,
+    backgroundColor: style.background,
+    textAlign: style.align,
+    fontSize: textSizePx[style.size],
+    fontWeight: style.weight === "bold" ? 700 : 500,
+    fontFamily: boardFontFamily[style.font],
+    lineHeight: 1.6,
+  };
+}
+
+function sheetStyleToCss(style: SheetStyle): CSSProperties {
+  return {
+    color: style.color,
+    backgroundColor: style.background,
+    textAlign: style.align,
+    fontSize: textSizePx[style.size],
+    fontWeight: style.weight === "bold" ? 700 : 500,
+  };
+}
+
+function cellStyleKey(rowId: string, columnIndex: number) {
+  return `${rowId}:${columnIndex}`;
+}
+
+function colorInputValue(color: string, fallback: string) {
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
 }
 
 function defaultRows() {
@@ -151,6 +268,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   const [clientQuery, setClientQuery] = useState("");
   const [storageReady, setStorageReady] = useState(false);
   const [savedAt, setSavedAt] = useState("");
+  const [selectedCell, setSelectedCell] = useState<{ rowId: string; columnIndex: number } | null>(null);
 
   useEffect(() => {
     const loadedClients = readStoredClients(initialClients);
@@ -164,6 +282,19 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   const activeClientId = activeClient?.id ?? "";
   const activeKey = entryKey(activeClientId, selectedDate);
   const entry = entries[activeKey] ?? defaultEntry(activeClientId, selectedDate);
+  const boardStyle = resolveBoardStyle(entry.boardStyle);
+  const sheetStyle = resolveSheetStyle(entry.sheetStyle);
+  const selectedCellKey = selectedCell ? cellStyleKey(selectedCell.rowId, selectedCell.columnIndex) : "";
+  const selectedSheetStyle = resolveSheetStyle({
+    ...sheetStyle,
+    ...(selectedCellKey ? entry.sheetCellStyles?.[selectedCellKey] : undefined),
+  });
+  const selectedCellLabel = useMemo(() => {
+    if (!selectedCell) return "planilha inteira";
+    const rowIndex = entry.rows.findIndex((row) => row.id === selectedCell.rowId);
+    const rowLabel = rowIndex >= 0 ? `linha ${rowIndex + 1}` : "linha";
+    return `${rowLabel} / ${columns[selectedCell.columnIndex] ?? "célula"}`;
+  }, [entry.rows, selectedCell]);
 
   const filteredClients = useMemo(() => {
     const needle = clientQuery.trim().toLowerCase();
@@ -210,6 +341,10 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   }, [activeClientId, entries, entry.boardText]);
 
   useEffect(() => {
+    setSelectedCell(null);
+  }, [activeKey]);
+
+  useEffect(() => {
     if (!storageReady) return;
 
     try {
@@ -227,7 +362,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
     if (!activeClientId) return;
 
     setEntries((current) => {
-      const previous = current[activeKey] ?? defaultEntry(activeClientId, selectedDate);
+      const previous = current[activeKey] ?? entry;
       return {
         ...current,
         [activeKey]: {
@@ -288,13 +423,54 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
     updateEntry({ rows: nextRows });
   }
 
+  function updateBoardStyle(patch: Partial<BoardStyle>) {
+    updateEntry({ boardStyle: { ...boardStyle, ...patch } });
+  }
+
+  function getSheetCellStyle(rowId: string, columnIndex: number) {
+    const key = cellStyleKey(rowId, columnIndex);
+    return resolveSheetStyle({
+      ...sheetStyle,
+      ...(entry.sheetCellStyles?.[key] ?? {}),
+    });
+  }
+
+  function updateSheetStyle(patch: Partial<SheetStyle>) {
+    if (!selectedCellKey) {
+      updateEntry({ sheetStyle: { ...sheetStyle, ...patch } });
+      return;
+    }
+
+    updateEntry({
+      sheetCellStyles: {
+        ...(entry.sheetCellStyles ?? {}),
+        [selectedCellKey]: { ...selectedSheetStyle, ...patch },
+      },
+    });
+  }
+
+  function clearSheetFormatting() {
+    if (!selectedCellKey) {
+      updateEntry({ sheetStyle: DEFAULT_SHEET_STYLE, sheetCellStyles: {} });
+      return;
+    }
+
+    const nextStyles = { ...(entry.sheetCellStyles ?? {}) };
+    delete nextStyles[selectedCellKey];
+    updateEntry({ sheetCellStyles: nextStyles });
+  }
+
   function addRow() {
     updateEntry({ rows: [...entry.rows, createRow()] });
   }
 
   function removeRow(rowId: string) {
     const rows = entry.rows.filter((row) => row.id !== rowId);
-    updateEntry({ rows: rows.length ? rows : [createRow()] });
+    const sheetCellStyles = Object.fromEntries(
+      Object.entries(entry.sheetCellStyles ?? {}).filter(([key]) => !key.startsWith(`${rowId}:`))
+    );
+    if (selectedCell?.rowId === rowId) setSelectedCell(null);
+    updateEntry({ rows: rows.length ? rows : [createRow()], sheetCellStyles });
   }
 
   function clearDay() {
@@ -311,6 +487,16 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   return (
     <div className="spv-workstation space-y-4">
       <style>{`
+        .spv-workstation {
+          --ws-board-text: #d1fae5;
+          --ws-sheet-text: #d1fae5;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation {
+          --ws-board-text: #12372b;
+          --ws-sheet-text: #12372b;
+        }
+
         html[data-spv-theme="light"] .spv-workstation [class*="bg-[#050807]"] {
           background: #f8fcf9 !important;
           box-shadow: 0 24px 70px rgba(20, 83, 45, 0.10);
@@ -349,8 +535,6 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
         }
 
         html[data-spv-theme="light"] .spv-workstation .ws-board {
-          background: transparent !important;
-          color: #12372b !important;
           caret-color: #059669;
         }
 
@@ -359,8 +543,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
         }
 
         html[data-spv-theme="light"] .spv-workstation table input {
-          background: transparent !important;
-          color: #12372b !important;
+          caret-color: #059669;
         }
 
         html[data-spv-theme="light"] .spv-workstation table input::placeholder {
@@ -521,6 +704,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   </button>
                 }
               />
+              <BoardFormatToolbar style={boardStyle} onChange={updateBoardStyle} />
               <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-[#020403] font-mono">
                 <div className="flex border-b border-white/8 bg-white/[0.025] px-3 py-2 text-[11px] text-white/35">
                   <span>{activeClient?.name ?? "cliente"}</span>
@@ -528,7 +712,14 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   <span>{selectedDate}</span>
                 </div>
                 <div className="grid grid-cols-[48px_1fr]">
-                  <pre className="select-none border-r border-white/8 bg-white/[0.018] px-3 py-4 text-right text-xs leading-6 text-white/22">
+                  <pre
+                    className="select-none border-r border-white/8 bg-white/[0.018] px-3 py-4 text-right text-xs leading-6 text-white/22"
+                    style={{
+                      fontSize: textSizePx[boardStyle.size],
+                      lineHeight: 1.6,
+                      fontFamily: boardFontFamily[boardStyle.font],
+                    }}
+                  >
                     {boardLines.map((line) => (
                       <span key={line} className="block">
                         {line}
@@ -543,6 +734,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                     rows={boardLines.length}
                     placeholder="Digite qualquer coisa aqui: vendas, datas, hipóteses, roteiro de atendimento, defesa, checklist..."
                     className="ws-board min-h-[610px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-6 text-emerald-50 outline-none placeholder:text-white/22"
+                    style={boardStyleToCss(boardStyle)}
                   />
                 </div>
               </div>
@@ -563,6 +755,14 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   </button>
                 }
               />
+              <SheetFormatToolbar
+                style={selectedSheetStyle}
+                selected={Boolean(selectedCellKey)}
+                selectedLabel={selectedCellLabel}
+                onChange={updateSheetStyle}
+                onClear={clearSheetFormatting}
+                onUseGlobal={() => setSelectedCell(null)}
+              />
               <div className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-[#020403]">
                 <table className="w-full min-w-[780px] text-left font-mono text-xs">
                   <thead className="bg-white/[0.045] text-[11px] uppercase tracking-wide text-white/38">
@@ -578,17 +778,31 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   <tbody>
                     {entry.rows.map((row) => (
                       <tr key={row.id} className="border-t border-white/8">
-                        {columns.map((column, index) => (
-                          <td key={`${row.id}-${column}`} className="border-r border-white/8 last:border-r-0">
-                            <input
-                              value={row.cells[index] ?? ""}
-                              onChange={(event) => updateCell(row.id, index, event.target.value)}
-                              onPaste={(event) => pasteGrid(row.id, index, event)}
-                              placeholder={column}
-                              className="h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-white/18 focus:bg-emerald-400/[0.055]"
-                            />
-                          </td>
-                        ))}
+                        {columns.map((column, index) => {
+                          const currentCellStyle = getSheetCellStyle(row.id, index);
+                          const isSelected =
+                            selectedCell?.rowId === row.id && selectedCell.columnIndex === index;
+
+                          return (
+                            <td
+                              key={`${row.id}-${column}`}
+                              className={cn(
+                                "border-r border-white/8 last:border-r-0",
+                                isSelected && "ring-1 ring-inset ring-emerald-300/70"
+                              )}
+                            >
+                              <input
+                                value={row.cells[index] ?? ""}
+                                onChange={(event) => updateCell(row.id, index, event.target.value)}
+                                onFocus={() => setSelectedCell({ rowId: row.id, columnIndex: index })}
+                                onPaste={(event) => pasteGrid(row.id, index, event)}
+                                placeholder={column}
+                                className="h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-white/18 focus:bg-emerald-400/[0.055]"
+                                style={sheetStyleToCss(currentCellStyle)}
+                              />
+                            </td>
+                          );
+                        })}
                         <td className="px-1">
                           <button
                             type="button"
@@ -608,6 +822,335 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           </main>
         </div>
       </section>
+    </div>
+  );
+}
+
+function BoardFormatToolbar({
+  style,
+  onChange,
+}: {
+  style: BoardStyle;
+  onChange: (patch: Partial<BoardStyle>) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <ToolbarGroup icon={Type} label="Texto">
+          <SizeControl value={style.size} onChange={(size) => onChange({ size })} />
+          <ToggleButton
+            active={style.weight === "bold"}
+            title="Negrito"
+            onClick={() => onChange({ weight: style.weight === "bold" ? "regular" : "bold" })}
+          >
+            <Bold className="h-3.5 w-3.5" aria-hidden={true} />
+          </ToggleButton>
+          <SegmentButton active={style.font === "mono"} onClick={() => onChange({ font: "mono" })}>
+            Mono
+          </SegmentButton>
+          <SegmentButton active={style.font === "sans"} onClick={() => onChange({ font: "sans" })}>
+            Sans
+          </SegmentButton>
+        </ToolbarGroup>
+
+        <ToolbarGroup icon={AlignLeft} label="Alinhar">
+          <AlignControl value={style.align} onChange={(align) => onChange({ align })} />
+        </ToolbarGroup>
+
+        <ColorControl
+          icon={Palette}
+          label="Cor"
+          colors={textSwatches}
+          value={style.color}
+          fallback="#d1fae5"
+          onChange={(color) => onChange({ color })}
+        />
+
+        <ColorControl
+          icon={PaintBucket}
+          label="Fundo"
+          colors={fillSwatches}
+          value={style.background}
+          fallback="#052e22"
+          onChange={(background) => onChange({ background })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SheetFormatToolbar({
+  style,
+  selected,
+  selectedLabel,
+  onChange,
+  onClear,
+  onUseGlobal,
+}: {
+  style: SheetStyle;
+  selected: boolean;
+  selectedLabel: string;
+  onChange: (patch: Partial<SheetStyle>) => void;
+  onClear: () => void;
+  onUseGlobal: () => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
+          formatando: <span className="text-emerald-100/80">{selectedLabel}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onUseGlobal}
+            disabled={!selected}
+            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            planilha toda
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white"
+          >
+            limpar estilo
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <ToolbarGroup icon={Type} label="Texto">
+          <SizeControl value={style.size} onChange={(size) => onChange({ size })} />
+          <ToggleButton
+            active={style.weight === "bold"}
+            title="Negrito"
+            onClick={() => onChange({ weight: style.weight === "bold" ? "regular" : "bold" })}
+          >
+            <Bold className="h-3.5 w-3.5" aria-hidden={true} />
+          </ToggleButton>
+        </ToolbarGroup>
+
+        <ToolbarGroup icon={AlignLeft} label="Alinhar">
+          <AlignControl value={style.align} onChange={(align) => onChange({ align })} />
+        </ToolbarGroup>
+
+        <ColorControl
+          icon={Palette}
+          label="Cor"
+          colors={textSwatches}
+          value={style.color}
+          fallback="#d1fae5"
+          onChange={(color) => onChange({ color })}
+        />
+
+        <ColorControl
+          icon={PaintBucket}
+          label="Fundo"
+          colors={fillSwatches}
+          value={style.background}
+          fallback="#052e22"
+          onChange={(background) => onChange({ background })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ToolbarGroup({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex min-h-9 items-center gap-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-emerald-200/65" aria-hidden={true} />
+      <span className="mr-1 hidden font-mono text-[10px] font-semibold uppercase tracking-wide text-white/35 sm:inline">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function SizeControl({ value, onChange }: { value: TextSize; onChange: (value: TextSize) => void }) {
+  const options: Array<{ value: TextSize; label: string; title: string }> = [
+    { value: "sm", label: "P", title: "Texto pequeno" },
+    { value: "md", label: "M", title: "Texto médio" },
+    { value: "lg", label: "G", title: "Texto grande" },
+  ];
+
+  return (
+    <div className="flex rounded-md border border-white/10 bg-black/20 p-0.5">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          title={option.title}
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+          className={cn(
+            "h-6 min-w-6 rounded px-1.5 text-[11px] font-bold transition",
+            value === option.value
+              ? "bg-emerald-300 text-emerald-950"
+              : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AlignControl({ value, onChange }: { value: TextAlign; onChange: (value: TextAlign) => void }) {
+  const options: Array<{
+    value: TextAlign;
+    label: string;
+    icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  }> = [
+    { value: "left", label: "Alinhar à esquerda", icon: AlignLeft },
+    { value: "center", label: "Centralizar", icon: AlignCenter },
+    { value: "right", label: "Alinhar à direita", icon: AlignRight },
+  ];
+
+  return (
+    <div className="flex rounded-md border border-white/10 bg-black/20 p-0.5">
+      {options.map((option) => {
+        const Icon = option.icon;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            title={option.label}
+            aria-pressed={value === option.value}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "inline-flex h-6 w-7 items-center justify-center rounded transition",
+              value === option.value
+                ? "bg-emerald-300 text-emerald-950"
+                : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden={true} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ToggleButton({
+  active,
+  title,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 transition",
+        active
+          ? "bg-emerald-300 text-emerald-950"
+          : "bg-black/20 text-white/55 hover:bg-white/[0.06] hover:text-white"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SegmentButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "h-7 rounded-md border border-white/10 px-2 text-[11px] font-bold transition",
+        active
+          ? "bg-emerald-300 text-emerald-950"
+          : "bg-black/20 text-white/55 hover:bg-white/[0.06] hover:text-white"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ColorControl({
+  icon: Icon,
+  label,
+  colors,
+  value,
+  fallback,
+  onChange,
+}: {
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  colors: Array<{ label: string; value: string }>;
+  value: string;
+  fallback: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex min-h-9 items-center gap-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-emerald-200/65" aria-hidden={true} />
+      <span className="mr-1 hidden font-mono text-[10px] font-semibold uppercase tracking-wide text-white/35 sm:inline">
+        {label}
+      </span>
+      {colors.map((color) => (
+        <button
+          key={`${label}-${color.value}`}
+          type="button"
+          title={color.label}
+          aria-label={`${label}: ${color.label}`}
+          aria-pressed={value === color.value}
+          onClick={() => onChange(color.value)}
+          className={cn(
+            "h-6 w-6 rounded-full border transition hover:scale-105",
+            value === color.value ? "border-emerald-200 ring-2 ring-emerald-300/35" : "border-white/18"
+          )}
+          style={
+            color.value === "transparent"
+              ? {
+                  backgroundImage:
+                    "linear-gradient(135deg, rgba(255,255,255,.18) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.18) 50%, rgba(255,255,255,.18) 75%, transparent 75%, transparent)",
+                  backgroundSize: "8px 8px",
+                }
+              : { backgroundColor: color.value }
+          }
+        />
+      ))}
+      <input
+        type="color"
+        title={`${label}: cor personalizada`}
+        aria-label={`${label}: cor personalizada`}
+        value={colorInputValue(value, fallback)}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-6 w-7 cursor-pointer rounded-md border border-white/12 bg-transparent p-0.5"
+      />
     </div>
   );
 }
