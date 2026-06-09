@@ -1,34 +1,79 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useId, useState, type ComponentType } from "react";
+import { AlertTriangle, CheckCircle2, Gauge, ShieldAlert, Zap } from "lucide-react";
 
 export type ReputationLevel = "verde" | "amarelo" | "laranja" | "vermelho";
 
 type Props = {
   level: ReputationLevel;
-
-  /** Texto grande (ex: AMARELO) */
   label?: string;
-
-  /** Texto menor (ex: Atenção / Conta em risco / Saudável) */
   subtitle?: string;
-
-  /** Texto do score (ex: "Score 43") */
   scoreText?: string;
-
-  /** se quiser forçar dark/light no gauge */
   theme?: "auto" | "dark" | "light";
-
-  /** controla tamanho sem esticar grid */
   size?: "sm" | "md";
 };
+
+type LevelConfig = {
+  angle: number;
+  color: string;
+  color2: string;
+  soft: string;
+  glow: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+};
+
+const levelConfigs: Record<ReputationLevel, LevelConfig> = {
+  vermelho: {
+    angle: 154,
+    color: "#ff4d62",
+    color2: "#ff1f4a",
+    soft: "rgba(255,77,98,0.16)",
+    glow: "rgba(255,77,98,0.44)",
+    icon: ShieldAlert,
+  },
+  laranja: {
+    angle: 113,
+    color: "#ff8a1f",
+    color2: "#ffb02e",
+    soft: "rgba(255,138,31,0.16)",
+    glow: "rgba(255,138,31,0.40)",
+    icon: AlertTriangle,
+  },
+  amarelo: {
+    angle: 68,
+    color: "#ffe14d",
+    color2: "#fff7a8",
+    soft: "rgba(255,225,77,0.18)",
+    glow: "rgba(255,225,77,0.34)",
+    icon: Zap,
+  },
+  verde: {
+    angle: 22,
+    color: "#25f29a",
+    color2: "#00d87b",
+    soft: "rgba(37,242,154,0.14)",
+    glow: "rgba(37,242,154,0.38)",
+    icon: CheckCircle2,
+  },
+};
+
+const segments = [
+  { key: "red", start: 180, end: 137, gradient: "red" },
+  { key: "orange", start: 134, end: 92, gradient: "orange" },
+  { key: "yellow", start: 89, end: 45, gradient: "yellow" },
+  { key: "green", start: 42, end: 0, gradient: "green" },
+] as const;
+
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 
 function degToRad(deg: number) {
   return (deg * Math.PI) / 180;
 }
 
 function polar(cx: number, cy: number, r: number, angleDeg: number) {
-  // Nosso gauge é 180° (esquerda) -> 0° (direita)
   const a = degToRad(angleDeg);
   return {
     x: cx + r * Math.cos(a),
@@ -39,34 +84,7 @@ function polar(cx: number, cy: number, r: number, angleDeg: number) {
 function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
   const s = polar(cx, cy, r, startDeg);
   const e = polar(cx, cy, r, endDeg);
-
-  // Como sempre é arco <= 180°, largeArcFlag = 0
-  const largeArcFlag = 0;
-  const sweepFlag = 1; // sentido horário no topo (180 -> 0)
-
-  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${e.x} ${e.y}`;
-}
-
-function angleByLevel(level: ReputationLevel) {
-  // pontos centrais (ajustável fino)
-  switch (level) {
-    case "vermelho":
-      return 155;
-    case "laranja":
-      return 115;
-    case "amarelo":
-      return 70;
-    case "verde":
-    default:
-      return 22;
-  }
-}
-
-function levelColor(level: ReputationLevel) {
-  if (level === "vermelho") return "#ff4d4d";
-  if (level === "laranja") return "#ff7a00";
-  if (level === "amarelo") return "#ffd400";
-  return "#22c55e";
+  return `M ${s.x} ${s.y} A ${r} ${r} 0 0 1 ${e.x} ${e.y}`;
 }
 
 function readThemePreference(): "dark" | "light" {
@@ -74,34 +92,24 @@ function readThemePreference(): "dark" | "light" {
   return document.documentElement.dataset.spvTheme === "light" ? "light" : "dark";
 }
 
-function subtitleAccent(level: ReputationLevel, isDark: boolean) {
-  const lightFg = "rgba(15,23,42,0.86)";
-
-  if (level === "vermelho")
-    return { bg: "rgba(255,77,77,0.16)", bd: "rgba(255,77,77,0.35)", fg: isDark ? "rgba(255,255,255,0.92)" : lightFg };
-  if (level === "laranja")
-    return { bg: "rgba(255,122,0,0.16)", bd: "rgba(255,122,0,0.35)", fg: isDark ? "rgba(255,255,255,0.92)" : lightFg };
-  if (level === "amarelo")
-    return { bg: "rgba(255,212,0,0.18)", bd: "rgba(255,212,0,0.38)", fg: isDark ? "rgba(255,255,255,0.92)" : lightFg };
-  return { bg: "rgba(34,197,94,0.14)", bd: "rgba(34,197,94,0.30)", fg: isDark ? "rgba(255,255,255,0.92)" : "#07543f" };
-}
-
-function subtitleIcon(subtitle: string) {
-  const s = (subtitle || "").toLowerCase();
-  if (s.includes("aten")) return "⚠️";
-  if (s.includes("risco")) return "🚨";
-  if (s.includes("saud")) return "✅";
-  return "ℹ️";
+function normalizeLabel(value: string) {
+  return value
+    .replace(/ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡/g, "C")
+    .replace(/ÃƒÆ’Ã¢â‚¬Â¡/g, "C")
+    .replace(/Ãƒâ€¡/g, "C")
+    .replace(/Ã‡/g, "C")
+    .replace(/ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢/g, "A");
 }
 
 export function ReputationThermometer({
   level,
   label = level.toUpperCase(),
   subtitle = "",
-  scoreText = "Score —",
+  scoreText = "Score -",
   theme = "auto",
   size = "md",
 }: Props) {
+  const uid = useId().replace(/:/g, "");
   const [autoTheme, setAutoTheme] = useState<"dark" | "light">(() =>
     theme === "auto" ? readThemePreference() : theme
   );
@@ -123,172 +131,326 @@ export function ReputationThermometer({
     };
   }, [theme]);
 
+  const config = levelConfigs[level];
   const isDark = autoTheme === "dark";
+  const compact = size === "sm";
+  const ActiveIcon = config.icon;
+  const activeLabel = normalizeLabel(label);
 
-  // área interna do SVG (gauge)
-  const svgW = size === "sm" ? 360 : 420;
-  const svgH = size === "sm" ? 200 : 230;
-
+  const svgW = compact ? 430 : 510;
+  const svgH = compact ? 258 : 300;
   const cx = svgW / 2;
-  const cy = size === "sm" ? 150 : 170;
-
-  const rBase = 115;
-  const rColor = 115;
-  const rTicks1 = 78;
-  const rTicks2 = 94;
-
-  const needleLen = size === "sm" ? 92 : 104;
-  const angleDeg = angleByLevel(level);
-  const tip = polar(cx, cy, needleLen, angleDeg);
-
-  // ✅ card totalmente preto no dark
-  const cardBg = isDark ? "bg-black" : "bg-[#f8fbf7]";
-  const cardBorder = isDark ? "border-white/10" : "border-emerald-950/10";
-
-  // ✅ aqui é a chave: no dark o “painel” do svg vira transparente
-  const innerFill = isDark ? "transparent" : "#f3f8f2";
-  const innerStroke = isDark ? "rgba(255,255,255,0.04)" : "rgba(22,78,57,0.12)";
-
-  const baseArc = isDark ? "#1f2937" : "#d9e8dd";
-  const tick = isDark ? "rgba(255,255,255,0.18)" : "rgba(15,23,42,0.25)";
-  const needle = isDark ? "white" : "#0f172a";
-
-  const labelColor = levelColor(level);
-  const subA = subtitleAccent(level, isDark);
-  const subI = subtitleIcon(subtitle);
-
-  // ✅ SEGMENTOS (os seus, NÃO mexi)
-  const segRed = { s: 180, e: 135 };
-  const segOrange = { s: 133, e: 91 };
-  const segYellow = { s: 89, e: 44 };
-  const segGreen = { s: 42, e: 0 };
+  const cy = compact ? 196 : 226;
+  const arcR = compact ? 120 : 145;
+  const tickOuter = compact ? 104 : 126;
+  const tickInner = compact ? 86 : 105;
+  const needleLen = compact ? 98 : 119;
+  const tip = polar(cx, cy, needleLen, config.angle);
+  const startTip = polar(cx, cy, needleLen, 178);
 
   return (
     <div className="w-full">
-      <div className={`rounded-2xl border ${cardBorder} ${cardBg} shadow-sm overflow-hidden`}>
-        <div className="p-5">
-          {/* HEADER */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className={isDark ? "text-base font-semibold text-white/85" : "text-base font-semibold text-slate-700"}>
-                Reputação do seller
+      <div
+        className={cn(
+          "group relative overflow-hidden rounded-[1.75rem] border transition duration-300",
+          compact ? "min-h-[312px]" : "min-h-[390px]",
+          isDark
+            ? "border-white/10 bg-[#020705] text-white shadow-[0_32px_90px_rgba(0,0,0,0.58)]"
+            : "border-emerald-950/10 bg-[#f8fff9] text-slate-950 shadow-[0_26px_78px_rgba(15,70,44,0.13)]"
+        )}
+        style={{
+          boxShadow: isDark
+            ? `0 32px 90px rgba(0,0,0,0.58), 0 0 56px ${config.glow}`
+            : `0 26px 78px rgba(15,70,44,0.13), 0 0 36px ${config.soft}`,
+        }}
+      >
+        <style>{`
+          @keyframes spvGaugeSweep {
+            0% { stroke-dashoffset: 420; opacity: 0; }
+            20% { opacity: .78; }
+            100% { stroke-dashoffset: 0; opacity: 0; }
+          }
+          @keyframes spvPulseCore {
+            0%, 100% { transform: scale(1); opacity: .86; }
+            50% { transform: scale(1.18); opacity: 1; }
+          }
+          @keyframes spvPanelSweep {
+            0% { transform: translateX(-35%) skewX(-16deg); opacity: 0; }
+            30% { opacity: .58; }
+            100% { transform: translateX(170%) skewX(-16deg); opacity: 0; }
+          }
+          @keyframes spvNeedleGlow {
+            0%, 100% { opacity: .62; }
+            50% { opacity: 1; }
+          }
+        `}</style>
+
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: isDark
+              ? `radial-gradient(circle at 50% 70%, ${config.glow}, transparent 31%), radial-gradient(circle at 14% 2%, rgba(37,242,154,0.16), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.075), transparent 44%)`
+              : `radial-gradient(circle at 50% 72%, ${config.soft}, transparent 34%), radial-gradient(circle at 12% 4%, rgba(37,242,154,0.18), transparent 34%), linear-gradient(135deg, rgba(255,255,255,0.98), rgba(228,255,238,0.56))`,
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{
+            backgroundImage: isDark
+              ? "linear-gradient(rgba(255,255,255,.034) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.034) 1px, transparent 1px)"
+              : "linear-gradient(rgba(15,70,44,.052) 1px, transparent 1px), linear-gradient(90deg, rgba(15,70,44,.052) 1px, transparent 1px)",
+            backgroundSize: "34px 34px",
+            maskImage: "radial-gradient(circle at 50% 52%, black 0%, transparent 78%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${config.color}, transparent)` }}
+        />
+        <div
+          className="pointer-events-none absolute -left-1/3 top-0 h-full w-1/3 blur-xl"
+          style={{
+            animation: "spvPanelSweep 4.4s ease-in-out infinite",
+            background: `linear-gradient(90deg, transparent, ${config.soft}, transparent)`,
+          }}
+        />
+
+        <div className={cn("relative", compact ? "p-4" : "p-5 sm:p-6")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className={cn(
+                  "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border",
+                  isDark ? "border-white/10 bg-white/[0.055]" : "border-emerald-950/10 bg-white/80"
+                )}
+                style={{ color: config.color }}
+              >
+                <span
+                  className="absolute inset-1 rounded-2xl opacity-70"
+                  style={{ boxShadow: `0 0 24px ${config.glow}` }}
+                />
+                <Gauge className="relative h-5 w-5" aria-hidden={true} />
+              </div>
+              <div className="min-w-0">
+                <div
+                  className={cn(
+                    "text-xs font-semibold uppercase tracking-[0.2em]",
+                    isDark ? "text-white/45" : "text-slate-500"
+                  )}
+                >
+                  Termômetro SPV
+                </div>
+                <div className={cn("mt-1 truncate text-sm font-semibold", isDark ? "text-white/82" : "text-slate-800")}>
+                  Reputação do seller
+                </div>
               </div>
             </div>
 
-            {/* score mais presente */}
-            <span
-              className={
-                isDark
-                  ? "text-base px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-white/90 whitespace-nowrap"
-                  : "text-base px-3 py-1.5 rounded-full border bg-slate-50 text-slate-700 whitespace-nowrap"
-              }
+            <div
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-sm font-bold",
+                isDark ? "border-white/12 bg-white/[0.055] text-white/86" : "border-emerald-950/10 bg-white/85 text-slate-800"
+              )}
             >
               {scoreText}
-            </span>
-          </div>
-
-          {/* LABEL CENTRALIZADO */}
-          <div className="mt-2 flex justify-center">
-            <div className="text-3xl font-semibold tracking-wide leading-none" style={{ color: labelColor }}>
-              {label}
             </div>
           </div>
 
-          {/* GAUGE */}
-          <div className="mt-3 flex justify-center">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="block" aria-hidden="true">
+          <div className="mt-4 flex justify-center">
+            <div
+              className="text-3xl font-black uppercase leading-none tracking-[0.05em] sm:text-4xl"
+              style={{ color: config.color, textShadow: isDark ? `0 0 30px ${config.glow}` : "none" }}
+            >
+              {activeLabel}
+            </div>
+          </div>
+
+          <div className="relative mt-2 flex justify-center">
+            <div
+              className="pointer-events-none absolute left-1/2 top-[55%] h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+              style={{ background: config.glow }}
+            />
+
+            <svg
+              width={svgW}
+              height={svgH}
+              viewBox={`0 0 ${svgW} ${svgH}`}
+              className={cn("relative z-10 h-auto w-full", compact ? "max-w-[430px]" : "max-w-[510px]")}
+              role="img"
+              aria-label={`Termômetro de reputação: ${activeLabel}. ${subtitle}.`}
+            >
               <defs>
-                <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
+                <filter id={`${uid}-glow`} x="-45%" y="-45%" width="190%" height="190%">
+                  <feGaussianBlur stdDeviation="5.5" result="blur" />
                   <feMerge>
                     <feMergeNode in="blur" />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
-
-                <linearGradient id="gRed" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#ff4d4d" />
-                  <stop offset="100%" stopColor="#ff1f1f" />
+                <linearGradient id={`${uid}-panel`} x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.98)"} />
+                  <stop offset="54%" stopColor={isDark ? "rgba(37,242,154,0.024)" : "rgba(235,255,243,0.78)"} />
+                  <stop offset="100%" stopColor={isDark ? "rgba(255,255,255,0.026)" : "rgba(210,248,225,0.58)"} />
                 </linearGradient>
-
-                <linearGradient id="gOrange" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#ff7a00" />
-                  <stop offset="100%" stopColor="#ffb000" />
+                <linearGradient id={`${uid}-red`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#ff6a7d" />
+                  <stop offset="100%" stopColor="#ff1f4a" />
                 </linearGradient>
-
-                <linearGradient id="gYellow" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#ffd400" />
-                  <stop offset="100%" stopColor="#fff1a8" />
+                <linearGradient id={`${uid}-orange`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#ff8a1f" />
+                  <stop offset="100%" stopColor="#ffbe3d" />
                 </linearGradient>
-
-                <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#22c55e" />
-                  <stop offset="100%" stopColor="#00e676" />
+                <linearGradient id={`${uid}-yellow`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#ffd738" />
+                  <stop offset="100%" stopColor="#fff7a8" />
+                </linearGradient>
+                <linearGradient id={`${uid}-green`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#34e67d" />
+                  <stop offset="100%" stopColor="#00f0a0" />
+                </linearGradient>
+                <linearGradient id={`${uid}-scan`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+                  <stop offset="48%" stopColor="rgba(255,255,255,0.95)" />
+                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
+                <linearGradient id={`${uid}-needle`} x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.92)" : "#0f172a"} />
+                  <stop offset="100%" stopColor={config.color2} />
                 </linearGradient>
               </defs>
 
-              {/* painel -> transparente no dark */}
-              <rect x="18" y="12" width={svgW - 36} height={svgH - 24} rx="18" fill={innerFill} stroke={innerStroke} />
+              <rect
+                x="18"
+                y="18"
+                width={svgW - 36}
+                height={svgH - 36}
+                rx="30"
+                fill={`url(#${uid}-panel)`}
+                stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(15,70,44,0.11)"}
+              />
 
-              {/* arco base */}
-              <path d={arcPath(cx, cy, rBase, 180, 0)} fill="none" stroke={baseArc} strokeWidth="28" strokeLinecap="round" />
+              <text
+                x={cx}
+                y={compact ? 85 : 94}
+                textAnchor="middle"
+                fill={isDark ? "rgba(255,255,255,0.045)" : "rgba(15,70,44,0.055)"}
+                fontSize={compact ? 48 : 58}
+                fontWeight="900"
+                letterSpacing="0"
+              >
+                SUBA
+              </text>
 
-              {/* segmentos */}
-              <path d={arcPath(cx, cy, rColor, segRed.s, segRed.e)} fill="none" stroke="url(#gRed)" strokeWidth="20" strokeLinecap="round" filter="url(#softGlow)" />
-              <path d={arcPath(cx, cy, rColor, segOrange.s, segOrange.e)} fill="none" stroke="url(#gOrange)" strokeWidth="20" strokeLinecap="round" filter="url(#softGlow)" />
-              <path d={arcPath(cx, cy, rColor, segYellow.s, segYellow.e)} fill="none" stroke="url(#gYellow)" strokeWidth="20" strokeLinecap="round" filter="url(#softGlow)" />
-              <path d={arcPath(cx, cy, rColor, segGreen.s, segGreen.e)} fill="none" stroke="url(#gGreen)" strokeWidth="20" strokeLinecap="round" filter="url(#softGlow)" />
+              <path
+                d={arcPath(cx, cy, arcR, 180, 0)}
+                fill="none"
+                stroke={isDark ? "rgba(255,255,255,0.09)" : "rgba(15,70,44,0.10)"}
+                strokeWidth="34"
+                strokeLinecap="round"
+              />
 
-              {/* ticks */}
-              {Array.from({ length: 18 }).map((_, i) => {
-                const t = 180 - i * (180 / 17);
-                const a = degToRad(t);
-                const xA = cx + rTicks1 * Math.cos(a);
-                const yA = cy - rTicks1 * Math.sin(a);
-                const xB = cx + rTicks2 * Math.cos(a);
-                const yB = cy - rTicks2 * Math.sin(a);
+              {segments.map((segment) => (
+                <path
+                  key={segment.key}
+                  d={arcPath(cx, cy, arcR, segment.start, segment.end)}
+                  fill="none"
+                  stroke={`url(#${uid}-${segment.gradient})`}
+                  strokeWidth="22"
+                  strokeLinecap="round"
+                  filter={`url(#${uid}-glow)`}
+                />
+              ))}
 
-                return <line key={i} x1={xA} y1={yA} x2={xB} y2={yB} stroke={tick} strokeWidth={i % 3 === 0 ? 2 : 1} />;
+              <path
+                d={arcPath(cx, cy, arcR, 180, 0)}
+                fill="none"
+                stroke={`url(#${uid}-scan)`}
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeDasharray="48 390"
+                style={{ animation: "spvGaugeSweep 4s ease-in-out infinite" }}
+              />
+
+              {Array.from({ length: 19 }).map((_, i) => {
+                const angle = 180 - i * (180 / 18);
+                const tall = i % 3 === 0;
+                const a = degToRad(angle);
+                const xA = cx + (tall ? tickInner - 3 : tickInner) * Math.cos(a);
+                const yA = cy - (tall ? tickInner - 3 : tickInner) * Math.sin(a);
+                const xB = cx + tickOuter * Math.cos(a);
+                const yB = cy - tickOuter * Math.sin(a);
+
+                return (
+                  <line
+                    key={i}
+                    x1={xA}
+                    y1={yA}
+                    x2={xB}
+                    y2={yB}
+                    stroke={isDark ? "rgba(255,255,255,0.28)" : "rgba(15,23,42,0.28)"}
+                    strokeWidth={tall ? 2 : 1}
+                    strokeLinecap="round"
+                  />
+                );
               })}
 
-              {/* ponteiro */}
               <line
                 x1={cx}
                 y1={cy}
                 x2={tip.x}
                 y2={tip.y}
-                stroke={needle}
-                strokeWidth="4"
+                stroke={`url(#${uid}-needle)`}
+                strokeWidth="5"
                 strokeLinecap="round"
-                style={{ filter: isDark ? "drop-shadow(0 0 10px rgba(255,255,255,0.14))" : undefined }}
-              />
+                filter={`url(#${uid}-glow)`}
+              >
+                <animate attributeName="x2" from={startTip.x} to={tip.x} dur="1.05s" fill="freeze" />
+                <animate attributeName="y2" from={startTip.y} to={tip.y} dur="1.05s" fill="freeze" />
+              </line>
 
-              {/* hub */}
-              <circle cx={cx} cy={cy} r="12" fill={isDark ? "#000" : innerFill} stroke={isDark ? "rgba(255,255,255,0.25)" : "#cbd5e1"} />
-              <circle cx={cx} cy={cy} r="5" fill={isDark ? "#fff" : "#0f172a"} />
+              <circle
+                cx={cx}
+                cy={cy}
+                r="23"
+                fill={config.color}
+                opacity="0.18"
+                style={{ animation: "spvPulseCore 2.2s ease-in-out infinite", transformOrigin: `${cx}px ${cy}px` }}
+              />
+              <circle cx={cx} cy={cy} r="15" fill={isDark ? "#050807" : "#f8fff9"} stroke={config.color} strokeWidth="2.5" />
+              <circle cx={cx} cy={cy} r="6" fill={config.color2} style={{ animation: "spvNeedleGlow 2s ease-in-out infinite" }} />
+
+              <g opacity={isDark ? "0.55" : "0.38"}>
+                <circle cx={cx - 148} cy={cy - 20} r="2.5" fill={config.color} />
+                <circle cx={cx + 148} cy={cy - 20} r="2.5" fill={config.color} />
+                <circle cx={cx} cy={cy - arcR - 22} r="2.5" fill={config.color} />
+              </g>
             </svg>
           </div>
 
-          {/* SUBTITLE DESTACADO */}
-          <div className="mt-3 flex justify-center">
+          <div className="-mt-1 flex justify-center">
             {subtitle ? (
               <div
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-base font-semibold"
+                className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold"
                 style={{
-                  background: subA.bg,
-                  borderColor: subA.bd,
-                  color: subA.fg,
-                  boxShadow: isDark ? "0 8px 22px rgba(0,0,0,0.35)" : "0 10px 24px rgba(15,23,42,0.10)",
+                  backgroundColor: config.soft,
+                  borderColor: config.glow,
+                  color: isDark ? "rgba(255,255,255,0.94)" : "#0f172a",
+                  boxShadow: isDark
+                    ? `0 12px 32px rgba(0,0,0,0.32), 0 0 24px ${config.soft}`
+                    : "0 12px 28px rgba(15,70,44,0.10)",
                 }}
               >
-                <span className="text-lg leading-none">{subI}</span>
+                <ActiveIcon className="h-4 w-4" aria-hidden={true} />
                 <span>{subtitle}</span>
               </div>
-            ) : (
-              <div className={isDark ? "text-base text-white/50" : "text-base text-slate-400"}>&nbsp;</div>
-            )}
+            ) : null}
           </div>
         </div>
+
+        <div
+          className="pointer-events-none absolute inset-x-8 bottom-0 h-px opacity-70"
+          style={{ background: `linear-gradient(90deg, transparent, ${config.color}, transparent)` }}
+        />
       </div>
     </div>
   );
