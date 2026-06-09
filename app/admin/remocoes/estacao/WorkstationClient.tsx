@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ClipboardEvent,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -65,6 +72,16 @@ function createRow(): SheetRow {
     id: `row-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     cells: Array.from({ length: columns.length }, () => ""),
   };
+}
+
+function parsePastedGrid(raw: string) {
+  return raw
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trimEnd()
+    .split("\n")
+    .map((line) => line.split("\t").map((cell) => cell.trim()))
+    .filter((row) => row.some(Boolean));
 }
 
 function defaultRows() {
@@ -232,6 +249,43 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           : row
       ),
     });
+  }
+
+  function pasteGrid(rowId: string, columnIndex: number, event: ClipboardEvent<HTMLInputElement>) {
+    const raw = event.clipboardData.getData("text");
+    if (!raw || !/[\n\r\t]/.test(raw)) return;
+
+    const pastedRows = parsePastedGrid(raw);
+    if (!pastedRows.length) return;
+
+    event.preventDefault();
+
+    const startRowIndex = entry.rows.findIndex((row) => row.id === rowId);
+    if (startRowIndex < 0) return;
+
+    const nextRows = entry.rows.map((row) => ({
+      ...row,
+      cells: [...row.cells],
+    }));
+
+    while (nextRows.length < startRowIndex + pastedRows.length) {
+      nextRows.push(createRow());
+    }
+
+    pastedRows.forEach((pastedRow, rowOffset) => {
+      const targetRow = nextRows[startRowIndex + rowOffset];
+      const targetCells = [...targetRow.cells];
+
+      pastedRow.forEach((cell, cellOffset) => {
+        const targetColumn = columnIndex + cellOffset;
+        if (targetColumn >= columns.length) return;
+        targetCells[targetColumn] = cell;
+      });
+
+      targetRow.cells = targetCells;
+    });
+
+    updateEntry({ rows: nextRows });
   }
 
   function addRow() {
@@ -529,6 +583,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                             <input
                               value={row.cells[index] ?? ""}
                               onChange={(event) => updateCell(row.id, index, event.target.value)}
+                              onPaste={(event) => pasteGrid(row.id, index, event)}
                               placeholder={column}
                               className="h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-white/18 focus:bg-emerald-400/[0.055]"
                             />
