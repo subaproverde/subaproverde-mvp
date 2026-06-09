@@ -255,7 +255,71 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="spv-workstation space-y-4">
+      <style>{`
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-[#050807]"] {
+          background: #f8fcf9 !important;
+          box-shadow: 0 24px 70px rgba(20, 83, 45, 0.10);
+        }
+
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-[#020403]"] {
+          background: #fbfffc !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-white/[0.025]"] {
+          background: #eef7f1 !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-white/[0.018]"],
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-white/[0.045]"] {
+          background: #edf6f0 !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation [class*="border-white/"] {
+          border-color: rgba(22, 78, 57, 0.16) !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/18"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/22"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/30"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/32"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/35"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/38"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/42"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/44"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/50"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/55"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/60"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-white/70"] {
+          color: rgba(16, 32, 24, 0.62) !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation .ws-board {
+          background: transparent !important;
+          color: #12372b !important;
+          caret-color: #059669;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation .ws-board::placeholder {
+          color: rgba(16, 32, 24, 0.36) !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation table input {
+          background: transparent !important;
+          color: #12372b !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation table input::placeholder {
+          color: rgba(16, 32, 24, 0.32) !important;
+        }
+
+        html[data-spv-theme="light"] .spv-workstation select,
+        html[data-spv-theme="light"] .spv-workstation input[type="date"],
+        html[data-spv-theme="light"] .spv-workstation input[type="text"] {
+          background: rgba(255, 255, 255, 0.88) !important;
+          color: #102018 !important;
+        }
+      `}</style>
       <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#050807]">
         <div className="flex flex-col gap-4 border-b border-white/10 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -424,7 +488,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                     wrap="off"
                     rows={boardLines.length}
                     placeholder="Digite qualquer coisa aqui: vendas, datas, hipóteses, roteiro de atendimento, defesa, checklist..."
-                    className="min-h-[610px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-6 text-emerald-50 outline-none placeholder:text-white/22"
+                    className="ws-board min-h-[610px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-6 text-emerald-50 outline-none placeholder:text-white/22"
                   />
                 </div>
               </div>
