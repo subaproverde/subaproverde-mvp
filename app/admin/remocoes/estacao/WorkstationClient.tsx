@@ -19,6 +19,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Code2,
+  Italic,
   PaintBucket,
   Palette,
   Plus,
@@ -48,6 +49,7 @@ type BoardStyle = {
   align: TextAlign;
   size: TextSize;
   weight: TextWeight;
+  italic: boolean;
   font: BoardFont;
 };
 
@@ -57,6 +59,7 @@ type SheetStyle = {
   align: TextAlign;
   size: TextSize;
   weight: TextWeight;
+  italic: boolean;
 };
 
 type WorkstationEntry = {
@@ -64,6 +67,7 @@ type WorkstationEntry = {
   date: string;
   boardText: string;
   boardStyle?: Partial<BoardStyle>;
+  boardLineStyles?: Record<string, Partial<BoardStyle>>;
   rows: SheetRow[];
   sheetStyle?: Partial<SheetStyle>;
   sheetCellStyles?: Record<string, Partial<SheetStyle>>;
@@ -88,6 +92,7 @@ const DEFAULT_BOARD_STYLE: BoardStyle = {
   align: "left",
   size: "md",
   weight: "regular",
+  italic: false,
   font: "mono",
 };
 
@@ -97,6 +102,7 @@ const DEFAULT_SHEET_STYLE: SheetStyle = {
   align: "left",
   size: "md",
   weight: "regular",
+  italic: false,
 };
 
 const textSizePx: Record<TextSize, string> = {
@@ -178,6 +184,7 @@ function boardStyleToCss(style: BoardStyle): CSSProperties {
     textAlign: style.align,
     fontSize: textSizePx[style.size],
     fontWeight: style.weight === "bold" ? 700 : 500,
+    fontStyle: style.italic ? "italic" : "normal",
     fontFamily: boardFontFamily[style.font],
     lineHeight: 1.6,
   };
@@ -190,11 +197,26 @@ function sheetStyleToCss(style: SheetStyle): CSSProperties {
     textAlign: style.align,
     fontSize: textSizePx[style.size],
     fontWeight: style.weight === "bold" ? 700 : 500,
+    fontStyle: style.italic ? "italic" : "normal",
   };
 }
 
 function cellStyleKey(rowId: string, columnIndex: number) {
   return `${rowId}:${columnIndex}`;
+}
+
+function boardLineStyleKey(lineIndex: number) {
+  return String(lineIndex);
+}
+
+function compactBoardLines(lines: string[]) {
+  const next = [...lines];
+  while (next.length > 1 && next.at(-1) === "") next.pop();
+  return next.every((line) => !line) ? "" : next.join("\n");
+}
+
+function pastedTextLines(raw: string) {
+  return raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
 }
 
 function colorInputValue(color: string, fallback: string) {
@@ -269,6 +291,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   const [storageReady, setStorageReady] = useState(false);
   const [savedAt, setSavedAt] = useState("");
   const [selectedCell, setSelectedCell] = useState<{ rowId: string; columnIndex: number } | null>(null);
+  const [selectedBoardLine, setSelectedBoardLine] = useState<number | null>(0);
 
   useEffect(() => {
     const loadedClients = readStoredClients(initialClients);
@@ -283,6 +306,13 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   const activeKey = entryKey(activeClientId, selectedDate);
   const entry = entries[activeKey] ?? defaultEntry(activeClientId, selectedDate);
   const boardStyle = resolveBoardStyle(entry.boardStyle);
+  const selectedBoardLineKey =
+    selectedBoardLine === null ? "" : boardLineStyleKey(selectedBoardLine);
+  const selectedBoardStyle = resolveBoardStyle({
+    ...boardStyle,
+    ...(selectedBoardLineKey ? entry.boardLineStyles?.[selectedBoardLineKey] : undefined),
+  });
+  const selectedBoardLabel = selectedBoardLine === null ? "lousa inteira" : `linha ${selectedBoardLine + 1}`;
   const sheetStyle = resolveSheetStyle(entry.sheetStyle);
   const selectedCellKey = selectedCell ? cellStyleKey(selectedCell.rowId, selectedCell.columnIndex) : "";
   const selectedSheetStyle = resolveSheetStyle({
@@ -327,8 +357,9 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
   }, [activeClientId, entries, selectedDate]);
 
   const boardLines = useMemo(() => {
-    const total = Math.max(24, entry.boardText.split("\n").length);
-    return Array.from({ length: total }, (_, index) => index + 1);
+    const lines = entry.boardText ? entry.boardText.split("\n") : [""];
+    while (lines.length < 24) lines.push("");
+    return lines;
   }, [entry.boardText]);
 
   const stats = useMemo(() => {
@@ -342,6 +373,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
 
   useEffect(() => {
     setSelectedCell(null);
+    setSelectedBoardLine(0);
   }, [activeKey]);
 
   useEffect(() => {
@@ -423,8 +455,71 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
     updateEntry({ rows: nextRows });
   }
 
+  function updateBoardLine(lineIndex: number, value: string) {
+    const nextLines = [...boardLines];
+    nextLines[lineIndex] = value;
+    updateEntry({ boardText: compactBoardLines(nextLines) });
+  }
+
+  function pasteBoardLines(lineIndex: number, event: ClipboardEvent<HTMLInputElement>) {
+    const raw = event.clipboardData.getData("text");
+    if (!raw || !/[\n\r]/.test(raw)) return;
+
+    event.preventDefault();
+
+    const pastedLines = pastedTextLines(raw);
+    const nextLines = [...boardLines];
+    pastedLines.forEach((line, offset) => {
+      nextLines[lineIndex + offset] = line;
+    });
+
+    updateEntry({ boardText: compactBoardLines(nextLines) });
+  }
+
+  function focusBoardLine(lineIndex: number) {
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLInputElement>(`[data-board-line="${lineIndex}"]`)?.focus();
+    });
+  }
+
+  function ensureBoardLine(lineIndex: number) {
+    if (lineIndex < boardLines.length) return;
+    const nextLines = [...boardLines];
+    nextLines[lineIndex] = "";
+    updateEntry({ boardText: nextLines.join("\n") });
+  }
+
+  function getBoardLineStyle(lineIndex: number) {
+    const key = boardLineStyleKey(lineIndex);
+    return resolveBoardStyle({
+      ...boardStyle,
+      ...(entry.boardLineStyles?.[key] ?? {}),
+    });
+  }
+
   function updateBoardStyle(patch: Partial<BoardStyle>) {
-    updateEntry({ boardStyle: { ...boardStyle, ...patch } });
+    if (selectedBoardLine === null) {
+      updateEntry({ boardStyle: { ...boardStyle, ...patch } });
+      return;
+    }
+
+    updateEntry({
+      boardLineStyles: {
+        ...(entry.boardLineStyles ?? {}),
+        [boardLineStyleKey(selectedBoardLine)]: { ...selectedBoardStyle, ...patch },
+      },
+    });
+  }
+
+  function clearBoardFormatting() {
+    if (selectedBoardLine === null) {
+      updateEntry({ boardStyle: DEFAULT_BOARD_STYLE, boardLineStyles: {} });
+      return;
+    }
+
+    const nextStyles = { ...(entry.boardLineStyles ?? {}) };
+    delete nextStyles[boardLineStyleKey(selectedBoardLine)];
+    updateEntry({ boardLineStyles: nextStyles });
   }
 
   function getSheetCellStyle(rowId: string, columnIndex: number) {
@@ -534,11 +629,11 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           color: rgba(16, 32, 24, 0.62) !important;
         }
 
-        html[data-spv-theme="light"] .spv-workstation .ws-board {
+        html[data-spv-theme="light"] .spv-workstation .ws-board-line {
           caret-color: #059669;
         }
 
-        html[data-spv-theme="light"] .spv-workstation .ws-board::placeholder {
+        html[data-spv-theme="light"] .spv-workstation .ws-board-line::placeholder {
           color: rgba(16, 32, 24, 0.36) !important;
         }
 
@@ -552,7 +647,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
 
         html[data-spv-theme="light"] .spv-workstation select,
         html[data-spv-theme="light"] .spv-workstation input[type="date"],
-        html[data-spv-theme="light"] .spv-workstation input[type="text"] {
+        html[data-spv-theme="light"] .spv-workstation .ws-control-input {
           background: rgba(255, 255, 255, 0.88) !important;
           color: #102018 !important;
         }
@@ -616,7 +711,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   value={clientQuery}
                   onChange={(event) => setClientQuery(event.target.value)}
                   placeholder="buscar cliente"
-                  className="h-10 w-full rounded-lg border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/28 focus:border-emerald-300/35"
+                  className="ws-control-input h-10 w-full rounded-lg border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/28 focus:border-emerald-300/35"
                 />
               </div>
               <div className="mt-3 max-h-[260px] space-y-1 overflow-y-auto pr-1">
@@ -704,38 +799,67 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   </button>
                 }
               />
-              <BoardFormatToolbar style={boardStyle} onChange={updateBoardStyle} />
+              <BoardFormatToolbar
+                style={selectedBoardStyle}
+                selected={selectedBoardLine !== null}
+                selectedLabel={selectedBoardLabel}
+                onChange={updateBoardStyle}
+                onClear={clearBoardFormatting}
+                onUseGlobal={() => setSelectedBoardLine(null)}
+              />
               <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-[#020403] font-mono">
                 <div className="flex border-b border-white/8 bg-white/[0.025] px-3 py-2 text-[11px] text-white/35">
                   <span>{activeClient?.name ?? "cliente"}</span>
                   <span className="mx-2 text-white/18">/</span>
                   <span>{selectedDate}</span>
                 </div>
-                <div className="grid grid-cols-[48px_1fr]">
-                  <pre
-                    className="select-none border-r border-white/8 bg-white/[0.018] px-3 py-4 text-right text-xs leading-6 text-white/22"
-                    style={{
-                      fontSize: textSizePx[boardStyle.size],
-                      lineHeight: 1.6,
-                      fontFamily: boardFontFamily[boardStyle.font],
-                    }}
-                  >
-                    {boardLines.map((line) => (
-                      <span key={line} className="block">
-                        {line}
-                      </span>
-                    ))}
-                  </pre>
-                  <textarea
-                    value={entry.boardText}
-                    onChange={(event) => updateEntry({ boardText: event.target.value })}
-                    spellCheck={false}
-                    wrap="off"
-                    rows={boardLines.length}
-                    placeholder="Digite qualquer coisa aqui: vendas, datas, hipóteses, roteiro de atendimento, defesa, checklist..."
-                    className="ws-board min-h-[610px] w-full resize-none bg-transparent px-4 py-4 text-sm leading-6 text-emerald-50 outline-none placeholder:text-white/22"
-                    style={boardStyleToCss(boardStyle)}
-                  />
+                <div className="min-h-[610px]">
+                  {boardLines.map((line, index) => {
+                    const lineStyle = getBoardLineStyle(index);
+                    const active = selectedBoardLine === index;
+
+                    return (
+                      <div key={index} className="grid grid-cols-[48px_1fr]">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBoardLine(index)}
+                          className={cn(
+                            "select-none border-r border-white/8 bg-white/[0.018] px-3 text-right font-mono text-xs text-white/22 transition",
+                            active && "bg-emerald-400/10 text-emerald-100"
+                          )}
+                          style={{
+                            minHeight: "26px",
+                            lineHeight: "26px",
+                            fontFamily: boardFontFamily[lineStyle.font],
+                          }}
+                          aria-label={`Selecionar linha ${index + 1}`}
+                        >
+                          {index + 1}
+                        </button>
+                        <input
+                          data-board-line={index}
+                          value={line}
+                          onChange={(event) => updateBoardLine(index, event.target.value)}
+                          onFocus={() => setSelectedBoardLine(index)}
+                          onPaste={(event) => pasteBoardLines(index, event)}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter") return;
+                            event.preventDefault();
+                            const nextLine = index + 1;
+                            ensureBoardLine(nextLine);
+                            setSelectedBoardLine(nextLine);
+                            focusBoardLine(nextLine);
+                          }}
+                          placeholder={index === 0 ? "Digite qualquer coisa aqui: vendas, datas, roteiro, defesa..." : ""}
+                          className={cn(
+                            "ws-board-line h-[26px] w-full border-0 bg-transparent px-4 outline-none placeholder:text-white/22 focus:bg-emerald-400/[0.055]",
+                            active && "ring-1 ring-inset ring-emerald-300/50"
+                          )}
+                          style={boardStyleToCss(lineStyle)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -797,7 +921,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                                 onFocus={() => setSelectedCell({ rowId: row.id, columnIndex: index })}
                                 onPaste={(event) => pasteGrid(row.id, index, event)}
                                 placeholder={column}
-                                className="h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-white/18 focus:bg-emerald-400/[0.055]"
+                                className="ws-sheet-cell h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-white/18 focus:bg-emerald-400/[0.055]"
                                 style={sheetStyleToCss(currentCellStyle)}
                               />
                             </td>
@@ -828,13 +952,43 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
 
 function BoardFormatToolbar({
   style,
+  selected,
+  selectedLabel,
   onChange,
+  onClear,
+  onUseGlobal,
 }: {
   style: BoardStyle;
+  selected: boolean;
+  selectedLabel: string;
   onChange: (patch: Partial<BoardStyle>) => void;
+  onClear: () => void;
+  onUseGlobal: () => void;
 }) {
   return (
     <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
+          formatando: <span className="text-emerald-100/80">{selectedLabel}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onUseGlobal}
+            disabled={!selected}
+            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            lousa toda
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white"
+          >
+            limpar estilo
+          </button>
+        </div>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <ToolbarGroup icon={Type} label="Texto">
           <SizeControl value={style.size} onChange={(size) => onChange({ size })} />
@@ -844,6 +998,13 @@ function BoardFormatToolbar({
             onClick={() => onChange({ weight: style.weight === "bold" ? "regular" : "bold" })}
           >
             <Bold className="h-3.5 w-3.5" aria-hidden={true} />
+          </ToggleButton>
+          <ToggleButton
+            active={style.italic}
+            title="Itálico"
+            onClick={() => onChange({ italic: !style.italic })}
+          >
+            <Italic className="h-3.5 w-3.5" aria-hidden={true} />
           </ToggleButton>
           <SegmentButton active={style.font === "mono"} onClick={() => onChange({ font: "mono" })}>
             Mono
@@ -928,6 +1089,13 @@ function SheetFormatToolbar({
             onClick={() => onChange({ weight: style.weight === "bold" ? "regular" : "bold" })}
           >
             <Bold className="h-3.5 w-3.5" aria-hidden={true} />
+          </ToggleButton>
+          <ToggleButton
+            active={style.italic}
+            title="Itálico"
+            onClick={() => onChange({ italic: !style.italic })}
+          >
+            <Italic className="h-3.5 w-3.5" aria-hidden={true} />
           </ToggleButton>
         </ToolbarGroup>
 
