@@ -19,6 +19,11 @@ function isMissingSchema(error: { code?: string; message?: string } | null) {
   return error.code === "42P01" || error.code === "PGRST205" || error.message?.toLowerCase().includes("crm_workspaces") === true;
 }
 
+function schemaUnavailable(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return error.code === "42P01" || error.code === "PGRST205" || error.message?.toLowerCase().includes("crm_ai_") === true;
+}
+
 function emptyOverview(): CrmOverview {
   return {
     setupRequired: true,
@@ -30,6 +35,7 @@ function emptyOverview(): CrmOverview {
     recentActivities: [],
     finance: { accounts: [], receiptsToReview: 0 },
     fiscal: { enabled: false, environment: "sandbox", provider: null },
+    intelligence: { observerActive: false, pendingSuggestions: 0, runsToday: 0, averageConfidence: 0, totalCostUsdToday: 0, suggestions: [] },
   };
 }
 
@@ -51,6 +57,7 @@ export async function GET(req: Request) {
   }
 
   const nowIso = new Date().toISOString();
+  const todayIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
   const [contactsResult, leadsResult, conversationsResult, tasksResult, receivablesResult, receiptsResult, activitiesResult, accountsResult, fiscalResult] = await Promise.all([
     supabaseApiAdmin.from("crm_contacts").select("id,name,company_name").eq("workspace_id", workspace.id).limit(2000),
     supabaseApiAdmin.from("crm_leads").select("id,contact_id,title,stage,status,estimated_value,summary,last_contact_at,next_follow_up_at,updated_at").eq("workspace_id", workspace.id).order("updated_at", { ascending: false }).limit(500),
@@ -68,6 +75,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Falha ao carregar os dados do CRM." }, { status: 500 });
   }
 
+  const [aiRunsResult, aiSuggestionsResult] = await Promise.all([
+    supabaseApiAdmin.from("crm_ai_runs")
+      .select("id,contact_id,decision,proposed_reply,reason,confidence,rule_ids,evidence,model,provider,total_cost_usd,created_at")
+      .eq("workspace_id", workspace.id).gte("created_at", todayIso).order("created_at", { ascending: false }).limit(500),
+    supabaseApiAdmin.from("crm_ai_suggestions")
+      .select("id,run_id,contact_id,suggestion_type,category,title,description,confidence,evidence,status,created_at")
+      .eq("workspace_id", workspace.id).order("created_at", { ascending: false }).limit(100),
+  ]);
+  const aiSchemaUnavailable = schemaUnavailable(aiRunsResult.error) || schemaUnavailable(aiSuggestionsResult.error);
+  if ((aiRunsResult.error || aiSuggestionsResult.error) && !aiSchemaUnavailable) {
+    return NextResponse.json({ ok: false, error: "Falha ao carregar a caixa de inteligência." }, { status: 500 });
+  }
+
   const contacts = new Map((contactsResult.data ?? []).map((contact) => [contact.id, contact.name || contact.company_name || "Contato sem nome"]));
   const leads = leadsResult.data ?? [];
   const conversations = conversationsResult.data ?? [];
@@ -75,6 +95,9 @@ export async function GET(req: Request) {
   const receivables = receivablesResult.data ?? [];
   const receipts = receiptsResult.data ?? [];
   const activities = activitiesResult.data ?? [];
+  const aiRuns = aiSchemaUnavailable ? [] : aiRunsResult.data ?? [];
+  const aiSuggestions = aiSchemaUnavailable ? [] : aiSuggestionsResult.data ?? [];
+  const aiRunsById = new Map(aiRuns.map((run) => [run.id, run]));
   const priorities: CrmOverview["priorities"] = [];
 
   conversations.filter((item) => item.needs_human || item.status === "waiting_team").slice(0, 6).forEach((item) => {
@@ -142,6 +165,35 @@ export async function GET(req: Request) {
       receiptsToReview: receipts.length,
     },
     fiscal: fiscalResult.data ?? { enabled: false, environment: "sandbox", provider: null },
+    intelligence: {
+      observerActive: !aiSchemaUnavailable,
+      pendingSuggestions: aiSuggestions.filter((item) => item.status === "pending").length,
+      runsToday: aiRuns.length,
+      averageConfidence: aiRuns.length ? aiRuns.reduce((sum, item) => sum + Number(item.confidence ?? 0), 0) / aiRuns.length : 0,
+      totalCostUsdToday: aiRuns.reduce((sum, item) => sum + Number(item.total_cost_usd ?? 0), 0),
+      suggestions: aiSuggestions.slice(0, 30).map((item) => {
+        const run = aiRunsById.get(item.run_id);
+        return {
+          id: item.id,
+          type: item.suggestion_type,
+          category: item.category,
+          title: item.title,
+          description: item.description,
+          confidence: Number(item.confidence ?? 0),
+          evidence: item.evidence,
+          status: item.status,
+          contactName: contacts.get(item.contact_id) ?? "Contato sem nome",
+          occurredAt: item.created_at,
+          decision: run?.decision ?? "",
+          reason: run?.reason ?? "",
+          proposedReply: run?.proposed_reply ?? "",
+          model: run?.model ?? "",
+          provider: run?.provider ?? "",
+          ruleIds: Array.isArray(run?.rule_ids) ? run.rule_ids : [],
+          decisionEvidence: Array.isArray(run?.evidence) ? run.evidence : [],
+        };
+      }),
+    },
   };
 
   return NextResponse.json(overview, { headers: { "Cache-Control": "no-store" } });

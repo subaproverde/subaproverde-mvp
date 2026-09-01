@@ -1,5 +1,25 @@
 export type CrmPriorityKind = "conversation" | "task" | "receipt";
 
+export type CrmIntelligenceSuggestion = {
+  id: string;
+  type: "fact" | "action";
+  category: string;
+  title: string;
+  description: string;
+  confidence: number;
+  evidence: string;
+  status: "pending" | "applied" | "rejected" | "superseded";
+  contactName: string;
+  occurredAt: string;
+  decision: string;
+  reason: string;
+  proposedReply: string;
+  model: string;
+  provider: string;
+  ruleIds: string[];
+  decisionEvidence: Array<{ source?: string; reference?: string; excerpt?: string }>;
+};
+
 export type CrmOverview = {
   setupRequired: boolean;
   generatedAt: string;
@@ -47,5 +67,13 @@ export type CrmOverview = {
     enabled: boolean;
     environment: string;
     provider: string | null;
+  };
+  intelligence: {
+    observerActive: boolean;
+    pendingSuggestions: number;
+    runsToday: number;
+    averageConfidence: number;
+    totalCostUsdToday: number;
+    suggestions: CrmIntelligenceSuggestion[];
   };
 };

@@ -28,6 +28,62 @@ type BridgeMessageEvent = {
   };
 };
 
+type BridgeAnalysisEvent = {
+  schema: 1;
+  eventId: string;
+  type: "conversation.analysis.completed";
+  occurredAt: string;
+  workspaceSlug?: string;
+  source: "suba-agent";
+  data: {
+    phone?: string;
+    jid?: string;
+    alternateJid?: string;
+    contactName?: string;
+    sourceMessageIds: string[];
+    analysis: {
+      role: "commercial" | "ignore";
+      decision: "auto_reply" | "no_reply" | "needs_approval" | "ack" | "escalate";
+      proposedReply?: string;
+      reason?: string;
+      riskTags?: string[];
+      confidence: number;
+      ruleIds?: string[];
+      evidence?: Array<{ source?: string; reference?: string; excerpt?: string }>;
+      model?: string;
+      provider?: string;
+      modelUsage?: Record<string, unknown> | null;
+      totalCostUsd?: number | null;
+      facts?: Array<{
+        category: string;
+        key: string;
+        valueText?: string;
+        numericValue?: number;
+        unit?: string;
+        amount?: number;
+        currency?: string;
+        confidence: number;
+        evidence?: string;
+      }>;
+      actions?: Array<{
+        category: string;
+        title: string;
+        description?: string;
+        dueAt?: string;
+        serviceType?: string;
+        quantity?: number;
+        unitPrice?: number;
+        totalAmount?: number;
+        leadStage?: string;
+        confidence: number;
+        evidence?: string;
+      }>;
+    };
+  };
+};
+
+type BridgeEvent = BridgeMessageEvent | BridgeAnalysisEvent;
+
 function secureEqual(a: string, b: string) {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
@@ -51,16 +107,175 @@ function schemaUnavailable(error: { code?: string } | null) {
   return error?.code === "42P01" || error?.code === "PGRST205";
 }
 
-function validEvent(value: unknown): value is BridgeMessageEvent {
+function validEvent(value: unknown): value is BridgeEvent {
   if (!value || typeof value !== "object") return false;
-  const event = value as Partial<BridgeMessageEvent>;
-  if (event.schema !== 1 || event.source !== "suba-bridge") return false;
+  const event = value as Partial<BridgeEvent>;
+  if (event.schema !== 1 || !["suba-bridge", "suba-agent"].includes(String(event.source))) return false;
   if (!event.eventId || !/^[A-Za-z0-9._:-]{1,200}$/.test(event.eventId)) return false;
-  if (!event.type || !["conversation.message.received", "conversation.message.sent"].includes(event.type)) return false;
   if (!event.occurredAt || Number.isNaN(new Date(event.occurredAt).getTime())) return false;
-  if (!event.data || !event.data.externalMessageId) return false;
-  if (!event.data.direction || !["inbound", "outbound"].includes(event.data.direction)) return false;
-  return true;
+  if (!event.data || typeof event.data !== "object") return false;
+  if (event.type === "conversation.analysis.completed" && event.source === "suba-agent") {
+    const analysisEvent = event as Partial<BridgeAnalysisEvent>;
+    return Array.isArray(analysisEvent.data?.sourceMessageIds)
+      && Boolean(analysisEvent.data?.analysis)
+      && ["auto_reply", "no_reply", "needs_approval", "ack", "escalate"].includes(String(analysisEvent.data?.analysis?.decision))
+      && Number.isFinite(Number(analysisEvent.data?.analysis?.confidence));
+  }
+  if (!["conversation.message.received", "conversation.message.sent"].includes(String(event.type)) || event.source !== "suba-bridge") return false;
+  const messageEvent = event as Partial<BridgeMessageEvent>;
+  return Boolean(messageEvent.data?.externalMessageId)
+    && ["inbound", "outbound"].includes(String(messageEvent.data?.direction));
+}
+
+function boundedConfidence(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.min(1, number)) : 0;
+}
+
+function boundedNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: string) {
+  const phone = digits(event.data.phone);
+  const jid = cleanIdentifier(event.data.jid);
+  const alternateJid = cleanIdentifier(event.data.alternateJid);
+  const identifiers = Array.from(new Set([jid, alternateJid, phone ? `phone:${phone}` : ""].filter(Boolean)));
+  if (!identifiers.length) {
+    return NextResponse.json({ ok: false, error: "Análise sem identidade do contato." }, { status: 400 });
+  }
+
+  const { data: identities, error: identitiesError } = await supabaseApiAdmin
+    .from("crm_contact_identities")
+    .select("contact_id")
+    .eq("workspace_id", workspaceId)
+    .eq("channel", "whatsapp")
+    .eq("provider", "evolution")
+    .in("external_id", identifiers)
+    .limit(10);
+  if (identitiesError) {
+    return NextResponse.json({ ok: false, error: "Falha ao resolver o contato da análise." }, { status: 500 });
+  }
+  const contactId = identities?.[0]?.contact_id ?? "";
+  if (!contactId) {
+    return NextResponse.json({ ok: false, error: "Contato da análise ainda não foi registrado." }, { status: 409 });
+  }
+
+  const { data: conversation } = await supabaseApiAdmin
+    .from("crm_conversations")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("contact_id", contactId)
+    .order("last_message_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const analysis = event.data.analysis;
+  const runPayload = {
+    workspace_id: workspaceId,
+    contact_id: contactId,
+    conversation_id: conversation?.id ?? null,
+    source_event_id: event.eventId,
+    source_message_ids: event.data.sourceMessageIds.map(cleanIdentifier).filter(Boolean).slice(0, 50),
+    role: analysis.role === "ignore" ? "ignore" : "commercial",
+    decision: analysis.decision,
+    proposed_reply: String(analysis.proposedReply ?? "").slice(0, 65_536),
+    reason: String(analysis.reason ?? "").slice(0, 2_000),
+    risk_tags: (analysis.riskTags ?? []).map(cleanIdentifier).filter(Boolean).slice(0, 30),
+    confidence: boundedConfidence(analysis.confidence),
+    rule_ids: (analysis.ruleIds ?? []).map(cleanIdentifier).filter(Boolean).slice(0, 30),
+    evidence: (analysis.evidence ?? []).slice(0, 20),
+    model: cleanIdentifier(analysis.model),
+    provider: cleanIdentifier(analysis.provider),
+    model_usage: analysis.modelUsage ?? null,
+    total_cost_usd: analysis.totalCostUsd == null ? null : Math.max(0, boundedNumber(analysis.totalCostUsd)),
+  };
+
+  const { data: existingRun } = await supabaseApiAdmin
+    .from("crm_ai_runs")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("source_event_id", event.eventId)
+    .maybeSingle();
+  let runId = existingRun?.id ?? "";
+  if (!runId) {
+    const { data: createdRun, error: runError } = await supabaseApiAdmin
+      .from("crm_ai_runs")
+      .insert(runPayload)
+      .select("id")
+      .single();
+    if (runError || !createdRun) {
+      if (schemaUnavailable(runError)) {
+        return NextResponse.json({ ok: false, error: "Schema do observador ainda não aplicado." }, { status: 503 });
+      }
+      return NextResponse.json({ ok: false, error: "Falha ao registrar a análise da IA." }, { status: 500 });
+    }
+    runId = createdRun.id;
+  }
+
+  const factRows = (analysis.facts ?? []).slice(0, 20).map((fact, index) => ({
+    workspace_id: workspaceId,
+    run_id: runId,
+    contact_id: contactId,
+    conversation_id: conversation?.id ?? null,
+    suggestion_key: `fact:${index}:${cleanIdentifier(fact.category)}:${cleanIdentifier(fact.key)}`.slice(0, 240),
+    suggestion_type: "fact",
+    category: cleanIdentifier(fact.category) || "other",
+    title: cleanIdentifier(fact.key) || "Fato observado",
+    description: String(fact.valueText ?? "").slice(0, 2_000),
+    structured_data: {
+      key: cleanIdentifier(fact.key), valueText: String(fact.valueText ?? "").slice(0, 4_000),
+      numericValue: boundedNumber(fact.numericValue), unit: cleanIdentifier(fact.unit),
+      amount: Math.max(0, boundedNumber(fact.amount)), currency: cleanIdentifier(fact.currency) || "BRL",
+    },
+    confidence: boundedConfidence(fact.confidence),
+    evidence: String(fact.evidence ?? "").slice(0, 2_000),
+  }));
+  const actionRows = (analysis.actions ?? []).slice(0, 20).map((action, index) => ({
+    workspace_id: workspaceId,
+    run_id: runId,
+    contact_id: contactId,
+    conversation_id: conversation?.id ?? null,
+    suggestion_key: `action:${index}:${cleanIdentifier(action.category)}`.slice(0, 240),
+    suggestion_type: "action",
+    category: cleanIdentifier(action.category) || "other",
+    title: cleanIdentifier(action.title) || "Ação sugerida",
+    description: String(action.description ?? "").slice(0, 2_000),
+    structured_data: {
+      dueAt: cleanIdentifier(action.dueAt), serviceType: cleanIdentifier(action.serviceType),
+      quantity: Math.max(0, boundedNumber(action.quantity)), unitPrice: Math.max(0, boundedNumber(action.unitPrice)),
+      totalAmount: Math.max(0, boundedNumber(action.totalAmount)), leadStage: cleanIdentifier(action.leadStage),
+    },
+    confidence: boundedConfidence(action.confidence),
+    evidence: String(action.evidence ?? "").slice(0, 2_000),
+  }));
+  const suggestionRows = [...factRows, ...actionRows];
+  if (suggestionRows.length) {
+    const { error: suggestionsError } = await supabaseApiAdmin
+      .from("crm_ai_suggestions")
+      .upsert(suggestionRows, { onConflict: "run_id,suggestion_key", ignoreDuplicates: true });
+    if (suggestionsError) {
+      return NextResponse.json({ ok: false, error: "Falha ao registrar sugestões da IA." }, { status: 500 });
+    }
+  }
+
+  const { error: auditError } = await supabaseApiAdmin.from("crm_audit_events").upsert({
+    workspace_id: workspaceId,
+    event_key: event.eventId,
+    entity_type: "ai_run",
+    entity_id: runId,
+    action: event.type,
+    actor_type: "agent",
+    actor_id: "bia",
+    after_data: { runId, decision: analysis.decision, suggestions: suggestionRows.length },
+    reasoning: String(analysis.reason ?? "").slice(0, 2_000),
+    source_refs: event.data.sourceMessageIds.slice(0, 50).map((id) => ({ type: "whatsapp_message", id })),
+  }, { onConflict: "workspace_id,event_key", ignoreDuplicates: true });
+  if (auditError) {
+    return NextResponse.json({ ok: false, error: "Falha ao auditar a análise da IA." }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, duplicate: Boolean(existingRun), runId, suggestions: suggestionRows.length }, { status: 202 });
 }
 
 export async function POST(req: Request) {
@@ -107,6 +322,10 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (processedEvent) {
     return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
+  }
+
+  if (event.type === "conversation.analysis.completed") {
+    return handleAnalysisEvent(event, workspace.id);
   }
 
   const phone = digits(event.data.phone);

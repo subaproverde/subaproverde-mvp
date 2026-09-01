@@ -9,9 +9,12 @@ import {
   BrainCircuit,
   Building2,
   CheckCircle2,
+  Check,
   CircleDollarSign,
   Clock3,
+  Eye,
   FileText,
+  Lightbulb,
   MessagesSquare,
   ReceiptText,
   RefreshCw,
@@ -20,6 +23,7 @@ import {
   TimerReset,
   UsersRound,
   WalletCards,
+  X,
 } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { crmDemoOverview } from "@/lib/crm/demo";
@@ -47,6 +51,8 @@ export default function CrmDashboard() {
   const [overview, setOverview] = useState<CrmOverview>(crmDemoOverview);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reviewingId, setReviewingId] = useState("");
+  const [reviewError, setReviewError] = useState("");
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -66,6 +72,25 @@ export default function CrmDashboard() {
 
   useEffect(() => {
     void loadOverview();
+  }, [loadOverview]);
+
+  const reviewSuggestion = useCallback(async (suggestionId: string, action: "approve" | "reject") => {
+    setReviewingId(suggestionId);
+    setReviewError("");
+    try {
+      const response = await authFetch("/api/admin/crm/intelligence/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ suggestionId, action }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível revisar a sugestão.");
+      await loadOverview();
+    } catch (reviewFailure) {
+      setReviewError(reviewFailure instanceof Error ? reviewFailure.message : "Falha ao revisar a sugestão.");
+    } finally {
+      setReviewingId("");
+    }
   }, [loadOverview]);
 
   const maxPipelineCount = useMemo(
@@ -99,7 +124,7 @@ export default function CrmDashboard() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-50" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </span>
-              Observador preparado
+              Observador {overview.intelligence.observerActive ? "ativo" : "preparado"}
             </div>
             <button
               type="button"
@@ -130,6 +155,97 @@ export default function CrmDashboard() {
         <MetricCard icon={MessagesSquare} label="Aguardando você" value={String(overview.metrics.waitingTeam)} detail="somente decisões reais" tone="sky" />
         <MetricCard icon={Clock3} label="Follow-ups vencidos" value={String(overview.metrics.overdueFollowUps)} detail="priorizados pela IA" tone="amber" />
         <MetricCard icon={CircleDollarSign} label="A receber" value={money.format(overview.metrics.openReceivables)} detail="pagamento após serviço" tone="violet" />
+      </section>
+
+      <section className="rounded-[24px] border border-emerald-300/14 bg-[linear-gradient(145deg,rgba(16,56,41,0.34),rgba(255,255,255,0.025)_50%)] p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Lightbulb className="h-4 w-4 text-emerald-300" aria-hidden="true" />
+              Caixa de inteligência
+            </div>
+            <p className="mt-1 max-w-2xl text-sm leading-5 text-white/45">
+              O que a Bia entendeu das conversas, com fonte, justificativa e revisão antes de virar dado oficial.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <MiniStat label="Análises hoje" value={String(overview.intelligence.runsToday)} />
+            <MiniStat label="Pendentes" value={String(overview.intelligence.pendingSuggestions)} />
+            <MiniStat label="Confiança média" value={`${Math.round(overview.intelligence.averageConfidence * 100)}%`} />
+            <MiniStat label="Custo hoje" value={`US$ ${overview.intelligence.totalCostUsdToday.toFixed(3)}`} />
+          </div>
+        </div>
+
+        {reviewError ? (
+          <div className="mt-4 rounded-xl border border-rose-300/15 bg-rose-300/[0.07] px-3.5 py-3 text-sm text-rose-100/80">{reviewError}</div>
+        ) : null}
+
+        <div className="mt-5 grid gap-3 xl:grid-cols-2">
+          {overview.intelligence.suggestions.length ? overview.intelligence.suggestions.map((suggestion) => (
+            <article key={suggestion.id} className="rounded-2xl border border-white/[0.09] bg-black/20 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-white">{suggestion.contactName}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${suggestion.type === "fact" ? "bg-cyan-300/10 text-cyan-200" : "bg-violet-300/10 text-violet-200"}`}>
+                      {suggestion.type === "fact" ? "dado" : "ação"}
+                    </span>
+                    {suggestion.status !== "pending" ? (
+                      <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-white/40">
+                        {suggestion.status === "applied" ? "aplicado" : suggestion.status === "rejected" ? "rejeitado" : suggestion.status}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-white/85">{suggestion.title}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-emerald-200">{Math.round(suggestion.confidence * 100)}%</div>
+                  <div className="text-[10px] uppercase tracking-[0.1em] text-white/28">confiança</div>
+                </div>
+              </div>
+
+              {suggestion.description ? <p className="mt-2 text-sm leading-5 text-white/52">{suggestion.description}</p> : null}
+              <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-white/34">
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" /> De onde veio
+                </div>
+                <p className="mt-1.5 text-xs leading-5 text-white/55">{suggestion.evidence || "Trecho ainda não informado pela análise."}</p>
+                {suggestion.reason ? <p className="mt-2 border-t border-white/[0.06] pt-2 text-xs leading-5 text-white/42"><span className="font-semibold text-white/60">Por que a Bia pensou assim:</span> {suggestion.reason}</p> : null}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-[11px] text-white/30">
+                  {suggestion.model || "modelo não informado"}{suggestion.provider ? ` · ${suggestion.provider}` : ""} · {relativeTime(suggestion.occurredAt)}
+                  {suggestion.ruleIds.length ? <span className="block pt-0.5">Regras: {suggestion.ruleIds.join(", ")}</span> : null}
+                </div>
+                {suggestion.status === "pending" ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void reviewSuggestion(suggestion.id, "reject")}
+                      disabled={Boolean(reviewingId)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-300/14 bg-rose-300/[0.06] px-3 text-xs font-semibold text-rose-100 transition hover:bg-rose-300/[0.1] disabled:opacity-45"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" /> Rejeitar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void reviewSuggestion(suggestion.id, "approve")}
+                      disabled={Boolean(reviewingId)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-300/18 bg-emerald-300/[0.1] px-3 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.16] disabled:opacity-45"
+                    >
+                      {reviewingId === suggestion.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />} Aprovar
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          )) : (
+            <div className="xl:col-span-2">
+              <EmptyState title="Nenhuma sugestão pendente" detail="As próximas conclusões da Bia aparecerão aqui com a origem e a justificativa." />
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5 sm:p-6">
@@ -208,7 +324,7 @@ export default function CrmDashboard() {
                 <BrainCircuit className="h-4 w-4 text-emerald-300" aria-hidden="true" />
                 Observador da Bia
               </div>
-              <span className="rounded-full bg-emerald-300/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">preparado</span>
+              <span className="rounded-full bg-emerald-300/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">{overview.intelligence.observerActive ? "ativo" : "preparado"}</span>
             </div>
             <p className="mt-3 text-sm leading-6 text-white/55">
               Cada conclusão será salva com confiança, evidência da conversa e histórico de alterações.
@@ -323,12 +439,12 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState() {
+function EmptyState({ title = "Tudo em dia por aqui", detail = "Novas prioridades aparecerão automaticamente." }: { title?: string; detail?: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 px-5 py-10 text-center">
       <CheckCircle2 className="h-7 w-7 text-emerald-300/70" aria-hidden="true" />
-      <div className="mt-3 text-sm font-medium text-white/70">Tudo em dia por aqui</div>
-      <div className="mt-1 text-xs text-white/35">Novas prioridades aparecerão automaticamente.</div>
+      <div className="mt-3 text-sm font-medium text-white/70">{title}</div>
+      <div className="mt-1 text-xs text-white/35">{detail}</div>
     </div>
   );
 }
