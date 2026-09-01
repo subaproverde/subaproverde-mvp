@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Activity,
   AlertCircle,
@@ -119,6 +120,9 @@ export default function CrmDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <Link href="/admin/crm/conversas" className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-400 px-4 text-sm font-semibold text-[#052216] transition hover:bg-emerald-300">
+              <MessagesSquare className="h-4 w-4" aria-hidden="true" /> Abrir conversas
+            </Link>
             <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/15 bg-black/20 px-3.5 py-2.5 text-sm text-white/75">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-50" />
@@ -157,7 +161,7 @@ export default function CrmDashboard() {
         <MetricCard icon={CircleDollarSign} label="A receber" value={money.format(overview.metrics.openReceivables)} detail="pagamento após serviço" tone="violet" />
       </section>
 
-      <section className="rounded-[24px] border border-emerald-300/14 bg-[linear-gradient(145deg,rgba(16,56,41,0.34),rgba(255,255,255,0.025)_50%)] p-5 sm:p-6">
+      <section id="inteligencia" className="scroll-mt-24 rounded-[24px] border border-emerald-300/14 bg-[linear-gradient(145deg,rgba(16,56,41,0.34),rgba(255,255,255,0.025)_50%)] p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -377,9 +381,9 @@ export default function CrmDashboard() {
       <section className="rounded-[24px] border border-white/10 bg-white/[0.035] p-5 sm:p-6">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
           <Activity className="h-4 w-4 text-cyan-300" aria-hidden="true" />
-          O que a IA registrou
+          Atividade do WhatsApp
         </div>
-        <p className="mt-1 text-sm text-white/45">Rastro auditável das ações, fontes e dados extraídos das conversas.</p>
+        <p className="mt-1 text-sm text-white/45">Histórico técnico de mensagens recebidas e enviadas. Isso é coleta bruta; dados entendidos pela IA aparecem na Caixa de inteligência.</p>
         <div className="mt-5 grid gap-3 lg:grid-cols-3">
           {overview.recentActivities.length ? overview.recentActivities.slice(0, 6).map((item) => (
             <article key={item.id} className="rounded-2xl border border-white/[0.08] bg-black/15 p-4">

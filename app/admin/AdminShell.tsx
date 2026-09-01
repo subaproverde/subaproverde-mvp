@@ -9,6 +9,7 @@ import {
   BarChart3,
   CheckCircle2,
   BrainCircuit,
+  MessagesSquare,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
@@ -28,6 +29,11 @@ const navItems = [
     href: "/admin/crm",
     label: "CRM",
     icon: BrainCircuit,
+  },
+  {
+    href: "/admin/crm/conversas",
+    label: "Conversas",
+    icon: MessagesSquare,
   },
   {
     href: "/admin/remocoes",
@@ -86,7 +92,9 @@ export default function AdminShell({
             <nav className="hidden items-center gap-1 md:flex">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+                const active = item.href === "/admin/crm"
+                  ? pathname === item.href
+                  : pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
                 return (
                   <Link
@@ -135,7 +143,9 @@ export default function AdminShell({
           <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-5 pb-3 md:hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+              const active = item.href === "/admin/crm"
+                ? pathname === item.href
+                : pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
               return (
                 <Link
