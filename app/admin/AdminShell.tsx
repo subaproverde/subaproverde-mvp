@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
   BarChart3,
+  BriefcaseBusiness,
   CheckCircle2,
-  BrainCircuit,
   MessagesSquare,
   LayoutDashboard,
   LogOut,
@@ -28,7 +28,7 @@ const navItems = [
   {
     href: "/admin/crm",
     label: "CRM",
-    icon: BrainCircuit,
+    icon: BriefcaseBusiness,
   },
   {
     href: "/admin/crm/conversas",
@@ -93,7 +93,7 @@ export default function AdminShell({
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = item.href === "/admin/crm"
-                  ? pathname === item.href
+                  ? pathname?.startsWith(item.href) && !pathname?.startsWith("/admin/crm/conversas")
                   : pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
                 return (
@@ -144,7 +144,7 @@ export default function AdminShell({
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = item.href === "/admin/crm"
-                ? pathname === item.href
+                ? pathname?.startsWith(item.href) && !pathname?.startsWith("/admin/crm/conversas")
                 : pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
               return (
@@ -170,7 +170,7 @@ export default function AdminShell({
           <div className="mb-5 flex items-center gap-2 text-xs text-white/45">
             <BarChart3 className="h-4 w-4 text-emerald-200/70" aria-hidden="true" />
             {pathname?.startsWith("/admin/crm")
-              ? "CRM operacional com trilha auditável da inteligência artificial"
+              ? "CRM comercial: clientes, funil, agenda e conversas em um único fluxo"
               : "Operação interna da Suba Pro Verde"}
           </div>
           {children}
