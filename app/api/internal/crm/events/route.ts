@@ -99,8 +99,23 @@ function digits(value: unknown) {
   return String(value ?? "").replace(/\D/g, "");
 }
 
+function whatsappPhoneVariants(value: unknown) {
+  const phone = digits(value);
+  const variants = new Set(phone ? [phone] : []);
+  if (/^55\d{2}9\d{8}$/.test(phone)) variants.add(`${phone.slice(0, 4)}${phone.slice(5)}`);
+  if (/^55\d{10}$/.test(phone)) variants.add(`${phone.slice(0, 4)}9${phone.slice(4)}`);
+  return [...variants];
+}
+
 function cleanIdentifier(value: unknown) {
   return String(value ?? "").trim().slice(0, 240);
+}
+
+function safeContactName(value: unknown, direction: "inbound" | "outbound") {
+  if (direction !== "inbound") return "";
+  const name = cleanIdentifier(value).slice(0, 160);
+  if (!name || name === "~" || !/[\p{L}\p{N}]/u.test(name) || /^suba\s+pro\s+verde$/i.test(name)) return "";
+  return name;
 }
 
 function schemaUnavailable(error: { code?: string } | null) {
@@ -141,7 +156,11 @@ async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: stri
   const phone = digits(event.data.phone);
   const jid = cleanIdentifier(event.data.jid);
   const alternateJid = cleanIdentifier(event.data.alternateJid);
-  const identifiers = Array.from(new Set([jid, alternateJid, phone ? `phone:${phone}` : ""].filter(Boolean)));
+  const identifiers = Array.from(new Set([
+    jid,
+    alternateJid,
+    ...whatsappPhoneVariants(phone).map((number) => `phone:${number}`),
+  ].filter(Boolean)));
   if (!identifiers.length) {
     return NextResponse.json({ ok: false, error: "Análise sem identidade do contato." }, { status: 400 });
   }
@@ -331,7 +350,11 @@ export async function POST(req: Request) {
   const phone = digits(event.data.phone);
   const jid = cleanIdentifier(event.data.jid);
   const alternateJid = cleanIdentifier(event.data.alternateJid);
-  const identifiers = Array.from(new Set([jid, alternateJid, phone ? `phone:${phone}` : ""].filter(Boolean)));
+  const identifiers = Array.from(new Set([
+    jid,
+    alternateJid,
+    ...whatsappPhoneVariants(phone).map((number) => `phone:${number}`),
+  ].filter(Boolean)));
   if (!identifiers.length) {
     return NextResponse.json({ ok: false, error: "Evento sem identidade do contato." }, { status: 400 });
   }
@@ -354,7 +377,7 @@ export async function POST(req: Request) {
       .from("crm_contacts")
       .insert({
         workspace_id: workspace.id,
-        name: cleanIdentifier(event.data.contactName).slice(0, 160),
+        name: safeContactName(event.data.contactName, event.data.direction),
         phone,
         source: "whatsapp",
         lifecycle_stage: "lead",
@@ -380,7 +403,7 @@ export async function POST(req: Request) {
           provider: "evolution",
           external_id: externalId,
           normalized_value: isPhone ? phone : externalId.toLowerCase(),
-          is_primary: isPhone,
+          is_primary: externalId === `phone:${phone}`,
         },
         { onConflict: "workspace_id,channel,provider,external_id", ignoreDuplicates: true }
       );
@@ -389,7 +412,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const contactName = cleanIdentifier(event.data.contactName).slice(0, 160);
+  // Em mensagens enviadas pelo próprio WhatsApp, a Evolution normalmente devolve
+  // o pushName da empresa ("Suba Pro Verde"), não o nome do cliente. Nunca use
+  // esse valor para sobrescrever a identidade do contato.
+  const contactName = safeContactName(event.data.contactName, event.data.direction);
   const { error: contactUpdateError } = await supabaseApiAdmin
     .from("crm_contacts")
     .update({
@@ -409,7 +435,9 @@ export async function POST(req: Request) {
     .eq("workspace_id", workspace.id)
     .eq("channel", "whatsapp")
     .eq("provider", "evolution")
-    .eq("external_thread_id", externalThreadId)
+    .eq("contact_id", contactId)
+    .order("last_message_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   let conversationId = existingConversation?.id ?? "";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -32,6 +32,7 @@ type ConversationItem = {
   phone: string;
   leadStage: string;
   estimatedValue: number;
+  latestAnalysisAt: string | null;
   latestMessage: null | { direction: string; senderType: string; messageType: string; text: string; occurredAt: string };
 };
 
@@ -65,6 +66,24 @@ function stageLabel(stage: string) {
   return ({ new: "Novo", contacted: "Em conversa", qualified: "Qualificado", proposal: "Proposta", negotiation: "Negociação", won: "Cliente", lost: "Perdido" } as Record<string, string>)[stage] || stage;
 }
 
+function formatPhone(value: string) {
+  const number = value.replace(/\D/g, "");
+  if (/^55\d{10,11}$/.test(number)) {
+    const local = number.slice(2);
+    const ddd = local.slice(0, 2);
+    const subscriber = local.slice(2);
+    const split = subscriber.length === 9 ? 5 : 4;
+    return `+55 (${ddd}) ${subscriber.slice(0, split)}-${subscriber.slice(split)}`;
+  }
+  return number ? `+${number}` : "Número não identificado";
+}
+
+function displayName(name: string, phone: string) {
+  const clean = String(name || "").trim();
+  if (!clean || !/[\p{L}\p{N}]/u.test(clean) || /^suba\s+pro\s+verde$/i.test(clean)) return formatPhone(phone);
+  return clean;
+}
+
 export default function ConversationsClient() {
   const [items, setItems] = useState<ConversationItem[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -77,6 +96,9 @@ export default function ConversationsClient() {
   const [sending, setSending] = useState(false);
   const [acting, setActing] = useState("");
   const [notice, setNotice] = useState("");
+  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const latestMessageIdRef = useRef("");
 
   const loadList = useCallback(async () => {
     try {
@@ -85,6 +107,7 @@ export default function ConversationsClient() {
       const data = await response.json() as { items: ConversationItem[] };
       setItems(data.items ?? []);
       setSelectedId((current) => current || data.items?.[0]?.id || "");
+      setLastSyncAt(new Date());
     } catch {
       setNotice("Não foi possível atualizar as conversas.");
     } finally {
@@ -98,7 +121,12 @@ export default function ConversationsClient() {
     try {
       const response = await authFetch(`/api/admin/crm/conversations/${encodeURIComponent(id)}`, { cache: "no-store" });
       if (!response.ok) throw new Error();
-      setDetail(await response.json() as ConversationDetail);
+      const nextDetail = await response.json() as ConversationDetail;
+      const latestId = nextDetail.messages.at(-1)?.id || "";
+      const shouldScroll = latestMessageIdRef.current !== latestId;
+      latestMessageIdRef.current = latestId;
+      setDetail(nextDetail);
+      if (shouldScroll) window.setTimeout(() => messagesEndRef.current?.scrollIntoView({ block: "end" }), 40);
     } catch {
       setNotice("Não foi possível abrir esta conversa.");
     } finally {
@@ -112,8 +140,17 @@ export default function ConversationsClient() {
     const timer = window.setInterval(() => {
       void loadList();
       if (selectedId) void loadDetail(selectedId, true);
-    }, 15_000);
+    }, 5_000);
     return () => window.clearInterval(timer);
+  }, [loadList, loadDetail, selectedId]);
+  useEffect(() => {
+    const refresh = () => {
+      void loadList();
+      if (selectedId) void loadDetail(selectedId, true);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, [loadList, loadDetail, selectedId]);
 
   const filtered = useMemo(() => {
@@ -121,7 +158,7 @@ export default function ConversationsClient() {
     return items.filter((item) => {
       if (filter === "unread" && !item.unread_count) return false;
       if (filter === "human" && item.assistant_mode !== "human" && !item.needs_human) return false;
-      return !normalized || item.contactName.toLowerCase().includes(normalized) || item.phone.includes(normalized) || item.latestMessage?.text.toLowerCase().includes(normalized);
+      return !normalized || displayName(item.contactName, item.phone).toLowerCase().includes(normalized) || item.phone.includes(normalized) || item.latestMessage?.text.toLowerCase().includes(normalized);
     });
   }, [items, query, filter]);
 
@@ -178,15 +215,18 @@ export default function ConversationsClient() {
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Conversas do WhatsApp</h1>
           <p className="mt-1 text-sm text-white/45">Atenda, assuma ou devolva conversas para a Bia sem sair do CRM.</p>
         </div>
-        <button type="button" onClick={() => { void loadList(); if (selectedId) void loadDetail(selectedId); }} className="inline-flex h-10 items-center gap-2 self-start rounded-xl border border-white/10 bg-white/[0.05] px-3.5 text-sm text-white/70 hover:bg-white/[0.09]">
-          <RefreshCw className="h-4 w-4" /> Atualizar
-        </button>
+        <div className="flex items-center gap-3 self-start">
+          <div className="flex items-center gap-2 text-xs text-emerald-200/65"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-45" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>Ao vivo{lastSyncAt ? ` · ${lastSyncAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}</div>
+          <button type="button" onClick={() => { void loadList(); if (selectedId) void loadDetail(selectedId); }} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 text-sm text-white/70 hover:bg-white/[0.09]">
+            <RefreshCw className="h-4 w-4" /> Atualizar
+          </button>
+        </div>
       </div>
 
       {notice ? <div className="rounded-xl border border-emerald-300/14 bg-emerald-300/[0.07] px-4 py-3 text-sm text-emerald-50/80">{notice}</div> : null}
 
-      <div className="grid min-h-[720px] overflow-hidden rounded-[24px] border border-white/10 bg-[#07100d]/90 lg:grid-cols-[330px_minmax(0,1fr)]">
-        <aside className="border-b border-white/10 lg:border-b-0 lg:border-r">
+      <div className="grid min-h-[680px] overflow-hidden rounded-[24px] border border-white/10 bg-[#07100d]/90 lg:h-[calc(100dvh-10.5rem)] lg:max-h-[920px] lg:min-h-[620px] lg:grid-cols-[330px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col border-b border-white/10 lg:border-b-0 lg:border-r">
           <div className="border-b border-white/10 p-3.5">
             <label className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 text-white/45">
               <Search className="h-4 w-4" />
@@ -198,15 +238,15 @@ export default function ConversationsClient() {
               ))}
             </div>
           </div>
-          <div className="max-h-[640px] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {loading ? <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-emerald-200" /></div> : filtered.length ? filtered.map((item) => (
               <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`w-full border-b border-white/[0.06] p-3.5 text-left transition ${selectedId === item.id ? "bg-emerald-300/[0.08]" : "hover:bg-white/[0.035]"}`}>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300/20 to-cyan-300/10 text-sm font-semibold text-emerald-100">{item.contactName.slice(0, 1).toUpperCase()}</div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300/20 to-cyan-300/10 text-sm font-semibold text-emerald-100">{displayName(item.contactName, item.phone).slice(0, 1).toUpperCase()}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold text-white/88">{item.contactName}</span><span className="shrink-0 text-[10px] text-white/28">{relativeTime(item.last_message_at)}</span></div>
+                    <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold text-white/88">{displayName(item.contactName, item.phone)}</span><span className="shrink-0 text-[10px] text-white/28">{relativeTime(item.last_message_at)}</span></div>
                     <p className="mt-1 truncate text-xs text-white/42">{item.latestMessage?.direction === "outbound" ? "Você: " : ""}{item.latestMessage?.text || "Sem prévia"}</p>
-                    <div className="mt-2 flex items-center gap-2"><span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[10px] text-white/38">{stageLabel(item.leadStage)}</span>{item.assistant_mode === "human" ? <span className="text-[10px] text-amber-200/75">com você</span> : <span className="text-[10px] text-emerald-200/55">Bia ativa</span>}</div>
+                    <div className="mt-2 flex items-center gap-2">{item.assistant_mode === "human" ? <span className="text-[10px] text-amber-200/75">Atendimento com você</span> : <span className="text-[10px] text-emerald-200/55">Bia ativa</span>}<span className={`text-[10px] ${item.latestAnalysisAt ? "text-cyan-200/55" : "text-white/25"}`}>{item.latestAnalysisAt ? "· analisada" : "· não analisada"}</span></div>
                   </div>
                   {item.unread_count ? <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-400 px-1.5 text-[10px] font-bold text-[#042014]">{item.unread_count}</span> : null}
                 </div>
@@ -216,10 +256,10 @@ export default function ConversationsClient() {
         </aside>
 
         {!selectedId ? <div className="flex items-center justify-center p-8 text-white/35"><MessageCircle className="mr-2 h-5 w-5" /> Selecione uma conversa</div> : detailLoading && !detail ? <div className="flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-200" /></div> : (
-          <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <main className="flex min-w-0 flex-col border-r-0 border-white/10 xl:border-r">
+          <div className="grid min-h-0 min-w-0 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <main className="flex min-h-0 min-w-0 flex-col border-r-0 border-white/10 xl:border-r">
               <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5">
-                <div className="min-w-0"><div className="truncate font-semibold text-white">{detail?.contact.name || currentItem?.contactName}</div><div className="mt-0.5 text-xs text-white/36">{detail?.contact.phone || currentItem?.phone} · {stageLabel(detail?.lead?.stage || currentItem?.leadStage || "new")}</div></div>
+                <div className="min-w-0"><div className="truncate font-semibold text-white">{displayName(detail?.contact.name || currentItem?.contactName || "", detail?.contact.phone || currentItem?.phone || "")}</div><div className="mt-0.5 text-xs text-white/36">{formatPhone(detail?.contact.phone || currentItem?.phone || "")} · {stageLabel(detail?.lead?.stage || currentItem?.leadStage || "new")}</div></div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => void runAction("mark_read")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs text-white/60 hover:bg-white/[0.06]"><CheckCheck className="h-3.5 w-3.5" /> Lida</button>
                   <button type="button" onClick={() => void runAction("follow_up")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs text-white/60 hover:bg-white/[0.06]"><Clock3 className="h-3.5 w-3.5" /> Follow-up</button>
@@ -231,7 +271,7 @@ export default function ConversationsClient() {
                 </div>
               </header>
 
-              <div className="flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.045),transparent_38%)] p-4 sm:p-6">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.045),transparent_38%)] p-4 sm:p-6">
                 {detail?.messages.map((item) => {
                   const outbound = item.direction === "outbound";
                   const text = item.transcription || item.body || `[${item.message_type}]`;
@@ -244,6 +284,7 @@ export default function ConversationsClient() {
                   </div>;
                 })}
                 {!detail?.messages.length ? <div className="py-20 text-center text-sm text-white/32">Ainda não há mensagens nesta conversa.</div> : null}
+                <div ref={messagesEndRef} />
               </div>
 
               <div className="border-t border-white/10 p-3.5">
@@ -255,7 +296,7 @@ export default function ConversationsClient() {
               </div>
             </main>
 
-            <aside className="space-y-4 p-4">
+            <aside className="min-h-0 space-y-4 overflow-y-auto p-4">
               <section className="rounded-2xl border border-emerald-300/12 bg-emerald-300/[0.045] p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white"><BrainCircuit className="h-4 w-4 text-emerald-300" /> Inteligência desta conversa</div>
                 {latestRun ? <div className="mt-3"><div className="flex items-center justify-between gap-2"><span className="rounded bg-white/[0.05] px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-white/46">{latestRun.decision}</span><span className="text-sm font-semibold text-emerald-200">{Math.round(Number(latestRun.confidence) * 100)}%</span></div><p className="mt-2 text-xs leading-5 text-white/52">{latestRun.reason}</p><div className="mt-2 text-[10px] text-white/28">{latestRun.model || "regra determinística"} · {latestRun.provider}</div></div> : <p className="mt-3 text-xs leading-5 text-white/38">A IA ainda não analisou esta conversa. As mensagens abaixo são coleta bruta, não aprendizado.</p>}
