@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   BarChart3,
   CheckCircle2,
+  BrainCircuit,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
@@ -22,6 +23,11 @@ const navItems = [
     href: "/admin/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    href: "/admin/crm",
+    label: "CRM",
+    icon: BrainCircuit,
   },
   {
     href: "/admin/remocoes",
@@ -153,7 +159,9 @@ export default function AdminShell({
         <main className="mx-auto max-w-7xl px-5 py-6 lg:px-8 lg:py-8">
           <div className="mb-5 flex items-center gap-2 text-xs text-white/45">
             <BarChart3 className="h-4 w-4 text-emerald-200/70" aria-hidden="true" />
-            Operação interna com dados mockados nesta primeira versão
+            {pathname?.startsWith("/admin/crm")
+              ? "CRM operacional com trilha auditável da inteligência artificial"
+              : "Operação interna da Suba Pro Verde"}
           </div>
           {children}
         </main>
