@@ -298,16 +298,14 @@ export default function ConversationsClient() {
 
             <aside className="min-h-0 space-y-4 overflow-y-auto p-4">
               <section className="rounded-2xl border border-emerald-300/12 bg-emerald-300/[0.045] p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white"><BrainCircuit className="h-4 w-4 text-emerald-300" /> Inteligência desta conversa</div>
-                {latestRun ? <div className="mt-3"><div className="flex items-center justify-between gap-2"><span className="rounded bg-white/[0.05] px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-white/46">{latestRun.decision}</span><span className="text-sm font-semibold text-emerald-200">{Math.round(Number(latestRun.confidence) * 100)}%</span></div><p className="mt-2 text-xs leading-5 text-white/52">{latestRun.reason}</p><div className="mt-2 text-[10px] text-white/28">{latestRun.model || "regra determinística"} · {latestRun.provider}</div></div> : <p className="mt-3 text-xs leading-5 text-white/38">A IA ainda não analisou esta conversa. As mensagens abaixo são coleta bruta, não aprendizado.</p>}
-              </section>
-
-              <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4 text-cyan-300" /> O que a IA captou</div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white"><BrainCircuit className="h-4 w-4 text-emerald-300" /> Resumo da Bia</div>
                   <Link href="/admin/crm#inteligencia" className="text-[10px] font-medium text-cyan-200/65 hover:text-cyan-100">Revisar</Link>
                 </div>
-                <div className="mt-3 space-y-2">
+                {latestRun ? <div className="mt-3"><div className="flex items-center justify-between gap-2"><span className="rounded bg-white/[0.05] px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-white/46">{latestRun.decision}</span><span className="text-sm font-semibold text-emerald-200">{Math.round(Number(latestRun.confidence) * 100)}%</span></div><p className="mt-2 text-xs leading-5 text-white/52">{latestRun.reason}</p><div className="mt-2 text-[10px] text-white/28">{latestRun.model || "regra determinística"} · {latestRun.provider}</div></div> : <p className="mt-3 text-xs leading-5 text-white/38">Ainda não analisada. O histórico já está salvo e aguardará a Bia.</p>}
+                <div className="my-3 border-t border-white/[0.07]" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-white/65"><Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Dados captados</div>
+                <div className="mt-2.5 space-y-2">
                   {detail?.intelligence.suggestions.length ? detail.intelligence.suggestions.slice(0, 8).map((item) => (
                     <div key={item.id} className="rounded-xl bg-black/20 p-2.5">
                       <div className="flex items-start justify-between gap-2"><div className="text-xs font-medium text-white/72">{item.title}</div><span className={`rounded px-1.5 py-0.5 text-[9px] ${item.status === "pending" ? "bg-amber-300/10 text-amber-100/75" : "bg-emerald-300/10 text-emerald-100/70"}`}>{item.status === "pending" ? "aguarda revisão" : item.status}</span></div>
@@ -315,7 +313,7 @@ export default function ConversationsClient() {
                     </div>
                   )) : detail?.intelligence.facts.length ? detail.intelligence.facts.slice(0, 8).map((fact) => (
                     <div key={fact.id} className="rounded-xl bg-black/20 p-2.5"><div className="text-xs font-medium text-white/72">{fact.fact_key}</div><div className="mt-1 text-[11px] text-white/40">{String(fact.fact_value?.valueText || fact.evidence || fact.fact_type)}</div></div>
-                  )) : <div className="text-xs leading-5 text-white/34">Nenhum fato estruturado ainda. A conversa pode existir sem ter sido analisada pela Bia.</div>}
+                  )) : <div className="text-xs leading-5 text-white/34">Nenhum fato estruturado registrado.</div>}
                 </div>
               </section>
 
