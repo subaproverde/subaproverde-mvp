@@ -11,6 +11,7 @@ O CRM administrativo em `/admin/crm` é a fonte operacional para a jornada do co
 - `/admin/crm/funil`: quadro de oportunidades com movimentação entre etapas.
 - `/admin/crm/agenda`: compromissos, atendimentos e follow-ups vinculados ao contato.
 - `/admin/crm/conversas`: conversas integradas do WhatsApp.
+- `/admin/crm/gestor-ia`: saúde do agente, autonomia, custos, filas, guardrails e próximas melhores ações.
 - `/admin/crm/inteligencia`: memórias, evidências e sugestões da IA para revisão.
 
 ## Fonte dos dados
@@ -31,4 +32,4 @@ O CRM administrativo em `/admin/crm` é a fonte operacional para a jornada do co
 
 ## Próxima revisão obrigatória
 
-Depois de validar o núcleo comercial em produção, retomar a otimização de custo e roteamento das inteligências: filtros determinísticos, Sonnet como padrão, Opus para casos complexos, cache de uma hora e processamento em lote para análises sem urgência.
+Antes de alterar o modelo das conversas, avaliar o roteador com os exemplos reais da Bia. Opus permanece no atendimento; tarefas internas só migram para modelos econômicos depois de comprovarem qualidade equivalente. A primeira economia vem dos filtros determinísticos, consolidação de mensagens e eliminação de chamadas repetidas.

@@ -73,11 +73,12 @@ export default function CrmDashboard() {
 
       {error ? <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.07] px-4 py-3 text-sm text-amber-100/75">Exibindo a estrutura do CRM enquanto os dados são atualizados. {error}</div> : null}
 
-      <nav className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5" aria-label="Áreas do CRM">
+      <nav className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="Áreas do CRM">
         <WorkspaceLink href="/admin/crm/funil" icon={KanbanSquare} title="Funil" detail="Jornada dos leads" />
         <WorkspaceLink href="/admin/crm/clientes" icon={UserRoundSearch} title="Clientes" detail="Cadastro e qualificação" />
         <WorkspaceLink href="/admin/crm/agenda" icon={CalendarDays} title="Agenda" detail="Atendimentos e follow-ups" />
         <WorkspaceLink href="/admin/crm/conversas" icon={MessageCircleMore} title="Conversas" detail="WhatsApp integrado" />
+        <WorkspaceLink href="/admin/crm/gestor-ia" icon={Sparkles} title="Gestor de IA" detail="Operação, custos e autonomia" />
         <WorkspaceLink href="/admin/crm/inteligencia" icon={BrainCircuit} title="Inteligência" detail="Memórias e auditoria" subdued />
       </nav>
 
