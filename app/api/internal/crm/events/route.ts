@@ -279,6 +279,67 @@ async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: stri
     }
   }
 
+  // Comprovante precisa aparecer no Financeiro assim que for identificado pela Bia.
+  // Isso ainda não confirma dinheiro: a baixa só é feita pela conciliação financeira.
+  const receiptSuggestionKeys = actionRows
+    .filter((row) => row.category === "review_payment_receipt")
+    .map((row) => row.suggestion_key);
+  if (receiptSuggestionKeys.length) {
+    const { data: receiptSuggestions, error: receiptSuggestionsError } = await supabaseApiAdmin
+      .from("crm_ai_suggestions")
+      .select("id,suggestion_key,structured_data,confidence,evidence")
+      .eq("run_id", runId)
+      .in("suggestion_key", receiptSuggestionKeys);
+    if (receiptSuggestionsError) {
+      return NextResponse.json({ ok: false, error: "Falha ao preparar comprovante para o financeiro." }, { status: 500 });
+    }
+
+    const { data: sourceMessages } = event.data.sourceMessageIds.length
+      ? await supabaseApiAdmin
+        .from("crm_messages")
+        .select("id,external_message_id,message_type,media_url,body,transcription,occurred_at")
+        .eq("workspace_id", workspaceId)
+        .eq("conversation_id", conversation?.id ?? "")
+        .in("external_message_id", event.data.sourceMessageIds.map(cleanIdentifier).filter(Boolean).slice(0, 50))
+        .order("occurred_at", { ascending: false })
+      : { data: [] };
+    const proofMessage = (sourceMessages ?? []).find((message) => ["image", "document"].includes(message.message_type))
+      ?? sourceMessages?.[0]
+      ?? null;
+
+    for (const suggestion of receiptSuggestions ?? []) {
+      const structured = (suggestion.structured_data ?? {}) as Record<string, unknown>;
+      const extractedAmount = Math.max(0, boundedNumber(structured.totalAmount || structured.amount));
+      const { error: receiptError } = await supabaseApiAdmin.from("crm_payment_receipts").upsert({
+        workspace_id: workspaceId,
+        contact_id: contactId,
+        conversation_id: conversation?.id ?? null,
+        message_id: proofMessage?.id ?? null,
+        status: "review",
+        claimed_amount: extractedAmount || null,
+        extracted_amount: extractedAmount || null,
+        file_url: String(proofMessage?.media_url ?? "").slice(0, 2_000),
+        extraction: {
+          source: "bia",
+          suggestionId: suggestion.id,
+          evidence: String(suggestion.evidence ?? "").slice(0, 1_000),
+          sourceMessageId: proofMessage?.external_message_id ?? null,
+          messageType: proofMessage?.message_type ?? null,
+          data: structured,
+        },
+        confidence: boundedConfidence(suggestion.confidence),
+        source_suggestion_id: suggestion.id,
+        match_status: "unmatched",
+        review_notes: extractedAmount > 0
+          ? "Valor identificado pela Bia; aguardando conciliação com a conta a receber."
+          : "Comprovante identificado, mas o valor ainda precisa ser conferido.",
+      }, { onConflict: "source_suggestion_id", ignoreDuplicates: true });
+      if (receiptError) {
+        return NextResponse.json({ ok: false, error: "Falha ao registrar comprovante no financeiro." }, { status: 500 });
+      }
+    }
+  }
+
   const { error: auditError } = await supabaseApiAdmin.from("crm_audit_events").upsert({
     workspace_id: workspaceId,
     event_key: event.eventId,

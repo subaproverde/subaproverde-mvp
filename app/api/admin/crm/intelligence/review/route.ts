@@ -198,11 +198,12 @@ export async function POST(req: Request) {
       workspace_id: workspace.id,
       contact_id: suggestion.contact_id,
       lead_id: lead?.id ?? null,
-      status: "review",
+      status: "confirmed",
       payment_timing: "after_service",
       total_amount: total,
       source_conversation_id: suggestion.conversation_id,
       notes: cleanText(suggestion.description),
+      confirmed_at: reviewedAt,
     }).select("id").single();
     applyError = order.error;
     if (order.data?.id) {
@@ -217,6 +218,12 @@ export async function POST(req: Request) {
       applyError = applyError || item.error;
       entityType = "order";
       entityId = order.data.id;
+      if (!applyError && lead?.id) {
+        const { error: leadError } = await supabaseApiAdmin.from("crm_leads").update({
+          stage: "won", status: "won", won_at: reviewedAt, estimated_value: total,
+        }).eq("id", lead.id);
+        applyError = leadError;
+      }
     }
   } else if (suggestion.category === "create_receivable_draft" && positiveNumber(data.totalAmount || data.amount) > 0) {
     const result = await supabaseApiAdmin.from("crm_receivables").insert({
@@ -232,7 +239,7 @@ export async function POST(req: Request) {
     entityId = result.data?.id ?? "";
     applyError = result.error;
   } else if (suggestion.category === "review_payment_receipt") {
-    const result = await supabaseApiAdmin.from("crm_payment_receipts").insert({
+    const result = await supabaseApiAdmin.from("crm_payment_receipts").upsert({
       workspace_id: workspace.id,
       contact_id: suggestion.contact_id,
       conversation_id: suggestion.conversation_id,
@@ -241,7 +248,9 @@ export async function POST(req: Request) {
       extracted_amount: positiveNumber(data.totalAmount || data.amount) || null,
       extraction: { source: "bia", suggestionId: suggestion.id, data },
       confidence: Number(suggestion.confidence ?? 0),
-    }).select("id").single();
+      source_suggestion_id: suggestion.id,
+      match_status: "unmatched",
+    }, { onConflict: "source_suggestion_id" }).select("id").single();
     entityType = "payment_receipt";
     entityId = result.data?.id ?? "";
     applyError = result.error;

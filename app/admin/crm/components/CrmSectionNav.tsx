@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BrainCircuit, CalendarDays, KanbanSquare, LayoutDashboard, MessageCircleMore, Sparkles, UsersRound } from "lucide-react";
+import { BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, KanbanSquare, LayoutDashboard, MessageCircleMore, Sparkles, UsersRound } from "lucide-react";
 
 const items = [
   { href: "/admin/crm", label: "Visão geral", icon: LayoutDashboard },
@@ -10,6 +10,8 @@ const items = [
   { href: "/admin/crm/clientes", label: "Clientes", icon: UsersRound },
   { href: "/admin/crm/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/admin/crm/conversas", label: "Conversas", icon: MessageCircleMore },
+  { href: "/admin/crm/financeiro", label: "Financeiro", icon: CircleDollarSign },
+  { href: "/admin/crm/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/admin/crm/gestor-ia", label: "Gestor de IA", icon: Sparkles },
   { href: "/admin/crm/inteligencia", label: "Inteligência", icon: BrainCircuit },
 ];
