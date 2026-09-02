@@ -17,7 +17,7 @@ const items = [
 export default function CrmSectionNav() {
   const pathname = usePathname();
   return (
-    <nav className="mb-5 flex gap-2 overflow-x-auto pb-1" aria-label="Navegação do CRM">
+    <nav className="-mx-3 mb-5 flex max-w-[calc(100%+1.5rem)] gap-2 overflow-x-auto overscroll-x-contain px-3 pb-1 sm:mx-0 sm:max-w-full sm:px-0" aria-label="Navegação do CRM">
       {items.map((item) => {
         const Icon = item.icon;
         const active = item.href === "/admin/crm" ? pathname === item.href : pathname?.startsWith(item.href);

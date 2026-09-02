@@ -65,12 +65,12 @@ export default function AdminShell({
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#050707] text-white">
-      <div className="min-h-screen bg-[linear-gradient(180deg,rgba(8,20,16,0.96),rgba(5,7,7,1)_42%),radial-gradient(circle_at_18%_0%,rgba(0,255,136,0.10),transparent_34%),radial-gradient(circle_at_84%_10%,rgba(14,165,233,0.08),transparent_30%)]">
+    <div className="min-h-screen overflow-x-hidden bg-[#050707] text-white">
+      <div className="min-h-screen min-w-0 bg-[linear-gradient(180deg,rgba(8,20,16,0.96),rgba(5,7,7,1)_42%),radial-gradient(circle_at_18%_0%,rgba(0,255,136,0.10),transparent_34%),radial-gradient(circle_at_84%_10%,rgba(14,165,233,0.08),transparent_30%)]">
         <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050707]/82 backdrop-blur-xl">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-5 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
-              <Link href="/admin/dashboard" className="relative h-10 w-[152px] shrink-0">
+              <Link href="/admin/dashboard" className="relative h-9 w-[118px] shrink-0 sm:h-10 sm:w-[152px]">
                 <Image
                   src="/brand/suba-logo.png"
                   alt="Suba Pro Verde"
@@ -140,7 +140,7 @@ export default function AdminShell({
             </div>
           </div>
 
-          <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-5 pb-3 md:hidden">
+          <div className="mx-auto flex max-w-full gap-2 overflow-x-auto overscroll-x-contain px-3 pb-3 sm:px-5 md:hidden">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = item.href === "/admin/crm"
@@ -166,12 +166,12 @@ export default function AdminShell({
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-5 py-6 lg:px-8 lg:py-8">
-          <div className="mb-5 flex items-center gap-2 text-xs text-white/45">
+        <main className="mx-auto min-w-0 max-w-7xl px-3 py-5 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+          <div className="mb-4 flex min-w-0 items-center gap-2 text-xs text-white/45 sm:mb-5">
             <BarChart3 className="h-4 w-4 text-emerald-200/70" aria-hidden="true" />
-            {pathname?.startsWith("/admin/crm")
+            <span className="min-w-0 truncate">{pathname?.startsWith("/admin/crm")
               ? "CRM comercial: clientes, funil, agenda e conversas em um único fluxo"
-              : "Operação interna da Suba Pro Verde"}
+              : "Operação interna da Suba Pro Verde"}</span>
           </div>
           {children}
         </main>

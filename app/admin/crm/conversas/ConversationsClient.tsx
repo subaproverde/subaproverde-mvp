@@ -87,6 +87,7 @@ function displayName(name: string, phone: string) {
 export default function ConversationsClient() {
   const [items, setItems] = useState<ConversationItem[]>([]);
   const [selectedId, setSelectedId] = useState("");
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "human">("all");
@@ -225,8 +226,8 @@ export default function ConversationsClient() {
 
       {notice ? <div className="rounded-xl border border-emerald-300/14 bg-emerald-300/[0.07] px-4 py-3 text-sm text-emerald-50/80">{notice}</div> : null}
 
-      <div className="grid min-h-[680px] overflow-hidden rounded-[24px] border border-white/10 bg-[#07100d]/90 lg:h-[calc(100dvh-10.5rem)] lg:max-h-[920px] lg:min-h-[620px] lg:grid-cols-[330px_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col border-b border-white/10 lg:border-b-0 lg:border-r">
+      <div className="grid h-[70dvh] min-h-[520px] min-w-0 overflow-hidden rounded-[20px] border border-white/10 bg-[#07100d]/90 sm:rounded-[24px] lg:h-[calc(100dvh-10.5rem)] lg:max-h-[920px] lg:min-h-[620px] lg:grid-cols-[330px_minmax(0,1fr)]">
+        <aside className={`${mobileChatOpen ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 flex-col border-b border-white/10 lg:border-b-0 lg:border-r`}>
           <div className="border-b border-white/10 p-3.5">
             <label className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 text-white/45">
               <Search className="h-4 w-4" />
@@ -240,7 +241,7 @@ export default function ConversationsClient() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {loading ? <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-emerald-200" /></div> : filtered.length ? filtered.map((item) => (
-              <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`w-full border-b border-white/[0.06] p-3.5 text-left transition ${selectedId === item.id ? "bg-emerald-300/[0.08]" : "hover:bg-white/[0.035]"}`}>
+              <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setMobileChatOpen(true); }} className={`w-full border-b border-white/[0.06] p-3.5 text-left transition ${selectedId === item.id ? "bg-emerald-300/[0.08]" : "hover:bg-white/[0.035]"}`}>
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300/20 to-cyan-300/10 text-sm font-semibold text-emerald-100">{displayName(item.contactName, item.phone).slice(0, 1).toUpperCase()}</div>
                   <div className="min-w-0 flex-1">
@@ -256,10 +257,10 @@ export default function ConversationsClient() {
         </aside>
 
         {!selectedId ? <div className="flex items-center justify-center p-8 text-white/35"><MessageCircle className="mr-2 h-5 w-5" /> Selecione uma conversa</div> : detailLoading && !detail ? <div className="flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-200" /></div> : (
-          <div className="grid min-h-0 min-w-0 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className={`${mobileChatOpen ? "grid" : "hidden lg:grid"} min-h-0 min-w-0 xl:grid-cols-[minmax(0,1fr)_300px]`}>
             <main className="flex min-h-0 min-w-0 flex-col border-r-0 border-white/10 xl:border-r">
-              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5">
-                <div className="min-w-0"><div className="truncate font-semibold text-white">{displayName(detail?.contact.name || currentItem?.contactName || "", detail?.contact.phone || currentItem?.phone || "")}</div><div className="mt-0.5 text-xs text-white/36">{formatPhone(detail?.contact.phone || currentItem?.phone || "")} · {stageLabel(detail?.lead?.stage || currentItem?.leadStage || "new")}</div></div>
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-4 sm:py-3.5">
+                <div className="flex min-w-0 items-center gap-2"><button type="button" onClick={() => setMobileChatOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/55 lg:hidden" aria-label="Voltar para conversas"><ArrowLeft className="h-4 w-4" /></button><div className="min-w-0"><div className="truncate font-semibold text-white">{displayName(detail?.contact.name || currentItem?.contactName || "", detail?.contact.phone || currentItem?.phone || "")}</div><div className="mt-0.5 truncate text-xs text-white/36">{formatPhone(detail?.contact.phone || currentItem?.phone || "")} · {stageLabel(detail?.lead?.stage || currentItem?.leadStage || "new")}</div></div></div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => void runAction("mark_read")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs text-white/60 hover:bg-white/[0.06]"><CheckCheck className="h-3.5 w-3.5" /> Lida</button>
                   <button type="button" onClick={() => void runAction("follow_up")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs text-white/60 hover:bg-white/[0.06]"><Clock3 className="h-3.5 w-3.5" /> Follow-up</button>
@@ -296,7 +297,7 @@ export default function ConversationsClient() {
               </div>
             </main>
 
-            <aside className="min-h-0 space-y-4 overflow-y-auto p-4">
+            <aside className="hidden min-h-0 space-y-4 overflow-y-auto p-4 xl:block">
               <section className="rounded-2xl border border-emerald-300/12 bg-emerald-300/[0.045] p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white"><BrainCircuit className="h-4 w-4 text-emerald-300" /> Resumo da Bia</div>
