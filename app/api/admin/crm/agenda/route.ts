@@ -67,8 +67,24 @@ export async function PATCH(req: Request) {
     updates.status = body.status;
     updates.completed_at = body.status === "done" ? new Date().toISOString() : null;
   }
-  if (body.dueAt !== undefined) updates.due_at = body.dueAt ? new Date(body.dueAt).toISOString() : null;
-  if (body.title !== undefined) updates.title = cleanText(body.title, 220);
+  if (body.dueAt !== undefined) {
+    const dueAt = body.dueAt ? new Date(body.dueAt) : null;
+    if (!dueAt || Number.isNaN(dueAt.getTime())) return NextResponse.json({ ok: false, error: "Data e horário inválidos." }, { status: 400 });
+    updates.due_at = dueAt.toISOString();
+  }
+  if (body.title !== undefined) {
+    const title = cleanText(body.title, 220);
+    if (!title) return NextResponse.json({ ok: false, error: "Informe o título do compromisso." }, { status: 400 });
+    updates.title = title;
+  }
+  if (body.description !== undefined) updates.description = cleanText(body.description, 2000);
+  if (body.taskType !== undefined) updates.task_type = cleanText(body.taskType, 40) || "follow_up";
+  if (body.contactId !== undefined) updates.contact_id = cleanText(body.contactId, 100) || null;
+  if (body.priority !== undefined) {
+    if (!["low", "medium", "high", "urgent"].includes(body.priority)) return NextResponse.json({ ok: false, error: "Prioridade inválida." }, { status: 400 });
+    updates.priority = body.priority;
+  }
+  if (!Object.keys(updates).length) return NextResponse.json({ ok: false, error: "Nenhuma alteração informada." }, { status: 400 });
   const { data: task, error } = await supabaseApiAdmin.from("crm_tasks").update(updates).eq("workspace_id", workspace.id).eq("id", taskId).select("*").single();
   if (error || !task) return NextResponse.json({ ok: false, error: "Não foi possível atualizar o compromisso." }, { status: 500 });
   return NextResponse.json({ ok: true, task });
