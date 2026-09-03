@@ -4,6 +4,16 @@ import { cleanText, getCrmWorkspace } from "@/lib/crm/server";
 
 export const dynamic = "force-dynamic";
 
+function parseDueAt(value: unknown) {
+  const raw = cleanText(value, 80);
+  if (!raw) return null;
+  // datetime-local has no timezone. The CRM operates in São Paulo, so protect
+  // server-side callers from Vercel interpreting a local time as UTC.
+  const explicitTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw);
+  const parsed = new Date(explicitTimezone ? raw : `${raw}-03:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function GET(req: Request) {
   const auth = await requireAdminRequest(req);
   if (!auth.ok) return authErrorResponse(auth);
@@ -34,8 +44,8 @@ export async function POST(req: Request) {
   if (!workspace) return NextResponse.json({ ok: false, error: "Workspace do CRM não encontrado." }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const title = cleanText(body.title, 220);
-  const dueAt = body.dueAt ? new Date(body.dueAt) : null;
-  if (!title || !dueAt || Number.isNaN(dueAt.getTime())) return NextResponse.json({ ok: false, error: "Informe título, data e horário válidos." }, { status: 400 });
+  const dueAt = parseDueAt(body.dueAt);
+  if (!title || !dueAt) return NextResponse.json({ ok: false, error: "Informe título, data e horário válidos." }, { status: 400 });
 
   const { data: task, error } = await supabaseApiAdmin.from("crm_tasks").insert({
     workspace_id: workspace.id,
@@ -68,8 +78,8 @@ export async function PATCH(req: Request) {
     updates.completed_at = body.status === "done" ? new Date().toISOString() : null;
   }
   if (body.dueAt !== undefined) {
-    const dueAt = body.dueAt ? new Date(body.dueAt) : null;
-    if (!dueAt || Number.isNaN(dueAt.getTime())) return NextResponse.json({ ok: false, error: "Data e horário inválidos." }, { status: 400 });
+    const dueAt = parseDueAt(body.dueAt);
+    if (!dueAt) return NextResponse.json({ ok: false, error: "Data e horário inválidos." }, { status: 400 });
     updates.due_at = dueAt.toISOString();
   }
   if (body.title !== undefined) {

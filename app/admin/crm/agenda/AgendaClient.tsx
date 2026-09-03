@@ -81,6 +81,9 @@ export default function AgendaClient() {
     event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget);
     try {
       const formValues = Object.fromEntries(form.entries());
+      const localDueAt = new Date(String(formValues.dueAt || ""));
+      if (Number.isNaN(localDueAt.getTime())) throw new Error("Informe uma data e um horário válidos.");
+      formValues.dueAt = localDueAt.toISOString();
       const response = await authFetch("/api/admin/crm/agenda", { method: editingTask ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingTask ? { ...formValues, taskId: editingTask.id } : formValues) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error || `Falha ao ${editingTask ? "editar" : "criar"} compromisso.`);
       setShowForm(false); setEditingTask(null); setSelectedTask(null); await load();
