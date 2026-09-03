@@ -54,7 +54,7 @@ export default function CrmDashboard() {
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[28px] border border-emerald-300/15 bg-[radial-gradient(circle_at_88%_0%,rgba(52,211,153,0.18),transparent_28%),linear-gradient(135deg,rgba(15,46,34,0.88),rgba(7,17,15,0.97)_58%,rgba(8,24,30,0.9))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-7">
+      <section className="spv-dark-surface overflow-hidden rounded-[28px] border border-emerald-300/15 bg-[radial-gradient(circle_at_88%_0%,rgba(52,211,153,0.18),transparent_28%),linear-gradient(135deg,rgba(15,46,34,0.88),rgba(7,17,15,0.97)_58%,rgba(8,24,30,0.9))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100">
