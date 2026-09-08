@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#09251c"/>
+  <circle cx="512" cy="435" r="265" fill="#12392b"/>
+  <path d="M 247 435 A 265 265 0 0 1 777 435" fill="none" stroke="#42e6a5" stroke-width="62" stroke-linecap="round"/>
+  <path d="M 345 435 A 167 167 0 0 1 679 435" fill="none" stroke="#239b72" stroke-width="24" stroke-linecap="round"/>
+  <path d="M 512 435 L 668 290" stroke="#f6d778" stroke-width="38" stroke-linecap="round"/>
+  <circle cx="512" cy="435" r="48" fill="#ecfff4"/>
+  <text x="512" y="720" fill="#ecfff4" font-family="Arial, sans-serif" font-size="170" font-weight="bold" text-anchor="middle">SPV</text>
+  <text x="512" y="815" fill="#42e6a5" font-family="Arial, sans-serif" font-size="48" letter-spacing="13" text-anchor="middle">RADAR</text>
+</svg>

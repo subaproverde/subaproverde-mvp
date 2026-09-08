@@ -44,7 +44,10 @@ export default function LoginPage() {
     }
 
     if (profile.role === "admin") {
-      router.replace("/app");
+      const next = new URLSearchParams(window.location.search).get("next") || "";
+      // Only allow internal CRM routes; never accept an arbitrary redirect URL.
+      const valid = /^\/admin\/crm(?:\/|\?|$)/.test(next) && !/[\\\r\n]/.test(next);
+      router.replace(valid ? next : "/app");
     } else {
       router.replace("/app");
     }

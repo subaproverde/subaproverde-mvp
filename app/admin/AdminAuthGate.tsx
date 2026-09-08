@@ -25,7 +25,7 @@ export default function AdminAuthGate({ children }: { children: React.ReactNode 
       if (!alive) return;
 
       if (error || !user) {
-        router.replace("/login");
+        router.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         return;
       }
 

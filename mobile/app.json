@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "Radar SPV",
+    "slug": "radar-spv",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "radarspv",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.subaproverde.radarspv",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-background-task",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "br.com.subaproverde.radarspv.widgets",
+          "groupIdentifier": "group.br.com.subaproverde.radarspv",
+          "enablePushNotifications": false,
+          "widgets": [
+            {
+              "name": "RadarWidget",
+              "displayName": "Radar SPV",
+              "description": "Agenda, pendências e prioridades da Suba Pro Verde.",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium",
+                "systemLarge",
+                "accessoryRectangular",
+                "accessoryInline"
+              ]
+            }
+          ]
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "https://www.subaproverde.com",
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "br.com.subaproverde.radarspv.widgets",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.br.com.subaproverde.radarspv"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "a392b261-da27-4d03-ac60-2e0e391a9e7f"
+      }
+    },
+    "owner": "brunoos"
+  }
+}

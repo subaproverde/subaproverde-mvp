@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Ban, BellRing, CalendarCheck2, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Columns3, Expand, LayoutGrid, List, Minimize2, Pencil, Plus, RefreshCw, RotateCcw, UserRound, X } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
@@ -43,8 +43,14 @@ function relativeTiming(task: Task, now: Date) {
 }
 
 export default function AgendaClient() {
-  const initialContactId = useSearchParams().get("contactId") || "";
-  const [cursor, setCursor] = useState(() => new Date());
+  const search = useSearchParams();
+  const initialContactId = search.get("contactId") || "";
+  const deepTaskId = search.get("taskId");
+  const openedDeepTask = useRef<string | null>(null);
+  const [cursor, setCursor] = useState(() => {
+    const candidate = new Date(search.get("date") || "");
+    return Number.isNaN(candidate.getTime()) ? new Date() : candidate;
+  });
   const [view, setView] = useState<CalendarView>("week");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -70,6 +76,11 @@ export default function AgendaClient() {
   }, [range.end, range.start]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!deepTaskId || openedDeepTask.current === deepTaskId) return;
+    const target = tasks.find((task) => task.id === deepTaskId);
+    if (target) { openedDeepTask.current = deepTaskId; setSelectedTask(target); }
+  }, [deepTaskId, tasks]);
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 30_000); return () => window.clearInterval(timer); }, []);
   useEffect(() => {
     const previous = document.body.style.overflow; if (fullScreen) document.body.style.overflow = "hidden";

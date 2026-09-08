@@ -29,6 +29,22 @@ export const metadata: Metadata = {
       },
     ],
   },
+  manifest: "/manifest.webmanifest",
+  applicationName: "Radar SPV",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Radar SPV",
+  },
+  icons: {
+    icon: "/brand/suba-logo.png",
+    apple: "/mobile/icon-180.png",
+  },
+};
+
+export const viewport = {
+  themeColor: "#07140f",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
