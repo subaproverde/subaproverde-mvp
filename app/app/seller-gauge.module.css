@@ -1,0 +1,6 @@
+.instrument { overflow: visible; }
+.needle { transform-box: view-box; transform-origin: 180px 166px; transform: rotate(var(--needle-angle)); animation: settle 1.5s cubic-bezier(.2,.75,.25,1) both; }
+.halo { opacity: .3; animation: illuminate 1.8s ease-out both; }
+@keyframes settle { from { transform: rotate(-88deg); } to { transform: rotate(var(--needle-angle)); } }
+@keyframes illuminate { from { opacity: 0; } to { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .needle, .halo { animation: none; } }

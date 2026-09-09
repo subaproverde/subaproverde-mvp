@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Award, CheckCheck, CircleAlert, Clock3, ShieldCheck } from "lucide-react";
 import s from "./seller-home.module.css";
+import SellerReputationGauge from "./SellerReputationGauge";
 
 export type SellerSummaryViewProps = {
   name: string; sellerId: string; mlUserId: string; actions: ReactNode;
@@ -16,8 +17,6 @@ export type SellerSummaryViewProps = {
 const number = (value: number | null) => value === null ? "—" : value.toLocaleString("pt-BR");
 
 export default function SellerSummaryView({ name, sellerId, mlUserId, actions, reputation, medal, impacts, totalImpact, priority, commerce, alerts, cases }: SellerSummaryViewProps) {
-  const index = ["vermelho", "laranja", "amarelo", "verde"].indexOf(reputation.level);
-  const angle = -72 + Math.max(0, index) * 48;
   const max = Math.max(1, ...impacts.map((item) => item.value ?? 0));
   return <div className={s.summary}>
     <section className={s.heading}>
@@ -35,16 +34,7 @@ export default function SellerSummaryView({ name, sellerId, mlUserId, actions, r
       <section className={`${s.panel} ${s.reputationPanel}`}>
         <div className={s.sectionHead}><div><span className={s.kicker}>COMO SUA CONTA ESTÁ</span><h2>Reputação do seller</h2></div><ShieldCheck size={20} /></div>
         <div className={s.gauge} data-level={reputation.available ? reputation.level : "unknown"}>
-          <svg viewBox="0 0 360 215" role="img" aria-label={reputation.available ? `Reputação: ${reputation.label}` : "Reputação indisponível"}>
-            <path d="M 45 166 A 135 135 0 0 1 315 166" fill="none" stroke="#3b4446" strokeWidth="18" />
-            <path d="M 45 166 A 135 135 0 0 1 80 75" fill="none" stroke="#ce7278" strokeWidth="18" />
-            <path d="M 87 68 A 135 135 0 0 1 175 31" fill="none" stroke="#d79962" strokeWidth="18" />
-            <path d="M 185 31 A 135 135 0 0 1 273 68" fill="none" stroke="#d9c46a" strokeWidth="18" />
-            <path d="M 280 75 A 135 135 0 0 1 315 166" fill="none" stroke="#60b838" strokeWidth="18" />
-            <path d="M 68 166 A 112 112 0 0 1 292 166" fill="none" stroke="#465052" strokeWidth="1" strokeDasharray="2 9" />
-            {reputation.available && <g transform={`rotate(${angle} 180 166)`}><path d="M 176 166 L 180 62 L 184 166 Z" fill="#e9eee8" /><circle cx="180" cy="166" r="8" fill="#e9eee8" /></g>}
-            <text x="43" y="201" textAnchor="middle" fill="#aeb7b4" fontSize="11">EM RISCO</text><text x="310" y="201" textAnchor="middle" fill="#aeb7b4" fontSize="11">SAUDÁVEL</text>
-          </svg>
+          <SellerReputationGauge level={reputation.level} label={reputation.label} available={reputation.available} />
           <span className={s.reputationBadge}>{reputation.available ? reputation.label : "Sem dados"}</span>
           <p>{reputation.available && reputation.score !== null ? `Score ${reputation.score}` : "Classificação conforme os dados da conta"}</p>
         </div>
