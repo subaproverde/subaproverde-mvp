@@ -120,36 +120,36 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f15] text-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.35)] p-6">
+    <div className="min-h-screen bg-spv-page text-spv-ink flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-6">
         <div className="mb-5">
           <h1 className="text-2xl font-extrabold">Redefinir senha</h1>
-          <p className="mt-2 text-sm text-white/60">
+          <p className="mt-2 text-sm text-spv-muted">
             Digite sua nova senha para concluir a recuperação de acesso.
           </p>
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-4 text-sm text-spv-ink">
             Validando link de recuperação...
           </div>
         ) : (
           <>
             {error ? (
-              <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                 {error}
               </div>
             ) : null}
 
             {success ? (
-              <div className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+              <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-spv-accent-text">
                 {success}
               </div>
             ) : null}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-white/80">
+                <label className="mb-1 block text-sm font-medium text-spv-ink">
                   Nova senha
                 </label>
                 <input
@@ -157,13 +157,13 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Digite a nova senha"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-white placeholder:text-white/35 outline-none focus:border-white/20"
+                  className="h-11 w-full rounded-xl border border-spv-line bg-black/40 px-4 text-spv-ink placeholder:text-spv-muted outline-none focus:border-spv-line"
                   disabled={!hasRecovery || submitting}
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-white/80">
+                <label className="mb-1 block text-sm font-medium text-spv-ink">
                   Confirmar nova senha
                 </label>
                 <input
@@ -171,7 +171,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repita a nova senha"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-white placeholder:text-white/35 outline-none focus:border-white/20"
+                  className="h-11 w-full rounded-xl border border-spv-line bg-black/40 px-4 text-spv-ink placeholder:text-spv-muted outline-none focus:border-spv-line"
                   disabled={!hasRecovery || submitting}
                 />
                 {passwordMismatch ? (
@@ -182,7 +182,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={!hasRecovery || submitting || passwordMismatch}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-sm font-semibold text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-sm font-semibold text-spv-ink hover:from-emerald-400/25 hover:to-emerald-900/25 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? "Salvando..." : "Salvar nova senha"}
               </button>
@@ -191,7 +191,7 @@ export default function ResetPasswordPage() {
             <div className="mt-5 text-center">
               <Link
                 href="/login"
-                className="text-sm text-emerald-200/90 hover:text-emerald-200"
+                className="text-sm text-spv-accent-text hover:text-spv-accent-text"
               >
                 Voltar para o login
               </Link>

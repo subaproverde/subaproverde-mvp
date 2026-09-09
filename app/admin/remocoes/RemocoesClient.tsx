@@ -120,7 +120,7 @@ function successFromStatus(status: RemovalStatus) {
 
 function statusTone(status: RemovalStatus) {
   if (status === "removido" || status === "finalizado") {
-    return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+    return "border-emerald-300/20 bg-emerald-400/10 text-spv-accent-text";
   }
   if (status === "nao_removido") {
     return "border-rose-300/20 bg-rose-400/10 text-rose-100";
@@ -131,12 +131,12 @@ function statusTone(status: RemovalStatus) {
   if (status === "em_andamento") {
     return "border-amber-300/20 bg-amber-400/10 text-amber-100";
   }
-  return "border-white/10 bg-white/[0.06] text-white/70";
+  return "border-spv-line bg-spv-surface text-spv-ink";
 }
 
 function priorityTone(priority: AdminRemoval["priority"]) {
   if (priority === "alta") return "bg-rose-400/12 text-rose-100 border-rose-300/20";
-  if (priority === "baixa") return "bg-white/[0.05] text-white/55 border-white/10";
+  if (priority === "baixa") return "bg-spv-surface text-spv-muted border-spv-line";
   return "bg-amber-400/10 text-amber-100 border-amber-300/20";
 }
 
@@ -197,7 +197,7 @@ function writeStoredAdminRemocoes(clients: AdminClient[], removals: AdminRemoval
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1 block text-xs font-medium text-white/55">{children}</label>;
+  return <label className="mb-1 block text-xs font-medium text-spv-muted">{children}</label>;
 }
 
 export default function RemocoesClient({
@@ -611,12 +611,12 @@ export default function RemocoesClient({
     <div className="space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-spv-accent-text">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
             Operação de remoções
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Remoções</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-spv-ink">Remoções</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-spv-muted">
             Controle interno para clientes, vendas atendidas, impactos removidos, status,
             valores e relatórios premium. Agora conectado ao Supabase.
           </p>
@@ -633,7 +633,7 @@ export default function RemocoesClient({
           <button
             type="button"
             onClick={openPrintableReport}
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-4 text-sm font-medium text-spv-ink transition hover:bg-spv-raised hover:text-spv-ink"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
             Exportar relatório
@@ -652,7 +652,7 @@ export default function RemocoesClient({
       {remoteLoading || syncError ? (
         <section
           className={cn(
-            "rounded-2xl border p-4 text-sm",
+            "rounded-xl border p-4 text-sm",
             syncError
               ? "border-amber-300/20 bg-amber-400/[0.08] text-amber-50"
               : "border-emerald-300/16 bg-emerald-400/[0.07] text-emerald-50"
@@ -672,9 +672,9 @@ export default function RemocoesClient({
         <SummaryCard label="Taxa de sucesso" value={`${summary.successRate}%`} tone="green" />
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white/85">
-          <Filter className="h-4 w-4 text-emerald-200" aria-hidden="true" />
+      <section className="rounded-xl border border-spv-line bg-spv-surface p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-spv-ink">
+          <Filter className="h-4 w-4 text-spv-accent-text" aria-hidden="true" />
           Filtros
         </div>
 
@@ -682,12 +682,12 @@ export default function RemocoesClient({
           <div>
             <FieldLabel>Busca</FieldLabel>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-spv-muted" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Venda, packId, claimId, cliente..."
-                className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-emerald-300/35"
+                className="h-11 w-full rounded-xl border border-spv-line bg-spv-page pl-9 pr-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted focus:border-emerald-300/35"
               />
             </div>
           </div>
@@ -734,7 +734,7 @@ export default function RemocoesClient({
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-medium text-white/65 transition hover:bg-white/[0.08] hover:text-white lg:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-3 text-sm font-medium text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink lg:w-auto"
             >
               <X className="h-4 w-4" aria-hidden="true" />
               Limpar
@@ -744,18 +744,18 @@ export default function RemocoesClient({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/24">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="overflow-hidden rounded-xl border border-spv-line bg-spv-page">
+          <div className="flex items-center justify-between border-b border-spv-line px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Atendimentos</h2>
-              <p className="text-xs text-white/45">{filtered.length} registro(s) encontrados</p>
+              <h2 className="text-sm font-semibold text-spv-ink">Atendimentos</h2>
+              <p className="text-xs text-spv-muted">{filtered.length} registro(s) encontrados</p>
             </div>
-            <FileText className="h-4 w-4 text-white/40" aria-hidden="true" />
+            <FileText className="h-4 w-4 text-spv-muted" aria-hidden="true" />
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] text-left text-sm">
-              <thead className="bg-white/[0.035] text-xs uppercase tracking-wide text-white/42">
+              <thead className="bg-spv-surface text-xs uppercase tracking-wide text-spv-muted">
                 <tr>
                   <th className="px-4 py-3 font-medium">Cliente</th>
                   <th className="px-4 py-3 font-medium">Impacto</th>
@@ -768,15 +768,15 @@ export default function RemocoesClient({
               </thead>
               <tbody className="divide-y divide-white/8">
                 {filtered.map((item) => (
-                  <tr key={item.id} className="align-top transition hover:bg-white/[0.035]">
+                  <tr key={item.id} className="align-top transition hover:bg-spv-raised">
                     <td className="px-4 py-4">
-                      <div className="font-medium text-white">
+                      <div className="font-medium text-spv-ink">
                         {clientById.get(item.clientId)?.name ?? "Cliente"}
                       </div>
-                      <div className="mt-1 max-w-[250px] text-xs leading-5 text-white/45">{item.title}</div>
+                      <div className="mt-1 max-w-[250px] text-xs leading-5 text-spv-muted">{item.title}</div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="text-white/80">{impactTypeLabel[item.impactType]}</div>
+                      <div className="text-spv-ink">{impactTypeLabel[item.impactType]}</div>
                       <span
                         className={cn(
                           "mt-2 inline-flex rounded-full border px-2 py-1 text-[11px] font-medium",
@@ -791,13 +791,13 @@ export default function RemocoesClient({
                         {statusLabel[item.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-xs leading-5 text-white/55">
+                    <td className="px-4 py-4 text-xs leading-5 text-spv-muted">
                       <div>Venda: {item.mlOrderId ?? "-"}</div>
                       <div>Pack: {item.packId ?? "-"}</div>
                       <div>Claim: {item.claimId ?? "-"}</div>
                       <div>Shipment: {item.shipmentId ?? "-"}</div>
                     </td>
-                    <td className="px-4 py-4 text-xs leading-5 text-white/55">
+                    <td className="px-4 py-4 text-xs leading-5 text-spv-muted">
                       <div className="flex items-center gap-1.5">
                         <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
                         {formatDate(item.serviceDate)}
@@ -805,7 +805,7 @@ export default function RemocoesClient({
                       <div>Prevista: {formatDate(item.dueDate)}</div>
                       <div>Fim: {formatDate(item.completedAt)}</div>
                     </td>
-                    <td className="px-4 py-4 font-medium text-white">
+                    <td className="px-4 py-4 font-medium text-spv-ink">
                       {formatCurrency(item.chargedAmount)}
                     </td>
                     <td className="px-4 py-4">
@@ -813,7 +813,7 @@ export default function RemocoesClient({
                       <button
                         type="button"
                         onClick={() => openEditDrawer(item)}
-                        className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-medium text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+                        className="inline-flex h-9 items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-3 text-xs font-medium text-spv-ink transition hover:bg-spv-raised hover:text-spv-ink"
                       >
                         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         Editar
@@ -835,48 +835,48 @@ export default function RemocoesClient({
           </div>
 
           {filtered.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-white/45">
+            <div className="px-4 py-12 text-center text-sm text-spv-muted">
               Nenhum atendimento encontrado para os filtros selecionados.
             </div>
           ) : null}
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-            <h2 className="text-sm font-semibold text-white">Resumo por cliente</h2>
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+            <h2 className="text-sm font-semibold text-spv-ink">Resumo por cliente</h2>
             <div className="mt-4 space-y-3">
               {clientSummaries.map((item) => (
                 <button
                   key={item.client.id}
                   type="button"
                   onClick={() => setClientFilter(item.client.id)}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-emerald-300/20 hover:bg-white/[0.05]"
+                  className="w-full rounded-xl border border-spv-line bg-spv-page p-3 text-left transition hover:border-emerald-300/20 hover:bg-spv-raised"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-medium text-white">{item.client.name}</div>
-                      <div className="mt-1 text-xs text-white/45">
+                      <div className="text-sm font-medium text-spv-ink">{item.client.name}</div>
+                      <div className="mt-1 text-xs text-spv-muted">
                         {item.total} total | {item.pending} pendente(s)
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-semibold text-emerald-100">{item.successRate}%</div>
-                      <div className="text-[11px] text-white/35">sucesso</div>
+                      <div className="text-sm font-semibold text-spv-accent-text">{item.successRate}%</div>
+                      <div className="text-[11px] text-spv-muted">sucesso</div>
                     </div>
                   </div>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-spv-surface">
                     <div
                       className="h-full rounded-full bg-emerald-300"
                       style={{ width: `${Math.min(item.successRate, 100)}%` }}
                     />
                   </div>
-                  <div className="mt-2 text-xs font-medium text-white/70">{formatCurrency(item.value)}</div>
+                  <div className="mt-2 text-xs font-medium text-spv-ink">{formatCurrency(item.value)}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-300/16 bg-amber-400/[0.055] p-4">
+          <div className="rounded-xl border border-amber-300/16 bg-amber-400/[0.055] p-4">
             <h2 className="text-sm font-semibold text-amber-50">Alertas operacionais</h2>
             <div className="mt-3 space-y-2 text-sm text-amber-50/72">
               <p>Atendimentos vencendo em até 24h devem virar prioridade do dia.</p>
@@ -892,23 +892,23 @@ export default function RemocoesClient({
             type="button"
             aria-label="Fechar drawer"
             onClick={() => setDrawerOpen(false)}
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/65 backdrop-blur-none-sm"
           />
 
-          <div className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l border-white/10 bg-[#07100d] shadow-[-28px_0_80px_rgba(0,0,0,0.45)]">
-            <div className="flex items-start justify-between border-b border-white/10 p-5">
+          <div className="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l border-spv-line bg-spv-page shadow-none">
+            <div className="flex items-start justify-between border-b border-spv-line p-5">
               <div>
-                <h2 className="text-lg font-semibold text-white">
+                <h2 className="text-lg font-semibold text-spv-ink">
                   {editingId ? "Editar atendimento" : "Novo atendimento"}
                 </h2>
-                <p className="mt-1 text-sm text-white/48">
+                <p className="mt-1 text-sm text-spv-muted">
                   Registro salvo no Supabase. O navegador fica apenas como cache de segurança.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/[0.08] hover:text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-spv-line bg-spv-surface text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink"
                 aria-label="Fechar"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -997,15 +997,15 @@ export default function RemocoesClient({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-white/10 p-5">
-              <div className="text-xs text-white/40">
+            <div className="flex items-center justify-between gap-3 border-t border-spv-line p-5">
+              <div className="text-xs text-spv-muted">
                 Você pode salvar com dados parciais e completar depois.
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-spv-line bg-spv-surface px-4 text-sm font-medium text-spv-ink transition hover:bg-spv-raised hover:text-spv-ink"
                 >
                   Cancelar
                 </button>
@@ -1052,7 +1052,7 @@ function ClientPicker({
           <select
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-emerald-300/35"
+            className="h-11 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none focus:border-emerald-300/35"
           >
             {clients.length === 0 ? <option value="">Sem clientes cadastrados</option> : null}
             {clients.map((client) => (
@@ -1072,8 +1072,8 @@ function ClientPicker({
       </div>
 
       {open ? (
-        <div className="mt-3 rounded-2xl border border-sky-300/16 bg-sky-400/[0.055] p-4">
-          <div className="text-sm font-semibold text-white">Cadastrar cliente rápido</div>
+        <div className="mt-3 rounded-xl border border-sky-300/16 bg-sky-400/[0.055] p-4">
+          <div className="text-sm font-semibold text-spv-ink">Cadastrar cliente rápido</div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <ClientDraftField
               label="Nome"
@@ -1130,11 +1130,11 @@ function ClientDraftField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-white/55">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-spv-muted">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-emerald-300/35"
+        className="h-11 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted focus:border-emerald-300/35"
       />
     </label>
   );
@@ -1150,15 +1150,15 @@ function SummaryCard({
   tone?: "default" | "green" | "amber" | "sky";
 }) {
   const toneClass = {
-    default: "border-white/10 bg-white/[0.045] text-white",
+    default: "border-spv-line bg-spv-surface text-spv-ink",
     green: "border-emerald-300/18 bg-emerald-400/[0.075] text-emerald-50",
     amber: "border-amber-300/18 bg-amber-400/[0.075] text-amber-50",
     sky: "border-sky-300/18 bg-sky-400/[0.07] text-sky-50",
   }[tone];
 
   return (
-    <div className={cn("rounded-2xl border p-4", toneClass)}>
-      <div className="text-xs font-medium text-white/48">{label}</div>
+    <div className={cn("rounded-xl border p-4", toneClass)}>
+      <div className="text-xs font-medium text-spv-muted">{label}</div>
       <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
     </div>
   );
@@ -1181,7 +1181,7 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-emerald-300/35"
+        className="h-11 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none focus:border-emerald-300/35"
       >
         {children}
       </select>
@@ -1205,7 +1205,7 @@ function DateField({
         type="date"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-emerald-300/35"
+        className="h-11 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none focus:border-emerald-300/35"
       />
     </div>
   );
@@ -1228,7 +1228,7 @@ function TextField({
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-emerald-300/35"
+        className="h-11 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted focus:border-emerald-300/35"
       />
     </div>
   );
@@ -1252,7 +1252,7 @@ function NumberField({
         step="0.01"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-emerald-300/35"
+        className="h-11 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none focus:border-emerald-300/35"
       />
     </div>
   );
@@ -1276,9 +1276,9 @@ function TextAreaField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={4}
-        className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-emerald-300/35"
+        className="w-full resize-none rounded-xl border border-spv-line bg-spv-page px-3 py-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted focus:border-emerald-300/35"
       />
-      {helper ? <div className="mt-1 text-xs text-white/35">{helper}</div> : null}
+      {helper ? <div className="mt-1 text-xs text-spv-muted">{helper}</div> : null}
     </div>
   );
 }

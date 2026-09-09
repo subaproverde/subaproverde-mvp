@@ -133,7 +133,7 @@ export default function InfluencerPage() {
   }, [charges, influencer]);
 
   if (loading) {
-    return <div className="p-8 text-slate-600">Carregando…</div>;
+    return <div className="p-8 text-spv-muted">Carregando…</div>;
   }
 
   if (!authUserId) return null;
@@ -143,18 +143,18 @@ export default function InfluencerPage() {
       <div className="mx-auto max-w-6xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs text-slate-500">Painel do Influencer</div>
-            <h1 className="text-3xl font-semibold text-slate-900">
+            <div className="text-xs text-spv-muted">Painel do Influencer</div>
+            <h1 className="text-3xl font-semibold text-spv-ink">
               Comissões e Sellers indicados
             </h1>
-            <p className="mt-2 text-slate-600">
+            <p className="mt-2 text-spv-muted">
               Acompanhe o faturamento total dos sellers que usaram seu cupom e sua comissão vitalícia.
             </p>
           </div>
 
           <Link
             href="/dashboard"
-            className="rounded-xl border bg-white/70 backdrop-blur px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-white"
+            className="rounded-xl border bg-spv-surface backdrop-blur-none px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised"
           >
             Voltar ao sistema
           </Link>
@@ -162,51 +162,51 @@ export default function InfluencerPage() {
 
         {/* Cards topo */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="rounded-2xl border bg-white/80 backdrop-blur p-5">
-            <div className="text-xs text-slate-500">Seu cupom</div>
-            <div className="mt-1 text-xl font-semibold text-slate-900">
+          <div className="rounded-xl border bg-spv-surface backdrop-blur-none p-5">
+            <div className="text-xs text-spv-muted">Seu cupom</div>
+            <div className="mt-1 text-xl font-semibold text-spv-ink">
               {influencer?.coupon_code ?? "-"}
             </div>
-            <div className="mt-1 text-xs text-slate-500">
+            <div className="mt-1 text-xs text-spv-muted">
               Desconto seller: {(Number(influencer?.seller_discount_rate ?? 0) * 100).toFixed(0)}%
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-white/80 backdrop-blur p-5">
-            <div className="text-xs text-slate-500">Sellers indicados</div>
-            <div className="mt-1 text-xl font-semibold text-slate-900">
+          <div className="rounded-xl border bg-spv-surface backdrop-blur-none p-5">
+            <div className="text-xs text-spv-muted">Sellers indicados</div>
+            <div className="mt-1 text-xl font-semibold text-spv-ink">
               {sellers.length}
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-white/80 backdrop-blur p-5">
-            <div className="text-xs text-slate-500">Faturamento (base comissão)</div>
-            <div className="mt-1 text-xl font-semibold text-slate-900">
+          <div className="rounded-xl border bg-spv-surface backdrop-blur-none p-5">
+            <div className="text-xs text-spv-muted">Faturamento (base comissão)</div>
+            <div className="mt-1 text-xl font-semibold text-spv-ink">
               R$ {totals.totalRevenue.toFixed(2)}
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-white/80 backdrop-blur p-5">
-            <div className="text-xs text-slate-500">Sua comissão vitalícia</div>
+          <div className="rounded-xl border bg-spv-surface backdrop-blur-none p-5">
+            <div className="text-xs text-spv-muted">Sua comissão vitalícia</div>
             <div className="mt-1 text-xl font-semibold text-emerald-800">
               R$ {totals.commission.toFixed(2)}
             </div>
-            <div className="mt-1 text-xs text-slate-500">
+            <div className="mt-1 text-xs text-spv-muted">
               Taxa: {(Number(influencer?.commission_rate ?? 0) * 100).toFixed(0)}%
             </div>
           </div>
         </div>
 
         {/* Lista sellers */}
-        <div className="mt-8 rounded-3xl border bg-white/80 backdrop-blur p-6">
-          <div className="text-base font-semibold text-slate-900">Sellers</div>
-          <div className="mt-1 text-sm text-slate-600">
+        <div className="mt-8 rounded-xl border bg-spv-surface backdrop-blur-none p-6">
+          <div className="text-base font-semibold text-spv-ink">Sellers</div>
+          <div className="mt-1 text-sm text-spv-muted">
             Aqui você vê cada seller indicado e o total gasto (lançado manualmente por enquanto).
           </div>
 
           <div className="mt-5 divide-y">
             {sellers.length === 0 ? (
-              <div className="py-10 text-center text-slate-600">
+              <div className="py-10 text-center text-spv-muted">
                 Nenhum seller indicado ainda.
               </div>
             ) : (
@@ -218,13 +218,13 @@ export default function InfluencerPage() {
                 return (
                   <div key={s.id} className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-slate-900">
+                      <div className="font-semibold text-spv-ink">
                         {s.store_name ?? "(Sem nome de loja)"}
                       </div>
-                      <div className="text-sm text-slate-600">
+                      <div className="text-sm text-spv-muted">
                         {s.full_name ?? ""}{" "}
                         {s.coupon_code ? (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-spv-muted">
                             • Cupom: {s.coupon_code}
                           </span>
                         ) : null}
@@ -233,14 +233,14 @@ export default function InfluencerPage() {
 
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-xs text-slate-500">Gasto total</div>
-                        <div className="font-semibold text-slate-900">
+                        <div className="text-xs text-spv-muted">Gasto total</div>
+                        <div className="font-semibold text-spv-ink">
                           R$ {spent.toFixed(2)}
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="text-xs text-slate-500">Comissão</div>
+                        <div className="text-xs text-spv-muted">Comissão</div>
                         <div className="font-semibold text-emerald-800">
                           R$ {earned.toFixed(2)}
                         </div>
@@ -252,7 +252,7 @@ export default function InfluencerPage() {
             )}
           </div>
 
-          <div className="mt-6 text-xs text-slate-500">
+          <div className="mt-6 text-xs text-spv-muted">
             Observação: os valores vêm de lançamentos em <code>seller_charges</code>. Depois, quando o sistema estiver 100%,
             a gente automatiza com base nas tratativas do seller.
           </div>

@@ -300,7 +300,7 @@ function emptyClientDraft(): ClientDraft {
 
 function priorityTone(priority: "alta" | "media" | "baixa") {
   if (priority === "alta") return "border-rose-300/20 bg-rose-400/10 text-rose-50";
-  if (priority === "baixa") return "border-white/10 bg-white/[0.04] text-white/55";
+  if (priority === "baixa") return "border-spv-line bg-spv-surface text-spv-muted";
   return "border-amber-300/20 bg-amber-400/10 text-amber-50";
 }
 
@@ -310,7 +310,7 @@ function statusTone(status: AdminAppointment["status"]) {
   }
   if (status === "remarcar") return "border-rose-300/20 bg-rose-400/10 text-rose-50";
   if (status === "em_atendimento") return "border-sky-300/20 bg-sky-400/10 text-sky-50";
-  return "border-white/10 bg-white/[0.05] text-white/65";
+  return "border-spv-line bg-spv-surface text-spv-muted";
 }
 
 function readStoredAdminRemocoes(): StoredAdminRemocoes | null {
@@ -1038,14 +1038,14 @@ export default function DashboardClient({
     <div className="space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-spv-accent-text">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             Command center
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-spv-ink">
             Dashboard admin
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-spv-muted">
             Controle visual da rotina: agenda, prazos, gargalos, valor parado e onde
             seu tempo esta escapando. Dados operacionais conectados ao Supabase.
           </p>
@@ -1073,7 +1073,7 @@ export default function DashboardClient({
       {remoteLoading || syncError ? (
         <section
           className={cn(
-            "rounded-2xl border p-4 text-sm",
+            "rounded-xl border p-4 text-sm",
             syncError
               ? "border-amber-300/20 bg-amber-400/[0.08] text-amber-50"
               : "border-emerald-300/16 bg-emerald-400/[0.07] text-emerald-50"
@@ -1088,11 +1088,11 @@ export default function DashboardClient({
       <NotificationCenter appointments={appointments} clients={clients} removals={removals} />
 
       <section className="grid gap-4 xl:grid-cols-[1.05fr_.95fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Modo de foco</h2>
-              <p className="mt-1 text-xs text-white/45">
+              <h2 className="text-sm font-semibold text-spv-ink">Modo de foco</h2>
+              <p className="mt-1 text-xs text-spv-muted">
                 Clique no que você quer enxergar agora
               </p>
             </div>
@@ -1112,7 +1112,7 @@ export default function DashboardClient({
                   onClick={() => setFocusMode(mode.id)}
                   className={cn(
                     "rounded-xl border p-3 text-left transition",
-                    active ? `${color.soft} ${color.text}` : "border-white/10 bg-black/20 text-white/62 hover:bg-white/[0.05]"
+                    active ? `${color.soft} ${color.text}` : "border-spv-line bg-spv-page text-spv-muted hover:bg-spv-raised"
                   )}
                 >
                   <Icon className="h-4 w-4" aria-hidden={true} />
@@ -1126,7 +1126,7 @@ export default function DashboardClient({
 
         <div
           className={cn(
-            "relative overflow-hidden rounded-2xl border p-4",
+            "relative overflow-hidden rounded-xl border p-4",
             SPECTRUM[focusCopy[focusMode].color].soft,
             SPECTRUM[focusCopy[focusMode].color].text
           )}
@@ -1135,38 +1135,38 @@ export default function DashboardClient({
           <div className="relative">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-white/58">
+                <div className="text-xs font-semibold uppercase tracking-wide text-spv-muted">
                   Leitura ativa
                 </div>
-                <h2 className="mt-2 text-xl font-semibold text-white">
+                <h2 className="mt-2 text-xl font-semibold text-spv-ink">
                   {focusCopy[focusMode].title}
                 </h2>
               </div>
-              <Sparkles className="h-5 w-5 text-white/68" aria-hidden="true" />
+              <Sparkles className="h-5 w-5 text-spv-muted" aria-hidden="true" />
             </div>
-            <p className="mt-3 text-sm leading-6 text-white/76">
+            <p className="mt-3 text-sm leading-6 text-spv-ink">
               {focusCopy[focusMode].body}
             </p>
           </div>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-emerald-300/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.13),rgba(255,255,255,0.045))] p-4">
+      <section className="rounded-xl border border-emerald-300/18 bg-spv-surface p-4">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_.8fr_.8fr_.8fr_.9fr]">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-300/20 bg-black/22">
-              <RadioTower className="h-5 w-5 text-emerald-100" aria-hidden="true" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-300/20 bg-spv-page">
+              <RadioTower className="h-5 w-5 text-spv-accent-text" aria-hidden="true" />
             </div>
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-emerald-100/65">
+              <div className="text-xs font-medium uppercase tracking-wide text-spv-accent-text">
                 Proximo atendimento
               </div>
-              <div className="mt-1 text-sm font-semibold text-white">
+              <div className="mt-1 text-sm font-semibold text-spv-ink">
                 {nextAppointment
                   ? `${nextAppointment.scheduledTime} - ${clientNameById(nextAppointment.clientId)}`
                   : "Nenhum atendimento futuro"}
               </div>
-              <div className="mt-1 text-xs text-white/48">
+              <div className="mt-1 text-xs text-spv-muted">
                 {nextAppointment ? nextAppointment.title : "Agenda livre para priorizar casos abertos"}
               </div>
             </div>
@@ -1222,11 +1222,11 @@ export default function DashboardClient({
         />
       </section>
 
-      <section className="rounded-2xl border border-amber-300/16 bg-amber-400/[0.055] p-4">
+      <section className="rounded-xl border border-amber-300/16 bg-amber-400/[0.055] p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white">Clientes para não deixar esfriar</h2>
-            <p className="mt-1 text-xs text-white/45">
+            <h2 className="text-sm font-semibold text-spv-ink">Clientes para não deixar esfriar</h2>
+            <p className="mt-1 text-xs text-spv-muted">
               Cruza remoções abertas, potencial dos agendamentos e tempo sem próximo encaixe.
             </p>
           </div>
@@ -1248,12 +1248,12 @@ export default function DashboardClient({
                   item.nextAppointment?.scheduledDate ?? today
                 )
               }
-              className="rounded-xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-amber-300/25 hover:bg-white/[0.06]"
+              className="rounded-xl border border-spv-line bg-spv-page p-3 text-left transition hover:border-amber-300/25 hover:bg-spv-raised"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-white">{item.client.name}</div>
-                  <div className="mt-1 text-xs text-white/45">
+                  <div className="text-sm font-semibold text-spv-ink">{item.client.name}</div>
+                  <div className="mt-1 text-xs text-spv-muted">
                     {item.openCount} impacto(s) aberto(s)
                   </div>
                 </div>
@@ -1261,8 +1261,8 @@ export default function DashboardClient({
                   {Math.round(item.pressure)}
                 </div>
               </div>
-              <div className="mt-3 text-lg font-semibold text-white">{formatCurrency(item.potential)}</div>
-              <div className="mt-1 text-xs leading-5 text-white/45">
+              <div className="mt-3 text-lg font-semibold text-spv-ink">{formatCurrency(item.potential)}</div>
+              <div className="mt-1 text-xs leading-5 text-spv-muted">
                 {item.nextAppointment
                   ? `Próximo encaixe em ${formatDate(item.nextAppointment.scheduledDate)}`
                   : `${item.daysIdle} dia(s) sem próximo encaixe`}
@@ -1288,11 +1288,11 @@ export default function DashboardClient({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-white">Calendario operacional</h2>
-              <p className="mt-1 text-xs text-white/45">
+              <h2 className="text-sm font-semibold text-spv-ink">Calendario operacional</h2>
+              <p className="mt-1 text-xs text-spv-muted">
                 Agenda, prazos e carga do dia no mesmo lugar
               </p>
             </div>
@@ -1301,18 +1301,18 @@ export default function DashboardClient({
               <button
                 type="button"
                 onClick={() => setVisibleMonth((current) => moveMonth(current, -1))}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-spv-line bg-spv-surface text-spv-ink hover:bg-spv-raised"
                 aria-label="Mes anterior"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </button>
-              <div className="min-w-[170px] text-center text-sm font-semibold capitalize text-white">
+              <div className="min-w-[170px] text-center text-sm font-semibold capitalize text-spv-ink">
                 {monthLabel(visibleMonth)}
               </div>
               <button
                 type="button"
                 onClick={() => setVisibleMonth((current) => moveMonth(current, 1))}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-spv-line bg-spv-surface text-spv-ink hover:bg-spv-raised"
                 aria-label="Proximo mes"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -1320,7 +1320,7 @@ export default function DashboardClient({
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-wide text-white/35">
+          <div className="mt-5 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-wide text-spv-muted">
             {WEEK_DAYS.map((day) => (
               <div key={day}>{day}</div>
             ))}
@@ -1344,7 +1344,7 @@ export default function DashboardClient({
                     "min-h-[92px] rounded-xl border p-2 text-left transition",
                     selected
                       ? "border-emerald-300/35 bg-emerald-400/12"
-                      : "border-white/10 bg-black/20 hover:bg-white/[0.045]",
+                      : "border-spv-line bg-spv-page hover:bg-spv-raised",
                     !day.inMonth && "opacity-42"
                   )}
                 >
@@ -1352,7 +1352,7 @@ export default function DashboardClient({
                     <span
                       className={cn(
                         "inline-flex h-6 w-6 items-center justify-center rounded-lg text-xs font-semibold",
-                        isToday ? "bg-emerald-300 text-black" : "text-white/75"
+                        isToday ? "bg-emerald-300 text-spv-on-accent" : "text-spv-ink"
                       )}
                     >
                       {day.day}
@@ -1364,7 +1364,7 @@ export default function DashboardClient({
                     ) : null}
                   </div>
 
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-spv-surface">
                     <div
                       className={cn(
                         "h-full rounded-full",
@@ -1374,7 +1374,7 @@ export default function DashboardClient({
                     />
                   </div>
 
-                  <div className="mt-2 space-y-1 text-[11px] text-white/45">
+                  <div className="mt-2 space-y-1 text-[11px] text-spv-muted">
                     <div>{dayAppointments.length} agenda(s)</div>
                     <div>{dayDue.length} prazo(s)</div>
                   </div>
@@ -1412,15 +1412,15 @@ export default function DashboardClient({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Onde você está perdendo tempo</h2>
-              <p className="mt-1 text-xs text-white/45">
+              <h2 className="text-sm font-semibold text-spv-ink">Onde você está perdendo tempo</h2>
+              <p className="mt-1 text-xs text-spv-muted">
                 Estimativa operacional para priorizar automacao e follow-up
               </p>
             </div>
-            <TimerReset className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+            <TimerReset className="h-5 w-5 text-spv-accent-text" aria-hidden="true" />
           </div>
 
           <div className="mt-5 space-y-4">
@@ -1429,10 +1429,10 @@ export default function DashboardClient({
               return (
               <div key={item.label}>
                 <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-                  <span className="font-medium text-white/80">{item.label}</span>
-                  <span className="text-white/45">{minutesToLabel(item.value)}</span>
+                  <span className="font-medium text-spv-ink">{item.label}</span>
+                  <span className="text-spv-muted">{minutesToLabel(item.value)}</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-2 overflow-hidden rounded-full bg-spv-surface">
                   <div
                     className="h-full rounded-full"
                     style={{
@@ -1441,22 +1441,22 @@ export default function DashboardClient({
                     }}
                   />
                 </div>
-                <div className="mt-1 text-xs text-white/38">{item.detail}</div>
+                <div className="mt-1 text-xs text-spv-muted">{item.detail}</div>
               </div>
               );
             })}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Radar de gargalos</h2>
-              <p className="mt-1 text-xs text-white/45">
+              <h2 className="text-sm font-semibold text-spv-ink">Radar de gargalos</h2>
+              <p className="mt-1 text-xs text-spv-muted">
                 Leitura rápida do que exige sua atenção agora
               </p>
             </div>
-            <Target className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+            <Target className="h-5 w-5 text-spv-accent-text" aria-hidden="true" />
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -1476,15 +1476,15 @@ export default function DashboardClient({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Mapa de calor da semana</h2>
-              <p className="mt-1 text-xs text-white/45">
+              <h2 className="text-sm font-semibold text-spv-ink">Mapa de calor da semana</h2>
+              <p className="mt-1 text-xs text-spv-muted">
                 Agenda + prazos convertidos em carga de trabalho
               </p>
             </div>
-            <Zap className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+            <Zap className="h-5 w-5 text-spv-accent-text" aria-hidden="true" />
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-7">
@@ -1495,9 +1495,9 @@ export default function DashboardClient({
                 key={day.iso}
                 className={cn("rounded-xl border p-3", color.soft)}
               >
-                <div className="text-xs font-semibold text-white/75">{day.label}</div>
-                <div className="mt-1 text-[11px] text-white/38">{formatDate(day.iso)}</div>
-                <div className="mt-4 flex h-24 items-end overflow-hidden rounded-xl bg-black/25">
+                <div className="text-xs font-semibold text-spv-ink">{day.label}</div>
+                <div className="mt-1 text-[11px] text-spv-muted">{formatDate(day.iso)}</div>
+                <div className="mt-4 flex h-24 items-end overflow-hidden rounded-xl bg-spv-page">
                   <div
                     className="w-full rounded-xl"
                     style={{
@@ -1506,8 +1506,8 @@ export default function DashboardClient({
                     }}
                   />
                 </div>
-                <div className="mt-3 text-sm font-semibold text-white">{day.percent}%</div>
-                <div className="mt-1 text-[11px] text-white/40">
+                <div className="mt-3 text-sm font-semibold text-spv-ink">{day.percent}%</div>
+                <div className="mt-1 text-[11px] text-spv-muted">
                   {minutesToLabel(day.scheduled)} agenda | {minutesToLabel(day.due)} prazo
                 </div>
               </div>
@@ -1516,15 +1516,15 @@ export default function DashboardClient({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Pipeline de decisao</h2>
-              <p className="mt-1 text-xs text-white/45">
+              <h2 className="text-sm font-semibold text-spv-ink">Pipeline de decisao</h2>
+              <p className="mt-1 text-xs text-spv-muted">
                 O que precisa virar ação, resposta, defesa ou cobrança
               </p>
             </div>
-            <ClipboardList className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+            <ClipboardList className="h-5 w-5 text-spv-accent-text" aria-hidden="true" />
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -1539,9 +1539,9 @@ export default function DashboardClient({
                   item.tone === "green" && "border-emerald-300/18 bg-emerald-400/[0.07]"
                 )}
               >
-                <div className="text-xs text-white/45">{item.label}</div>
-                <div className="mt-2 text-3xl font-semibold text-white">{item.value}</div>
-                <div className="mt-1 text-xs leading-5 text-white/52">{item.detail}</div>
+                <div className="text-xs text-spv-muted">{item.label}</div>
+                <div className="mt-2 text-3xl font-semibold text-spv-ink">{item.value}</div>
+                <div className="mt-1 text-xs leading-5 text-spv-muted">{item.detail}</div>
               </div>
             ))}
           </div>
@@ -1563,12 +1563,12 @@ function AlertStat({
   danger?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/18 px-4 py-3">
-      <div className="text-xs text-white/45">{label}</div>
-      <div className={cn("mt-1 text-2xl font-semibold", danger ? "text-rose-100" : "text-white")}>
+    <div className="rounded-xl border border-spv-line bg-spv-page px-4 py-3">
+      <div className="text-xs text-spv-muted">{label}</div>
+      <div className={cn("mt-1 text-2xl font-semibold", danger ? "text-rose-100" : "text-spv-ink")}>
         {value}
       </div>
-      <div className="mt-1 text-xs text-white/45">{detail}</div>
+      <div className="mt-1 text-xs text-spv-muted">{detail}</div>
     </div>
   );
 }
@@ -1597,8 +1597,8 @@ function LiveAlertCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border p-4 text-left transition hover:-translate-y-0.5",
-        active ? `${color.soft} ${color.text}` : "border-white/10 bg-white/[0.045] text-white"
+        "group relative overflow-hidden rounded-xl border p-4 text-left transition hover:-translate-y-0.5",
+        active ? `${color.soft} ${color.text}` : "border-spv-line bg-spv-surface text-spv-ink"
       )}
     >
       <div
@@ -1611,14 +1611,14 @@ function LiveAlertCard({
       />
       <div className="relative flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-medium uppercase tracking-wide text-white/45">{title}</div>
-          <div className="mt-2 text-2xl font-semibold tracking-tight text-white">{value}</div>
+          <div className="text-xs font-medium uppercase tracking-wide text-spv-muted">{title}</div>
+          <div className="mt-2 text-2xl font-semibold tracking-tight text-spv-ink">{value}</div>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/22">
-          <Icon className="h-4 w-4 text-white/80" aria-hidden={true} />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-spv-line bg-spv-page">
+          <Icon className="h-4 w-4 text-spv-ink" aria-hidden={true} />
         </div>
       </div>
-      <div className="relative mt-3 text-xs leading-5 text-white/52">{detail}</div>
+      <div className="relative mt-3 text-xs leading-5 text-spv-muted">{detail}</div>
     </button>
   );
 }
@@ -1637,20 +1637,20 @@ function MetricCard({
   tone?: "default" | "green" | "amber" | "rose";
 }) {
   const toneClass = {
-    default: "border-white/10 bg-white/[0.045] text-white",
+    default: "border-spv-line bg-spv-surface text-spv-ink",
     green: "border-emerald-300/18 bg-emerald-400/[0.075] text-emerald-50",
     amber: "border-amber-300/18 bg-amber-400/[0.075] text-amber-50",
     rose: "border-rose-300/18 bg-rose-400/[0.075] text-rose-50",
   }[tone];
 
   return (
-    <div className={cn("rounded-2xl border p-4", toneClass)}>
+    <div className={cn("rounded-xl border p-4", toneClass)}>
       <div className="flex items-start justify-between gap-3">
-        <div className="text-xs font-medium text-white/48">{label}</div>
-        <Icon className="h-4 w-4 text-white/48" aria-hidden={true} />
+        <div className="text-xs font-medium text-spv-muted">{label}</div>
+        <Icon className="h-4 w-4 text-spv-muted" aria-hidden={true} />
       </div>
       <div className="mt-3 text-2xl font-semibold tracking-tight">{value}</div>
-      <div className="mt-1 text-xs leading-5 text-white/42">{hint}</div>
+      <div className="mt-1 text-xs leading-5 text-spv-muted">{hint}</div>
     </div>
   );
 }
@@ -1673,11 +1673,11 @@ function DayAgendaPanel({
   onDeleteAppointment: (appointment: AdminAppointment) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+    <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Dia selecionado</h2>
-          <p className="mt-1 text-xs text-white/45">{formatDate(selectedDate)}</p>
+          <h2 className="text-sm font-semibold text-spv-ink">Dia selecionado</h2>
+          <p className="mt-1 text-xs text-spv-muted">{formatDate(selectedDate)}</p>
         </div>
         <button
           type="button"
@@ -1691,11 +1691,11 @@ function DayAgendaPanel({
 
       <div className="mt-4 space-y-3">
         {appointments.map((appointment) => (
-          <div key={appointment.id} className="border-t border-white/10 pt-3">
+          <div key={appointment.id} className="border-t border-spv-line pt-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-medium text-white">{appointment.title}</div>
-                <div className="mt-1 text-xs text-white/45">
+                <div className="text-sm font-medium text-spv-ink">{appointment.title}</div>
+                <div className="mt-1 text-xs text-spv-muted">
                   {appointment.scheduledTime} | {getClientName(appointment.clientId)}
                 </div>
               </div>
@@ -1706,7 +1706,7 @@ function DayAgendaPanel({
                 <button
                   type="button"
                   onClick={() => onEditAppointment(appointment)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-spv-line bg-spv-surface text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink"
                   title="Editar agendamento"
                   aria-label="Editar agendamento"
                 >
@@ -1723,7 +1723,7 @@ function DayAgendaPanel({
                 </button>
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/50">
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-spv-muted">
               <span>{appointmentTypeLabel[appointment.type]}</span>
               <span>{minutesToLabel(appointment.durationMinutes)}</span>
               {Number(appointment.potentialAmount || 0) > 0 ? (
@@ -1741,15 +1741,15 @@ function DayAgendaPanel({
             <div className="text-xs font-semibold uppercase tracking-wide text-rose-100/70">
               Prazo de remoção
             </div>
-            <div className="mt-1 text-sm font-medium text-white">{removal.title}</div>
-            <div className="mt-1 text-xs text-white/45">
+            <div className="mt-1 text-sm font-medium text-spv-ink">{removal.title}</div>
+            <div className="mt-1 text-xs text-spv-muted">
               {getClientName(removal.clientId)} | {impactTypeLabel[removal.impactType]} | {statusLabel[removal.status]}
             </div>
           </div>
         ))}
 
         {appointments.length === 0 && dueRemovals.length === 0 ? (
-          <div className="border-t border-white/10 pt-4 text-sm text-white/45">
+          <div className="border-t border-spv-line pt-4 text-sm text-spv-muted">
             Nenhum compromisso ou prazo neste dia.
           </div>
         ) : null}
@@ -1787,12 +1787,12 @@ function SchedulerPanel({
 }) {
   if (!open) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white/80">
-          <CalendarDays className="h-4 w-4 text-emerald-200" aria-hidden="true" />
+      <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink">
+          <CalendarDays className="h-4 w-4 text-spv-accent-text" aria-hidden="true" />
           Agenda rapida
         </div>
-        <p className="mt-2 text-sm leading-6 text-white/45">
+        <p className="mt-2 text-sm leading-6 text-spv-muted">
           Selecione um dia no calendário e clique em Agendar para criar uma tarefa ou atendimento.
         </p>
       </div>
@@ -1800,13 +1800,13 @@ function SchedulerPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.055] p-4">
+    <div className="rounded-xl border border-emerald-300/18 bg-emerald-400/[0.055] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">
+          <h2 className="text-sm font-semibold text-spv-ink">
             {editing ? "Editar agendamento" : "Novo agendamento"}
           </h2>
-          <p className="mt-1 text-xs text-white/45">
+          <p className="mt-1 text-xs text-spv-muted">
             {editing
               ? "Ajuste data, horário, cliente, prioridade e notas do compromisso."
               : "Crie uma tarefa, follow-up, cobrança ou atendimento com valor potencial."}
@@ -1815,7 +1815,7 @@ function SchedulerPanel({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/[0.08]"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-spv-line bg-spv-surface text-spv-muted hover:bg-spv-raised"
           aria-label="Fechar agenda"
         >
           <X className="h-4 w-4" aria-hidden="true" />
@@ -1839,7 +1839,7 @@ function SchedulerPanel({
             value={form.title}
             onChange={(event) => onChange("title", event.target.value)}
             placeholder="Ex: ligar para cobrar evidência"
-            className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30"
+            className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted"
           />
         </Field>
 
@@ -1849,7 +1849,7 @@ function SchedulerPanel({
               type="date"
               value={form.scheduledDate}
               onChange={(event) => onChange("scheduledDate", event.target.value)}
-              className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+              className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
             />
           </Field>
           <Field label="Horario">
@@ -1857,7 +1857,7 @@ function SchedulerPanel({
               type="time"
               value={form.scheduledTime}
               onChange={(event) => onChange("scheduledTime", event.target.value)}
-              className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+              className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
             />
           </Field>
         </div>
@@ -1867,7 +1867,7 @@ function SchedulerPanel({
             <select
               value={form.type}
               onChange={(event) => onChange("type", event.target.value as AppointmentType)}
-              className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+              className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
             >
               {Object.entries(appointmentTypeLabel).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -1883,7 +1883,7 @@ function SchedulerPanel({
               step="5"
               value={form.durationMinutes}
               onChange={(event) => onChange("durationMinutes", Number(event.target.value))}
-              className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+              className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
             />
           </Field>
         </div>
@@ -1896,7 +1896,7 @@ function SchedulerPanel({
             value={form.potentialAmount}
             onChange={(event) => onChange("potentialAmount", Number(event.target.value))}
             placeholder="Ex: 500"
-            className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30"
+            className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted"
           />
         </Field>
 
@@ -1904,7 +1904,7 @@ function SchedulerPanel({
           <select
             value={form.priority}
             onChange={(event) => onChange("priority", event.target.value as AppointmentForm["priority"])}
-            className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+            className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
           >
             <option value="alta">Alta</option>
             <option value="media">Media</option>
@@ -1917,7 +1917,7 @@ function SchedulerPanel({
             value={form.notes}
             onChange={(event) => onChange("notes", event.target.value)}
             rows={3}
-            className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30"
+            className="w-full resize-none rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none placeholder:text-spv-muted"
           />
         </Field>
 
@@ -1961,7 +1961,7 @@ function ClientPicker({
             <select
               value={value}
               onChange={(event) => onChange(event.target.value)}
-              className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+              className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
             >
               {clients.length === 0 ? <option value="">Sem clientes cadastrados</option> : null}
               {clients.map((client) => (
@@ -1982,8 +1982,8 @@ function ClientPicker({
       </div>
 
       {open ? (
-        <div className="mt-3 rounded-2xl border border-sky-300/16 bg-sky-400/[0.055] p-4">
-          <div className="text-sm font-semibold text-white">Cadastrar cliente rápido</div>
+        <div className="mt-3 rounded-xl border border-sky-300/16 bg-sky-400/[0.055] p-4">
+          <div className="text-sm font-semibold text-spv-ink">Cadastrar cliente rápido</div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <ClientDraftField
               label="Nome"
@@ -2040,11 +2040,11 @@ function ClientDraftField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-white/50">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-spv-muted">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30"
+        className="h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted"
       />
     </label>
   );
@@ -2053,7 +2053,7 @@ function ClientDraftField({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-white/50">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-spv-muted">{label}</span>
       {children}
     </label>
   );
@@ -2084,17 +2084,17 @@ function BottleneckGauge({
           background: `conic-gradient(${color.solid} ${percent}%, rgba(255,255,255,.09) 0)`,
         }}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#07100d]">
-          <Icon className="h-5 w-5 text-white/85" aria-hidden={true} />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-spv-page">
+          <Icon className="h-5 w-5 text-spv-ink" aria-hidden={true} />
         </div>
       </div>
 
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
-          <div className="text-2xl font-semibold text-white">{value}</div>
-          <div className="truncate text-sm font-medium text-white/72">{label}</div>
+          <div className="text-2xl font-semibold text-spv-ink">{value}</div>
+          <div className="truncate text-sm font-medium text-spv-ink">{label}</div>
         </div>
-        <div className="mt-1 text-xs leading-5 text-white/45">{detail}</div>
+        <div className="mt-1 text-xs leading-5 text-spv-muted">{detail}</div>
       </div>
     </div>
   );

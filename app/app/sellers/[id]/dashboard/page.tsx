@@ -64,10 +64,10 @@ function toneFromLevel(level: ReputationLevel) {
 }
 
 function toneGlow(tone: "red" | "orange" | "yellow" | "green") {
-  if (tone === "red") return "shadow-[0_0_70px_rgba(255,60,60,0.12)]";
-  if (tone === "orange") return "shadow-[0_0_70px_rgba(255,155,60,0.13)]";
-  if (tone === "yellow") return "shadow-[0_0_70px_rgba(255,220,90,0.12)]";
-  return "shadow-[0_0_70px_rgba(70,255,140,0.12)]";
+  if (tone === "red") return "shadow-none";
+  if (tone === "orange") return "shadow-none";
+  if (tone === "yellow") return "shadow-none";
+  return "shadow-none";
 }
 
 function toneLine(tone: "red" | "orange" | "yellow" | "green") {
@@ -85,11 +85,11 @@ function tonePill(tone: "red" | "orange" | "yellow" | "green") {
     return "border-orange-500/35 bg-orange-500/10 text-orange-200";
   if (tone === "yellow")
     return "border-yellow-400/30 bg-yellow-400/10 text-yellow-100";
-  return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
+  return "border-emerald-400/30 bg-emerald-400/10 text-spv-accent-text";
 }
 
 function panelSurface() {
-  return "border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/[0.25] backdrop-blur-md";
+  return "border border-spv-line bg-gradient-to-b from-white/[0.06] to-black/[0.25] backdrop-blur-none";
 }
 
 export default function SellerDashboardPage() {
@@ -194,7 +194,7 @@ export default function SellerDashboardPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="text-sm text-white/60">Carregando dashboard…</div>
+        <div className="text-sm text-spv-muted">Carregando dashboard…</div>
       </div>
     );
   }
@@ -202,10 +202,10 @@ export default function SellerDashboardPage() {
   if (!sellerId) {
     return (
       <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-        <p className="text-sm text-white/60">sellerId ausente na rota.</p>
+        <h1 className="text-2xl font-semibold text-spv-ink">Dashboard</h1>
+        <p className="text-sm text-spv-muted">sellerId ausente na rota.</p>
         <Link
-          className="inline-flex rounded-xl border border-white/10 px-4 py-2 hover:bg-white/5 text-white/80"
+          className="inline-flex rounded-xl border border-spv-line px-4 py-2 hover:bg-spv-raised text-spv-ink"
           href="/dashboard/sellers"
         >
           Voltar
@@ -218,30 +218,30 @@ export default function SellerDashboardPage() {
     <div className="space-y-5">
       <section
         className={[
-          "rounded-2xl overflow-hidden",
-          "border border-white/10",
-          "bg-black/25",
-          "backdrop-blur-md",
+          "rounded-xl overflow-hidden",
+          "border border-spv-line",
+          "bg-spv-page",
+          "backdrop-blur-none",
           toneGlow(tone),
         ].join(" ")}
       >
         <div className="relative">
-          <div className="pointer-events-none absolute -inset-20 bg-[radial-gradient(ellipse_at_top_left,rgba(90,255,140,0.10),transparent_55%),radial-gradient(ellipse_at_top_right,rgba(255,210,90,0.10),transparent_55%)]" />
+          <div className="pointer-events-none absolute -inset-20 bg-spv-surface" />
           <div className="relative">
             <div className="px-4 py-3">
               <div className={["rounded-xl", panelSurface(), "overflow-hidden"].join(" ")}>
                 <div className={`h-1.5 bg-gradient-to-r ${toneLine(tone)}`} />
                 <div className="px-3 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="h-9 w-9 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="h-9 w-9 rounded-xl border border-spv-line bg-black/40 flex items-center justify-center">
                       <span className="text-yellow-300">⚠️</span>
                     </div>
 
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white">
+                      <div className="text-sm font-semibold text-spv-ink">
                         ALERTA DA CONTA — <span className="text-yellow-200">{repLabel}</span>
                       </div>
-                      <div className="text-[11px] text-white/50 truncate">
+                      <div className="text-[11px] text-spv-muted truncate">
                         {storeName} — sellerId: <span className="font-mono">{sellerId}</span>
                       </div>
 
@@ -252,12 +252,12 @@ export default function SellerDashboardPage() {
                           {repText}
                         </span>
 
-                        <span className="text-[11px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-white/70">
-                          Reclamações: <span className="text-white/90">{claimsRecent}</span>
+                        <span className="text-[11px] px-2 py-1 rounded-full border border-spv-line bg-spv-surface text-spv-ink">
+                          Reclamações: <span className="text-spv-ink">{claimsRecent}</span>
                         </span>
 
-                        <span className="text-[11px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-white/70">
-                          Atrasos: <span className="text-white/90">{delaysImpact}</span>
+                        <span className="text-[11px] px-2 py-1 rounded-full border border-spv-line bg-spv-surface text-spv-ink">
+                          Atrasos: <span className="text-spv-ink">{delaysImpact}</span>
                         </span>
                       </div>
                     </div>
@@ -268,7 +268,7 @@ export default function SellerDashboardPage() {
                       href={ML_DEFENSE_HELP_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white/85 hover:bg-white/10"
+                      className="inline-flex items-center justify-center rounded-xl border border-spv-line bg-spv-surface px-3.5 py-2 text-sm text-spv-ink hover:bg-spv-raised"
                     >
                       Abrir defesa urgente →
                     </Link>
@@ -279,10 +279,10 @@ export default function SellerDashboardPage() {
 
             <div className="px-4 pb-4">
               <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-3 items-stretch">
-                <div className={["rounded-2xl", panelSurface(), "overflow-hidden"].join(" ")}>
-                  <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <div className="text-sm font-semibold text-white/90">Reputação do seller</div>
-                    <div className="text-xs text-white/45 rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <div className={["rounded-xl", panelSurface(), "overflow-hidden"].join(" ")}>
+                  <div className="px-4 py-3 border-b border-spv-line flex items-center justify-between">
+                    <div className="text-sm font-semibold text-spv-ink">Reputação do seller</div>
+                    <div className="text-xs text-spv-muted rounded-full border border-spv-line bg-spv-surface px-3 py-1">
                       Score —
                     </div>
                   </div>
@@ -296,34 +296,34 @@ export default function SellerDashboardPage() {
 
                 <div
                   className={[
-                    "rounded-2xl overflow-hidden",
-                    "border border-white/10",
+                    "rounded-xl overflow-hidden",
+                    "border border-spv-line",
                     "bg-gradient-to-b from-white/[0.07] to-black/[0.35]",
-                    "backdrop-blur-md",
+                    "backdrop-blur-none",
                     "relative",
                   ].join(" ")}
                 >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,220,120,0.12),transparent_55%),radial-gradient(ellipse_at_bottom,rgba(0,255,140,0.10),transparent_60%)]" />
+                  <div className="pointer-events-none absolute inset-0 bg-spv-surface" />
 
                   <div className="relative">
-                    <div className="px-4 py-3 border-b border-white/10">
+                    <div className="px-4 py-3 border-b border-spv-line">
                       <div className="flex items-center gap-2">
                         <span className="text-yellow-300">⚠️</span>
-                        <div className="text-sm font-semibold text-white/90">ALERTA DETECTADO HOJE:</div>
+                        <div className="text-sm font-semibold text-spv-ink">ALERTA DETECTADO HOJE:</div>
                       </div>
                     </div>
 
                     <div className="p-4 space-y-3">
-                      <div className="space-y-2.5 text-sm text-white/80">
+                      <div className="space-y-2.5 text-sm text-spv-ink">
                         <div className="flex gap-3">
-                          <div className="h-6 w-6 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/70">
+                          <div className="h-6 w-6 rounded-full border border-spv-line bg-spv-surface flex items-center justify-center text-xs text-spv-ink">
                             1
                           </div>
                           <div>Reclamação que pode virar impacto.</div>
                         </div>
 
                         <div className="flex gap-3">
-                          <div className="h-6 w-6 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/70">
+                          <div className="h-6 w-6 rounded-full border border-spv-line bg-spv-surface flex items-center justify-center text-xs text-spv-ink">
                             2
                           </div>
                           <div>Atrasos que podem virar impacto.</div>
@@ -338,8 +338,8 @@ export default function SellerDashboardPage() {
                           "w-full inline-flex items-center justify-center rounded-xl px-4 py-2.5",
                           "border border-yellow-400/25",
                           "bg-gradient-to-r from-yellow-400/15 via-yellow-300/10 to-transparent",
-                          "text-white font-semibold",
-                          "shadow-[0_0_40px_rgba(255,220,90,0.08)]",
+                          "text-spv-ink font-semibold",
+                          "shadow-none",
                           "hover:from-yellow-400/20 hover:via-yellow-300/12",
                         ].join(" ")}
                       >
@@ -363,31 +363,31 @@ export default function SellerDashboardPage() {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className="rounded-xl border border-spv-line bg-spv-page overflow-hidden">
+          <div className="px-5 py-4 border-b border-spv-line flex items-center justify-between">
             <div>
-              <div className="font-semibold text-white/90">Alertas — ação necessária</div>
-              <div className="text-xs text-white/45">Itens recentes</div>
+              <div className="font-semibold text-spv-ink">Alertas — ação necessária</div>
+              <div className="text-xs text-spv-muted">Itens recentes</div>
             </div>
-            <Link href={`/app/sellers/${encodeURIComponent(sellerId)}`} className="text-sm text-white/60 hover:text-white">
+            <Link href={`/app/sellers/${encodeURIComponent(sellerId)}`} className="text-sm text-spv-muted hover:text-spv-ink">
               Ver todos →
             </Link>
           </div>
 
           <div className="p-3">
             {alerts.length === 0 ? (
-              <div className="p-4 text-sm text-white/60">Nenhum alerta por enquanto.</div>
+              <div className="p-4 text-sm text-spv-muted">Nenhum alerta por enquanto.</div>
             ) : (
               alerts.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 mb-2"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-surface p-3 mb-2"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-white/90">
+                    <div className="text-sm font-semibold truncate text-spv-ink">
                       {a.reason ?? "Reclamação"}
                     </div>
-                    <div className="text-xs text-white/50">
+                    <div className="text-xs text-spv-muted">
                       Caso ML: <span className="font-mono">{a.ml_case_id}</span>
                     </div>
                   </div>
@@ -395,7 +395,7 @@ export default function SellerDashboardPage() {
                     href={ML_DEFENSE_HELP_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
+                    className="shrink-0 rounded-xl border border-spv-line px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised"
                   >
                     Abrir defesa
                   </Link>
@@ -405,37 +405,37 @@ export default function SellerDashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/35 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className="rounded-xl border border-spv-line bg-spv-page overflow-hidden">
+          <div className="px-5 py-4 border-b border-spv-line flex items-center justify-between">
             <div>
-              <div className="font-semibold text-white/90">Chamados em andamento</div>
-              <div className="text-xs text-white/45">Casos não finalizados</div>
+              <div className="font-semibold text-spv-ink">Chamados em andamento</div>
+              <div className="text-xs text-spv-muted">Casos não finalizados</div>
             </div>
-            <Link href={`/app/sellers/${encodeURIComponent(sellerId)}`} className="text-sm text-white/60 hover:text-white">
+            <Link href={`/app/sellers/${encodeURIComponent(sellerId)}`} className="text-sm text-spv-muted hover:text-spv-ink">
               Ver casos →
             </Link>
           </div>
 
           <div className="p-3">
             {inProgress.length === 0 ? (
-              <div className="p-4 text-sm text-white/60">Nenhum chamado em andamento.</div>
+              <div className="p-4 text-sm text-spv-muted">Nenhum chamado em andamento.</div>
             ) : (
               inProgress.map((cs) => (
                 <div
                   key={cs.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 mb-2"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-surface p-3 mb-2"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate text-white/90">
+                    <div className="text-sm font-semibold truncate text-spv-ink">
                       Caso #{String(cs.id).slice(0, 6)} — {cs.status}
                     </div>
-                    <div className="text-xs text-white/50">
+                    <div className="text-xs text-spv-muted">
                       Protocolo: <span className="font-mono">{cs.protocol_number ?? "-"}</span>
                     </div>
                   </div>
                   <Link
                     href={`/app/sellers/${encodeURIComponent(sellerId)}`}
-                    className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
+                    className="shrink-0 rounded-xl border border-spv-line px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised"
                   >
                     Detalhar
                   </Link>
@@ -465,15 +465,15 @@ function KpiCardDark({
   badge?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/[0.30] backdrop-blur-md p-4">
+    <div className="rounded-xl border border-spv-line bg-gradient-to-b from-white/[0.06] to-black/[0.30] backdrop-blur-none p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-xs text-white/70">
+          <div className="h-7 w-7 rounded-full border border-spv-line bg-spv-surface flex items-center justify-center text-xs text-spv-ink">
             {n}
           </div>
           <div className="leading-tight">
-            <div className="text-sm font-semibold text-white/90">{title}</div>
-            <div className="text-xs text-white/60">{subtitle}</div>
+            <div className="text-sm font-semibold text-spv-ink">{title}</div>
+            <div className="text-xs text-spv-muted">{subtitle}</div>
           </div>
         </div>
 
@@ -484,9 +484,9 @@ function KpiCardDark({
         ) : null}
       </div>
 
-      <div className="mt-3 text-3xl font-semibold text-white">{value}</div>
+      <div className="mt-3 text-3xl font-semibold text-spv-ink">{value}</div>
 
-      {hint ? <div className="mt-1 text-xs text-white/45">{hint}</div> : null}
+      {hint ? <div className="mt-1 text-xs text-spv-muted">{hint}</div> : null}
     </div>
   );
 }

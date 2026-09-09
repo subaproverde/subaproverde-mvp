@@ -28,7 +28,6 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import SubaProVerdeIntro from "./components/SubaProVerdeIntro";
 
 const WHATSAPP_LINK =
   "https://wa.me/554388231544?text=Quero%20analisar%20minha%20opera%C3%A7%C3%A3o%20no%20Mercado%20Livre";
@@ -103,9 +102,8 @@ const methodSteps = [
 export default function LandingPage() {
   return (
     <>
-      <SubaProVerdeIntro />
 
-      <div className="min-h-screen bg-[#050807] text-white">
+      <div className="min-h-screen bg-spv-page text-spv-ink">
         <Header />
 
         <main>
@@ -127,36 +125,36 @@ export default function LandingPage() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050807]/82 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-spv-line bg-spv-page backdrop-blur-none">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3" aria-label="Suba Pro Verde">
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-400/10">
+          <span className="flex h-12 w-32 items-center justify-center rounded-lg">
             <Image
               src="/brand/suba-logo.png"
               alt=""
-              width={34}
-              height={34}
-              className="h-8 w-8 object-contain"
+              width={128}
+              height={48}
+              className="h-12 w-32 spv-brand-image"
               priority
             />
           </span>
           <span className="hidden leading-tight sm:block">
-            <span className="block text-base font-semibold text-white">Suba Pro Verde</span>
-            <span className="block text-xs text-white/52">Inteligência para sellers ML</span>
+            <span className="block text-base font-semibold text-spv-ink">Suba Pro Verde</span>
+            <span className="block text-xs text-spv-muted">Inteligência para sellers ML</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 text-sm text-white/62 lg:flex">
-          <a className="rounded-lg px-3 py-2 hover:bg-white/7 hover:text-white" href="#plataforma">
+        <nav className="hidden items-center gap-1 text-sm text-spv-muted lg:flex">
+          <a className="rounded-lg px-3 py-2 hover:bg-spv-raised hover:text-spv-ink" href="#plataforma">
             Plataforma
           </a>
-          <a className="rounded-lg px-3 py-2 hover:bg-white/7 hover:text-white" href="#modulos">
+          <a className="rounded-lg px-3 py-2 hover:bg-spv-raised hover:text-spv-ink" href="#modulos">
             Módulos
           </a>
-          <a className="rounded-lg px-3 py-2 hover:bg-white/7 hover:text-white" href="#metodo">
+          <a className="rounded-lg px-3 py-2 hover:bg-spv-raised hover:text-spv-ink" href="#metodo">
             Método
           </a>
-          <a className="rounded-lg px-3 py-2 hover:bg-white/7 hover:text-white" href="#contato">
+          <a className="rounded-lg px-3 py-2 hover:bg-spv-raised hover:text-spv-ink" href="#contato">
             Contato
           </a>
         </nav>
@@ -164,7 +162,7 @@ function Header() {
         <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className="hidden rounded-lg border border-white/12 bg-white/6 px-4 py-2 text-sm font-semibold text-white/82 hover:bg-white/10 sm:inline-flex"
+            className="hidden rounded-lg border border-spv-line bg-spv-surface px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised sm:inline-flex"
           >
             Entrar
           </Link>
@@ -172,7 +170,7 @@ function Header() {
             href={WHATSAPP_LINK}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-[#062016] shadow-[0_18px_60px_rgba(52,211,153,0.22)] hover:bg-emerald-300"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-spv-on-accent shadow-none hover:bg-emerald-300"
           >
             <MessageCircle className="h-4 w-4" />
             <span className="hidden sm:inline">Falar com a Suba</span>
@@ -188,29 +186,29 @@ function HeroSection() {
   return (
     <section
       id="home"
-      className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(180deg,#07100d_0%,#050807_66%,#070a09_100%)]"
+      className="relative overflow-hidden border-b border-spv-line bg-spv-surface"
     >
       <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:48px_48px]" />
-      <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,rgba(52,211,153,0.18),transparent)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(5,8,7,0.10)_0%,rgba(5,8,7,0.25)_45%,rgba(52,211,153,0.10)_100%)]" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-spv-surface" />
+      <div className="absolute inset-0 bg-spv-surface" />
 
       <div className="relative mx-auto grid max-w-7xl gap-12 px-5 pb-16 pt-14 sm:px-6 md:pb-20 md:pt-20 lg:grid-cols-[0.96fr_1.04fr] lg:items-center lg:px-8">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-xs font-semibold text-emerald-100">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-xs font-semibold text-spv-accent-text">
             <Sparkles className="h-4 w-4" />
             Plataforma de reputação, performance operacional e CX
           </div>
 
-          <h1 className="mt-7 text-5xl font-semibold leading-[0.95] text-white md:text-7xl">
+          <h1 className="mt-7 text-5xl font-semibold leading-[0.95] text-spv-ink md:text-7xl">
             Suba Pro Verde
           </h1>
 
-          <p className="mt-6 max-w-3xl text-2xl font-semibold leading-tight text-white/92 md:text-4xl">
+          <p className="mt-6 max-w-3xl text-2xl font-semibold leading-tight text-spv-ink md:text-4xl">
             Inteligência operacional para sellers Mercado Livre protegerem reputação,
             prevenirem impactos e tomarem decisões melhores.
           </p>
 
-          <p className="mt-6 max-w-2xl text-base leading-7 text-white/66 md:text-lg">
+          <p className="mt-6 max-w-2xl text-base leading-7 text-spv-muted md:text-lg">
             Uma central premium para acompanhar indicadores, organizar tratativas,
             enxergar riscos e transformar atendimento em performance saudável.
           </p>
@@ -220,21 +218,21 @@ function HeroSection() {
               href={WHATSAPP_LINK}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-[#062016] shadow-[0_22px_80px_rgba(52,211,153,0.25)] hover:bg-emerald-300"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-spv-on-accent shadow-none hover:bg-emerald-300"
             >
               <MessageCircle className="h-4 w-4" />
               Quero analisar minha operação
             </a>
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/14 bg-white/7 px-6 py-3 text-sm font-bold text-white hover:bg-white/11"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-spv-line bg-spv-surface px-6 py-3 text-sm font-bold text-spv-ink hover:bg-spv-raised"
             >
               Acessar plataforma
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="mt-7 flex flex-wrap gap-3 text-xs text-white/50">
+          <div className="mt-7 flex flex-wrap gap-3 text-xs text-spv-muted">
             <TrustBadge icon={ShieldCheck} text="Sem promessa de resultado garantido" />
             <TrustBadge icon={LockKeyhole} text="Foco em operação regular e evidências" />
             <TrustBadge icon={MonitorCheck} text="Visão construída para rotina de seller" />
@@ -250,29 +248,29 @@ function HeroSection() {
 function OperationsCockpit() {
   return (
     <div className="relative">
-      <div className="absolute -inset-4 bg-[linear-gradient(135deg,rgba(52,211,153,0.16),rgba(14,165,233,0.08),rgba(245,158,11,0.10))] blur-2xl" />
-      <div className="relative overflow-hidden rounded-lg border border-white/12 bg-[#0a100e]/92 shadow-[0_35px_140px_rgba(0,0,0,0.45)]">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div className="absolute -inset-4 bg-spv-surface blur-2xl" />
+      <div className="relative overflow-hidden rounded-lg border border-spv-line bg-spv-page shadow-none">
+        <div className="flex items-center justify-between border-b border-spv-line px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
             <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
           </div>
-          <div className="text-xs font-semibold text-white/42">SPV Operational Radar</div>
+          <div className="text-xs font-semibold text-spv-muted">SPV Operational Radar</div>
         </div>
 
         <div className="grid gap-0 md:grid-cols-[1fr_280px]">
-          <div className="border-b border-white/10 p-5 md:border-b-0 md:border-r">
+          <div className="border-b border-spv-line p-5 md:border-b-0 md:border-r">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold text-emerald-200/80">
+                <div className="text-xs font-semibold text-spv-accent-text">
                   Saúde operacional
                 </div>
-                <div className="mt-2 text-3xl font-semibold text-white">Verde sob controle</div>
+                <div className="mt-2 text-3xl font-semibold text-spv-ink">Verde sob controle</div>
               </div>
               <div className="rounded-lg border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-right">
-                <div className="text-xs text-white/46">score</div>
-                <div className="text-xl font-bold text-emerald-200">88</div>
+                <div className="text-xs text-spv-muted">score</div>
+                <div className="text-xl font-bold text-spv-accent-text">88</div>
               </div>
             </div>
 
@@ -306,21 +304,21 @@ function OperationsCockpit() {
 
           <div className="p-5">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold text-white/50">Rotina inteligente</div>
-              <BellRing className="h-4 w-4 text-emerald-200" />
+              <div className="text-xs font-semibold text-spv-muted">Rotina inteligente</div>
+              <BellRing className="h-4 w-4 text-spv-accent-text" />
             </div>
             <div className="mt-5 space-y-4">
               {methodSteps.slice(0, 4).map((step, index) => (
                 <div key={step} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/12 bg-white/7 text-xs font-bold text-white">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-spv-line bg-spv-surface text-xs font-bold text-spv-ink">
                       {index + 1}
                     </span>
-                    {index < 3 && <span className="mt-2 h-7 w-px bg-white/10" />}
+                    {index < 3 && <span className="mt-2 h-7 w-px bg-spv-surface" />}
                   </div>
                   <div className="pt-1">
-                    <div className="text-sm font-semibold text-white/86">{step}</div>
-                    <div className="mt-1 text-xs leading-5 text-white/44">
+                    <div className="text-sm font-semibold text-spv-ink">{step}</div>
+                    <div className="mt-1 text-xs leading-5 text-spv-muted">
                       Dados, prioridade e histórico na mesma rotina.
                     </div>
                   </div>
@@ -336,7 +334,7 @@ function OperationsCockpit() {
 
 function ProblemSection() {
   return (
-    <section className="bg-[#070a09] py-20">
+    <section className="bg-spv-page py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         <SectionHeader
           eyebrow="O problema"
@@ -356,14 +354,14 @@ function ProblemSection() {
 
 function SolutionSection() {
   return (
-    <section id="plataforma" className="border-y border-white/10 bg-[#0a0f0d] py-20">
+    <section id="plataforma" className="border-y border-spv-line bg-spv-page py-20">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8">
         <div>
           <SectionKicker>Como a Suba Pro Verde atua</SectionKicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight text-white md:text-5xl">
+          <h2 className="mt-4 text-3xl font-semibold leading-tight text-spv-ink md:text-5xl">
             Uma central operacional para recuperar clareza, prevenir impactos e elevar CX.
           </h2>
-          <p className="mt-5 text-base leading-7 text-white/62">
+          <p className="mt-5 text-base leading-7 text-spv-muted">
             A plataforma ajuda a mapear sinais críticos, estruturar o atendimento e
             manter evidências para decisões mais rápidas. O foco é operação saudável,
             experiência do comprador e performance consistente.
@@ -383,7 +381,7 @@ function SolutionSection() {
 
 function ModulesSection() {
   return (
-    <section id="modulos" className="bg-[#050807] py-20">
+    <section id="modulos" className="bg-spv-page py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         <SectionHeader
           eyebrow="Módulos"
@@ -403,35 +401,35 @@ function ModulesSection() {
 
 function PlatformSection() {
   return (
-    <section id="metodo" className="border-y border-white/10 bg-[#0a100e] py-20">
+    <section id="metodo" className="border-y border-spv-line bg-spv-page py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div>
             <SectionKicker>Visão de plataforma</SectionKicker>
-            <h2 className="mt-4 text-3xl font-semibold leading-tight text-white md:text-5xl">
+            <h2 className="mt-4 text-3xl font-semibold leading-tight text-spv-ink md:text-5xl">
               Não é só tratar caso. É operar reputação com método.
             </h2>
-            <p className="mt-5 text-base leading-7 text-white/62">
+            <p className="mt-5 text-base leading-7 text-spv-muted">
               A Suba Pro Verde nasce para centralizar inteligência operacional de
               sellers Mercado Livre: acompanhamento contínuo, calendário, alertas,
               relatórios executivos e suporte à tomada de decisão.
             </p>
           </div>
 
-          <div className="rounded-lg border border-white/12 bg-[#050807]/70 p-5">
+          <div className="rounded-lg border border-spv-line bg-spv-page p-5">
             <div className="grid gap-3">
               {methodSteps.map((step, index) => (
                 <div
                   key={step}
-                  className="flex items-center justify-between gap-4 border-b border-white/8 pb-3 last:border-0 last:pb-0"
+                  className="flex items-center justify-between gap-4 border-b border-spv-line pb-3 last:border-0 last:pb-0"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-300/18 bg-emerald-300/8 text-sm font-bold text-emerald-100">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-300/18 bg-emerald-300/8 text-sm font-bold text-spv-accent-text">
                       {index + 1}
                     </span>
-                    <span className="text-sm font-semibold text-white/84">{step}</span>
+                    <span className="text-sm font-semibold text-spv-ink">{step}</span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-white/34" />
+                  <ChevronRight className="h-4 w-4 text-spv-muted" />
                 </div>
               ))}
             </div>
@@ -444,22 +442,22 @@ function PlatformSection() {
 
 function AuthoritySection() {
   return (
-    <section className="bg-[#070a09] py-20">
+    <section className="bg-spv-page py-20">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <SectionKicker>Autoridade com responsabilidade</SectionKicker>
-            <h2 className="mt-4 text-3xl font-semibold leading-tight text-white md:text-5xl">
+            <h2 className="mt-4 text-3xl font-semibold leading-tight text-spv-ink md:text-5xl">
               Uma linguagem alinhada ao que marketplaces valorizam: experiência,
               prevenção e operação confiável.
             </h2>
           </div>
-          <div className="rounded-lg border border-white/12 bg-white/[0.045] p-5">
+          <div className="rounded-lg border border-spv-line bg-spv-surface p-5">
             <div className="flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-emerald-200" />
-              <div className="text-sm font-semibold text-white">Atuação criteriosa</div>
+              <ShieldCheck className="h-5 w-5 text-spv-accent-text" />
+              <div className="text-sm font-semibold text-spv-ink">Atuação criteriosa</div>
             </div>
-            <p className="mt-4 text-sm leading-6 text-white/58">
+            <p className="mt-4 text-sm leading-6 text-spv-muted">
               A plataforma apoia análise, organização e acompanhamento. Cada caso
               depende das regras, dados disponíveis e critérios do Mercado Livre.
             </p>
@@ -472,14 +470,14 @@ function AuthoritySection() {
 
 function FinalCTA() {
   return (
-    <section id="contato" className="bg-[#050807] px-5 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-lg border border-emerald-300/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(255,255,255,0.055)_48%,rgba(14,165,233,0.10))] p-8 md:p-12">
+    <section id="contato" className="bg-spv-page px-5 py-20 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-lg border border-emerald-300/18 bg-spv-surface p-8 md:p-12">
         <div className="max-w-3xl">
           <SectionKicker>Próximo passo</SectionKicker>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight text-white md:text-5xl">
+          <h2 className="mt-4 text-3xl font-semibold leading-tight text-spv-ink md:text-5xl">
             Quer enxergar onde sua operação está perdendo reputação, tempo e dinheiro?
           </h2>
-          <p className="mt-5 text-base leading-7 text-white/66">
+          <p className="mt-5 text-base leading-7 text-spv-muted">
             Fale com a Suba Pro Verde para uma conversa inicial sobre indicadores,
             riscos e oportunidades de melhoria operacional no Mercado Livre.
           </p>
@@ -490,23 +488,23 @@ function FinalCTA() {
             href={WHATSAPP_LINK}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-[#062016] hover:bg-emerald-300"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-spv-on-accent hover:bg-emerald-300"
           >
             <MessageCircle className="h-4 w-4" />
             Falar com a Suba Pro Verde
           </a>
           <Link
             href="/login"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/14 bg-white/7 px-6 py-3 text-sm font-bold text-white hover:bg-white/11"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-spv-line bg-spv-surface px-6 py-3 text-sm font-bold text-spv-ink hover:bg-spv-raised"
           >
             Acessar plataforma
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
-        <div className="mt-6 text-sm text-white/48">
+        <div className="mt-6 text-sm text-spv-muted">
           E-mail:{" "}
-          <a className="font-semibold text-emerald-100 hover:text-emerald-50" href={`mailto:${CONTACT_EMAIL}`}>
+          <a className="font-semibold text-spv-accent-text hover:text-emerald-50" href={`mailto:${CONTACT_EMAIL}`}>
             {CONTACT_EMAIL}
           </a>
         </div>
@@ -517,15 +515,15 @@ function FinalCTA() {
 
 function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#050807]">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-8 text-sm text-white/46 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+    <footer className="border-t border-spv-line bg-spv-page">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-8 text-sm text-spv-muted sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
         <div className="flex items-center gap-3">
           <Image
             src="/brand/suba-logo.png"
             alt="Suba Pro Verde"
             width={150}
             height={42}
-            className="h-9 w-auto object-contain"
+            className="h-12 w-auto spv-brand-image"
           />
           <span>Gestão de reputação, performance operacional e CX.</span>
         </div>
@@ -541,8 +539,8 @@ function MascotChatWidget() {
   return (
     <div className="fixed bottom-5 right-5 z-[80] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
       {open && (
-        <div className="w-[min(360px,calc(100vw-40px))] overflow-hidden rounded-lg border border-emerald-300/20 bg-[#07100d]/95 shadow-[0_28px_110px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="w-[min(360px,calc(100vw-40px))] overflow-hidden rounded-lg border border-emerald-300/20 bg-spv-page shadow-none backdrop-blur-none">
+          <div className="flex items-center justify-between border-b border-spv-line px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-emerald-300/20 bg-emerald-300/10">
                 <Image
@@ -554,8 +552,8 @@ function MascotChatWidget() {
                 />
               </div>
               <div>
-                <div className="text-sm font-bold text-white">Verdinho da Suba</div>
-                <div className="flex items-center gap-1.5 text-xs text-emerald-100/70">
+                <div className="text-sm font-bold text-spv-ink">Verdinho da Suba</div>
+                <div className="flex items-center gap-1.5 text-xs text-spv-accent-text">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
                   Radar de reputação ativo
                 </div>
@@ -564,7 +562,7 @@ function MascotChatWidget() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/62 hover:bg-white/10 hover:text-white"
+              className="rounded-lg border border-spv-line bg-spv-surface p-2 text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
               aria-label="Fechar chat"
             >
               <X className="h-4 w-4" />
@@ -572,12 +570,12 @@ function MascotChatWidget() {
           </div>
 
           <div className="space-y-3 p-4">
-            <div className="rounded-lg rounded-tl-sm border border-white/10 bg-white/[0.055] p-4">
-              <p className="text-sm font-semibold leading-6 text-white">
+            <div className="rounded-lg rounded-tl-sm border border-spv-line bg-spv-surface p-4">
+              <p className="text-sm font-semibold leading-6 text-spv-ink">
                 Oi, eu sou o Verdinho. Quer enxergar riscos de reputação, atrasos,
                 reclamações e oportunidades na sua operação?
               </p>
-              <p className="mt-2 text-xs leading-5 text-white/54">
+              <p className="mt-2 text-xs leading-5 text-spv-muted">
                 Posso te levar direto para uma conversa com a Suba Pro Verde.
               </p>
             </div>
@@ -587,21 +585,21 @@ function MascotChatWidget() {
                 href={WHATSAPP_LINK}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-[#062016] hover:bg-emerald-300"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-3 text-sm font-bold text-spv-on-accent hover:bg-emerald-300"
               >
                 <MessageCircle className="h-4 w-4" />
                 Falar no WhatsApp
               </a>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/6 px-4 py-3 text-sm font-bold text-white/82 hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-spv-line bg-spv-surface px-4 py-3 text-sm font-bold text-spv-ink hover:bg-spv-raised"
               >
                 <Mail className="h-4 w-4" />
                 Enviar e-mail
               </a>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/6 px-4 py-3 text-sm font-bold text-white/82 hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-spv-line bg-spv-surface px-4 py-3 text-sm font-bold text-spv-ink hover:bg-spv-raised"
               >
                 Acessar plataforma
                 <ArrowRight className="h-4 w-4" />
@@ -614,11 +612,11 @@ function MascotChatWidget() {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="group relative flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300/24 bg-[#07100d] shadow-[0_22px_80px_rgba(16,185,129,0.28)] transition hover:-translate-y-1 hover:border-emerald-200/50 sm:h-24 sm:w-24"
+        className="group relative flex h-20 w-20 items-center justify-center rounded-full border border-emerald-300/24 bg-spv-page shadow-none transition hover:-translate-y-1 hover:border-emerald-200/50 sm:h-24 sm:w-24"
         aria-label={open ? "Fechar contato com a Suba" : "Abrir contato com a Suba"}
       >
         <span className="absolute inset-0 rounded-full bg-emerald-300/12 blur-xl transition group-hover:bg-emerald-300/18" />
-        <span className="absolute -right-1 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-[#07100d] bg-emerald-300 text-[#062016] shadow-[0_8px_24px_rgba(52,211,153,0.28)]">
+        <span className="absolute -right-1 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-[#07100d] bg-emerald-300 text-spv-on-accent shadow-none">
           <MessageCircle className="h-3.5 w-3.5" />
         </span>
         <Image
@@ -636,8 +634,8 @@ function MascotChatWidget() {
 
 function TrustBadge({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-      <Icon className="h-4 w-4 text-emerald-200" />
+    <span className="inline-flex items-center gap-2 rounded-lg border border-spv-line bg-spv-surface px-3 py-2">
+      <Icon className="h-4 w-4 text-spv-accent-text" />
       {text}
     </span>
   );
@@ -661,12 +659,12 @@ function SignalTile({
         ? "text-amber-100 bg-amber-300/9 border-amber-300/16"
         : tone === "rose"
           ? "text-rose-100 bg-rose-300/9 border-rose-300/16"
-          : "text-emerald-100 bg-emerald-300/9 border-emerald-300/16";
+          : "text-spv-accent-text bg-emerald-300/9 border-emerald-300/16";
 
   return (
     <div className={`rounded-lg border p-3 ${toneClass}`}>
-      <div className="text-xs text-white/44">{label}</div>
-      <div className="mt-2 text-2xl font-bold text-white">{value}</div>
+      <div className="text-xs text-spv-muted">{label}</div>
+      <div className="mt-2 text-2xl font-bold text-spv-ink">{value}</div>
       <div className="mt-1 text-xs">{detail}</div>
     </div>
   );
@@ -684,20 +682,20 @@ function RiskRow({
   tone: "emerald" | "sky" | "amber";
 }) {
   const iconClass =
-    tone === "amber" ? "text-amber-200" : tone === "sky" ? "text-sky-200" : "text-emerald-200";
+    tone === "amber" ? "text-amber-200" : tone === "sky" ? "text-sky-200" : "text-spv-accent-text";
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.045] p-3">
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-spv-line bg-spv-surface p-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/6">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-spv-line bg-spv-surface">
           <BarChart3 className={`h-4 w-4 ${iconClass}`} />
         </span>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-white/86">{title}</div>
-          <div className="mt-1 truncate text-xs text-white/44">{detail}</div>
+          <div className="truncate text-sm font-semibold text-spv-ink">{title}</div>
+          <div className="mt-1 truncate text-xs text-spv-muted">{detail}</div>
         </div>
       </div>
-      <div className="shrink-0 rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-sm font-bold text-white/82">
+      <div className="shrink-0 rounded-lg border border-spv-line bg-spv-page px-3 py-1.5 text-sm font-bold text-spv-ink">
         {value}
       </div>
     </div>
@@ -716,15 +714,15 @@ function SectionHeader({
   return (
     <div className="max-w-3xl">
       <SectionKicker>{eyebrow}</SectionKicker>
-      <h2 className="mt-4 text-3xl font-semibold leading-tight text-white md:text-5xl">{title}</h2>
-      <p className="mt-5 text-base leading-7 text-white/62">{text}</p>
+      <h2 className="mt-4 text-3xl font-semibold leading-tight text-spv-ink md:text-5xl">{title}</h2>
+      <p className="mt-5 text-base leading-7 text-spv-muted">{text}</p>
     </div>
   );
 }
 
 function SectionKicker({ children }: { children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/18 bg-emerald-300/8 px-3 py-2 text-xs font-bold text-emerald-100">
+    <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/18 bg-emerald-300/8 px-3 py-2 text-xs font-bold text-spv-accent-text">
       <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
       {children}
     </div>
@@ -733,33 +731,33 @@ function SectionKicker({ children }: { children: React.ReactNode }) {
 
 function FeatureCard({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.045] p-5 shadow-[0_22px_90px_rgba(0,0,0,0.20)]">
-      <Icon className="h-6 w-6 text-emerald-200" />
-      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-3 text-sm leading-6 text-white/58">{text}</p>
+    <div className="rounded-lg border border-spv-line bg-spv-surface p-5 shadow-none">
+      <Icon className="h-6 w-6 text-spv-accent-text" />
+      <h3 className="mt-5 text-lg font-semibold text-spv-ink">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-spv-muted">{text}</p>
     </div>
   );
 }
 
 function ModuleCard({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
-    <div className="group rounded-lg border border-white/10 bg-[#0b100e] p-5 transition hover:border-emerald-300/24 hover:bg-[#0d1512]">
+    <div className="group rounded-lg border border-spv-line bg-spv-page p-5 transition hover:border-emerald-300/24 hover:bg-spv-page">
       <div className="flex items-start justify-between gap-4">
-        <Icon className="h-6 w-6 text-emerald-200" />
-        <ArrowRight className="h-4 w-4 text-white/24 transition group-hover:translate-x-0.5 group-hover:text-emerald-200" />
+        <Icon className="h-6 w-6 text-spv-accent-text" />
+        <ArrowRight className="h-4 w-4 text-spv-muted transition group-hover:translate-x-0.5 group-hover:text-spv-accent-text" />
       </div>
-      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-3 text-sm leading-6 text-white/58">{text}</p>
+      <h3 className="mt-5 text-lg font-semibold text-spv-ink">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-spv-muted">{text}</p>
     </div>
   );
 }
 
 function OutcomeItem({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.045] p-5">
-      <Icon className="h-5 w-5 text-emerald-200" />
-      <div className="mt-4 text-base font-semibold text-white">{title}</div>
-      <p className="mt-2 text-sm leading-6 text-white/56">{text}</p>
+    <div className="rounded-lg border border-spv-line bg-spv-surface p-5">
+      <Icon className="h-5 w-5 text-spv-accent-text" />
+      <div className="mt-4 text-base font-semibold text-spv-ink">{title}</div>
+      <p className="mt-2 text-sm leading-6 text-spv-muted">{text}</p>
     </div>
   );
 }

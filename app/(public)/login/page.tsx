@@ -82,8 +82,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-[#0a0f15] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#0f1620] border border-white/10 rounded-2xl p-8 shadow-xl">
+    <div className="w-full flex items-center justify-center">
+      <div className="w-full max-w-md bg-spv-surface border border-spv-line rounded-xl p-6 sm:p-9">
         <div className="flex justify-center mb-8">
           <Image
             src="/brand/suba-logo.png"
@@ -91,27 +91,37 @@ export default function LoginPage() {
             width={220}
             height={60}
             priority
+            className="spv-brand-image"
           />
         </div>
 
-        <h1 className="text-2xl font-semibold text-white text-center mb-6">
+        <h1 className="text-2xl font-semibold text-spv-ink text-center mb-6">
           Entrar na plataforma
         </h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
+          <label htmlFor="login-email" className="block text-sm text-spv-muted">E-mail</label>
           <input
+            id="login-email"
+            type="email"
+            autoComplete="username"
+            required
             placeholder="E-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl bg-[#0a0f15] border border-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none focus:border-white/30"
+            className="w-full rounded-xl bg-spv-page border border-spv-line px-4 py-3 text-spv-ink placeholder:text-spv-muted outline-none focus:border-spv-line"
           />
 
+          <label htmlFor="login-password" className="block text-sm text-spv-muted">Senha</label>
           <input
+            id="login-password"
+            autoComplete="current-password"
+            required
             placeholder="Senha"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl bg-[#0a0f15] border border-white/10 px-4 py-3 text-white placeholder:text-white/40 outline-none focus:border-white/30"
+            className="w-full rounded-xl bg-spv-page border border-spv-line px-4 py-3 text-spv-ink placeholder:text-spv-muted outline-none focus:border-spv-line"
           />
 
           <div className="flex justify-end">
@@ -119,7 +129,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleForgotPassword}
               disabled={resetLoading}
-              className="text-sm text-emerald-300 hover:text-emerald-200 transition disabled:opacity-60"
+              className="text-sm text-spv-accent-text hover:text-spv-accent-text transition disabled:opacity-60"
             >
               {resetLoading ? "Enviando..." : "Esqueci minha senha"}
             </button>
@@ -128,19 +138,19 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-white text-black font-semibold py-3 rounded-xl hover:opacity-90 transition disabled:opacity-60"
+            className="w-full bg-spv-accent text-spv-on-accent font-semibold py-3 rounded-lg hover:opacity-90 transition disabled:opacity-60"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
         {msg && (
-          <div className="mt-4 text-sm text-center text-red-400">
+          <div role="status" className="mt-4 text-sm text-center text-spv-ink">
             {msg}
           </div>
         )}
 
-        <div className="text-center text-xs text-white/40 mt-6">
+        <div className="text-center text-xs text-spv-muted mt-6">
           Suba Pro Verde © {new Date().getFullYear()}
         </div>
       </div>

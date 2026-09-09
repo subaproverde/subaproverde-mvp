@@ -242,7 +242,7 @@ function invoiceStatusLabel(issued?: boolean, status?: string) {
 
 function invoiceTone(issued?: boolean, status?: string) {
   const raw = displayText(status, "").toLowerCase();
-  if (issued) return "border-emerald-300/30 bg-emerald-400/10 text-emerald-100";
+  if (issued) return "border-emerald-300/30 bg-emerald-400/10 text-spv-accent-text";
   if (raw.includes("cancel") || raw.includes("error") || raw.includes("rejected") || raw.includes("rejeit")) {
     return "border-rose-300/30 bg-rose-400/10 text-rose-100";
   }
@@ -268,13 +268,13 @@ function impactLabel(type?: ImpactType | string | null) {
 
 function impactTone(type?: ImpactType | string | null) {
   const tones: Record<string, string> = {
-    reclamacoes: "border-emerald-400/25 bg-emerald-400/10 text-emerald-100",
+    reclamacoes: "border-emerald-400/25 bg-emerald-400/10 text-spv-accent-text",
     atrasos: "border-amber-400/25 bg-amber-400/10 text-amber-100",
     cancelamentos: "border-rose-400/25 bg-rose-400/10 text-rose-100",
     mediacoes: "border-sky-400/25 bg-sky-400/10 text-sky-100",
   };
 
-  return tones[String(type ?? "")] ?? "border-white/10 bg-white/5 text-white/70";
+  return tones[String(type ?? "")] ?? "border-spv-line bg-spv-surface text-spv-ink";
 }
 
 function statusGroupLabel(value?: CaseStatus) {
@@ -289,8 +289,8 @@ function statusGroupLabel(value?: CaseStatus) {
 
 function statusGroupTone(value?: CaseStatus) {
   const tones: Record<CaseStatus, string> = {
-    open: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
-    closed: "border-white/12 bg-white/5 text-white/62",
+    open: "border-emerald-300/30 bg-emerald-400/10 text-spv-accent-text",
+    closed: "border-spv-line bg-spv-surface text-spv-muted",
     unknown: "border-amber-300/25 bg-amber-400/10 text-amber-100",
   };
 
@@ -329,8 +329,8 @@ function removalEligibilityLabel(value?: RemovalEligibility) {
 
 function removalEligibilityTone(value?: RemovalEligibility) {
   const tones: Record<RemovalEligibility, string> = {
-    eligible: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
-    not_eligible: "border-white/12 bg-white/5 text-white/62",
+    eligible: "border-emerald-300/30 bg-emerald-400/10 text-spv-accent-text",
+    not_eligible: "border-spv-line bg-spv-surface text-spv-muted",
     unknown: "border-amber-300/25 bg-amber-400/10 text-amber-100",
   };
 
@@ -352,12 +352,12 @@ function logisticLabel(value?: LogisticKey | string, fallback?: string) {
 
 function logisticTone(value?: LogisticKey | string) {
   const tones: Record<LogisticKey, string> = {
-    flex: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
+    flex: "border-emerald-300/30 bg-emerald-400/10 text-spv-accent-text",
     agencia_ml: "border-lime-300/30 bg-lime-400/10 text-lime-100",
     correios: "border-sky-300/30 bg-sky-400/10 text-sky-100",
     places: "border-violet-300/30 bg-violet-400/10 text-violet-100",
     mercado_envios: "border-amber-300/30 bg-amber-400/10 text-amber-100",
-    outro: "border-white/12 bg-white/5 text-white/62",
+    outro: "border-spv-line bg-spv-surface text-spv-muted",
   };
 
   return tones[String(value ?? "outro") as LogisticKey] ?? tones.outro;
@@ -393,7 +393,7 @@ function getPriority(item?: ImpactItem | null, details?: CaseDetails | null) {
     return { label: "Atenção", tone: "text-amber-100 bg-amber-500/15 border-amber-400/25" };
   }
 
-  return { label: "Monitorar", tone: "text-emerald-100 bg-emerald-500/15 border-emerald-400/25" };
+  return { label: "Monitorar", tone: "text-spv-accent-text bg-emerald-500/15 border-emerald-400/25" };
 }
 
 function MetricCard({
@@ -417,7 +417,7 @@ function MetricCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border px-4 py-3 shadow-[0_10px_40px_rgba(2,6,23,0.05)]",
+        "rounded-xl border px-4 py-3 shadow-none",
         tintMap[tint]
       )}
     >
@@ -430,7 +430,7 @@ function MetricCard({
 
 function SmallPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-black/10 bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-slate-200">
+    <span className="inline-flex items-center rounded-full border border-black/10 bg-spv-surface px-2 py-0.5 text-[11px] font-semibold text-slate-200">
       {children}
     </span>
   );
@@ -446,7 +446,7 @@ function ButtonPrimary({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_18px_55px_rgba(16,185,129,0.22)] hover:from-emerald-700 hover:to-emerald-800"
+      className="inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2 text-sm font-semibold text-spv-ink shadow-none hover:from-emerald-700 hover:to-emerald-800"
     >
       {children}
     </button>
@@ -463,7 +463,7 @@ function ButtonGhost({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/10"
+      className="inline-flex items-center justify-center rounded-xl border border-spv-line bg-spv-surface px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised"
     >
       {children}
     </button>
@@ -483,10 +483,10 @@ function TabButton({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-2xl px-4 py-2 text-[13px] font-extrabold transition",
+        "rounded-xl px-4 py-2 text-[13px] font-extrabold transition",
         active
-          ? "bg-white/10 border border-white/10 text-white shadow-[0_12px_45px_rgba(0,0,0,0.25)]"
-          : "text-white/65 hover:text-white"
+          ? "bg-spv-surface border border-spv-line text-spv-ink shadow-none"
+          : "text-spv-muted hover:text-spv-ink"
       )}
     >
       {children}
@@ -511,13 +511,13 @@ function FilterChip({
       className={cn(
         "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-[11px] font-extrabold transition",
         active
-          ? "border-emerald-300/45 bg-emerald-400/14 text-emerald-50 shadow-[0_12px_35px_rgba(16,185,129,0.12)]"
-          : "border-white/10 bg-black/18 text-white/58 hover:border-white/18 hover:text-white"
+          ? "border-emerald-300/45 bg-emerald-400/14 text-emerald-50 shadow-none"
+          : "border-spv-line bg-spv-page text-spv-muted hover:border-spv-line hover:text-spv-ink"
       )}
     >
       <span>{label}</span>
       {typeof count === "number" && (
-        <span className="rounded-full border border-white/10 bg-white/10 px-1.5 py-0.5 text-[10px]">
+        <span className="rounded-full border border-spv-line bg-spv-surface px-1.5 py-0.5 text-[10px]">
           {count}
         </span>
       )}
@@ -542,68 +542,68 @@ function ImpactRow({
     <div
       onClick={onSelect}
       className={cn(
-        "cursor-pointer rounded-2xl border bg-white/5 px-4 py-4 transition",
-        "hover:border-emerald-300/30 hover:bg-white/[0.075]",
+        "cursor-pointer rounded-xl border bg-spv-surface px-4 py-4 transition",
+        "hover:border-emerald-300/30 hover:bg-spv-raised",
         selected
-          ? "border-emerald-300/60 bg-emerald-400/[0.08] shadow-[0_18px_70px_rgba(16,185,129,0.14)]"
-          : "border-white/10 shadow-[0_16px_55px_rgba(0,0,0,0.22)]"
+          ? "border-emerald-300/60 bg-emerald-400/[0.08] shadow-none"
+          : "border-spv-line shadow-none"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", impactTone(item.type))}>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", impactTone(item.type))}>
               {impactLabel(item.type)}
             </span>
-            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", priority.tone)}>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", priority.tone)}>
               {priority.label}
             </span>
             {item.chip && (
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-white/70">
+              <span className="inline-flex items-center rounded-full border border-spv-line bg-spv-surface px-2 py-0.5 text-[10px] font-semibold text-spv-ink">
                 {item.chip}
               </span>
             )}
-            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", statusGroupTone(item.statusGroup))}>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", statusGroupTone(item.statusGroup))}>
               {statusGroupLabel(item.statusGroup)}
             </span>
-            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", reputationImpactTone(item.reputationImpact))}>
+            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", reputationImpactTone(item.reputationImpact))}>
               {reputationImpactLabel(item.reputationImpact)}
             </span>
             {(item.type === "reclamacoes" || item.type === "mediacoes") && (
-              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", removalEligibilityTone(item.removalEligible))}>
+              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", removalEligibilityTone(item.removalEligible))}>
                 {removalEligibilityLabel(item.removalEligible)}
               </span>
             )}
             {item.type === "atrasos" && (
-              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", logisticTone(item.logisticKey))}>
+              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", logisticTone(item.logisticKey))}>
                 {logisticLabel(item.logisticKey, item.logisticType)}
               </span>
             )}
             {item.type === "atrasos" && (
-              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-black", invoiceTone(item.invoiceIssued, item.invoiceStatus))}>
+              <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", invoiceTone(item.invoiceIssued, item.invoiceStatus))}>
                 {invoiceStatusLabel(item.invoiceIssued, item.invoiceStatus)}
               </span>
             )}
-            <span className="inline-flex items-center gap-1 text-[11px] text-white/45">
+            <span className="inline-flex items-center gap-1 text-[11px] text-spv-muted">
               <Clock3 className="h-3 w-3" />
               {item.ageLabel}
             </span>
           </div>
 
-          <div className="mt-2 text-[15px] font-bold text-white leading-snug">
+          <div className="mt-2 text-[15px] font-bold text-spv-ink leading-snug">
             {displayText(item.itemTitle, item.title)}
           </div>
-          <div className="mt-1 text-[12px] text-white/62 leading-relaxed line-clamp-2">
+          <div className="mt-1 text-[12px] text-spv-muted leading-relaxed line-clamp-2">
             {shortText(item.reason, 150)}
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-white/55 md:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-spv-muted md:grid-cols-4">
             <div className="min-w-0">
               <div className="flex items-center gap-1 opacity-70">
                 <UserRound className="h-3 w-3" />
                 Comprador
               </div>
-              <div className="mt-0.5 truncate font-semibold text-white/78">
+              <div className="mt-0.5 truncate font-semibold text-spv-ink">
                 {displayText(item.buyerNickname, item.buyerName)}
               </div>
             </div>
@@ -612,14 +612,14 @@ function ImpactRow({
                 <Hash className="h-3 w-3" />
                 Pedido
               </div>
-              <div className="mt-0.5 truncate font-semibold text-white/78">{displayText(item.orderId)}</div>
+              <div className="mt-0.5 truncate font-semibold text-spv-ink">{displayText(item.orderId)}</div>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1 opacity-70">
                 <Truck className="h-3 w-3" />
                 Envio
               </div>
-              <div className="mt-0.5 truncate font-semibold text-white/78">
+              <div className="mt-0.5 truncate font-semibold text-spv-ink">
                 {displayText(item.shippingStatus, item.orderStatus)}
               </div>
             </div>
@@ -628,27 +628,27 @@ function ImpactRow({
                 <AlertTriangle className="h-3 w-3" />
                 Status
               </div>
-              <div className="mt-0.5 truncate font-semibold text-white/78">{displayText(item.statusPill)}</div>
+              <div className="mt-0.5 truncate font-semibold text-spv-ink">{displayText(item.statusPill)}</div>
             </div>
           </div>
 
           {item.type === "atrasos" && (
-            <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-white/55 md:grid-cols-3">
-              <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
-                <div className="font-bold text-white/38">Prazo despacho ML</div>
-                <div className="mt-0.5 truncate font-semibold text-white/78">
+            <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-spv-muted md:grid-cols-3">
+              <div className="rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <div className="font-bold text-spv-muted">Prazo despacho ML</div>
+                <div className="mt-0.5 truncate font-semibold text-spv-ink">
                   {displayDateTime(item.expectedDispatchDate)}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
-                <div className="font-bold text-white/38">Despacho realizado</div>
-                <div className="mt-0.5 truncate font-semibold text-white/78">
+              <div className="rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <div className="font-bold text-spv-muted">Despacho realizado</div>
+                <div className="mt-0.5 truncate font-semibold text-spv-ink">
                   {displayDateTime(item.shippedAt || item.dateShipped)}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/18 px-3 py-2">
-                <div className="font-bold text-white/38">Nota fiscal</div>
-                <div className="mt-0.5 truncate font-semibold text-white/78">
+              <div className="rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <div className="font-bold text-spv-muted">Nota fiscal</div>
+                <div className="mt-0.5 truncate font-semibold text-spv-ink">
                   {invoiceStatusLabel(item.invoiceIssued, item.invoiceStatus)}
                   {hasUsefulValue(item.invoiceIssuedAt) ? ` • ${displayDateTime(item.invoiceIssuedAt)}` : ""}
                 </div>
@@ -663,12 +663,12 @@ function ImpactRow({
               e.stopPropagation();
               onOpenDetails();
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-3 py-2 text-[12px] font-semibold text-white shadow-[0_14px_50px_rgba(16,185,129,0.18)] hover:from-emerald-700 hover:to-emerald-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-600 to-emerald-700 px-3 py-2 text-[12px] font-semibold text-spv-ink shadow-none hover:from-emerald-700 hover:to-emerald-800"
           >
             <Eye className="h-3.5 w-3.5" />
             Abrir
           </button>
-          <ChevronRight className={cn("h-4 w-4 transition", selected ? "text-emerald-200" : "text-white/25")} />
+          <ChevronRight className={cn("h-4 w-4 transition", selected ? "text-spv-accent-text" : "text-spv-muted")} />
         </div>
       </div>
     </div>
@@ -684,28 +684,28 @@ function ChatBubble({ msg }: { msg: Message }) {
       <div className={cn("max-w-[78%] flex items-end gap-2", isSeller ? "flex-row-reverse" : "flex-row")}>
         <div
           className={cn(
-            "h-9 w-9 rounded-2xl border shrink-0",
+            "h-9 w-9 rounded-xl border shrink-0",
             isSeller
               ? "bg-emerald-500/15 border-emerald-400/20"
               : isMercadoLivre
               ? "bg-sky-500/15 border-sky-400/20"
-              : "bg-white/10 border-white/10"
+              : "bg-spv-surface border-spv-line"
           )}
         />
 
         <div className={cn("min-w-0", isSeller ? "text-right" : "text-left")}>
-          <div className={cn("text-[11px] font-semibold text-white/65", isSeller ? "pr-2" : "pl-2")}>
+          <div className={cn("text-[11px] font-semibold text-spv-muted", isSeller ? "pr-2" : "pl-2")}>
             {msg.name ?? (isSeller ? "Você" : isMercadoLivre ? "Mercado Livre" : "Comprador")} • {msg.time}
           </div>
 
           <div
             className={cn(
-              "mt-1 rounded-2xl px-4 py-3 text-[13px] leading-relaxed border",
+              "mt-1 rounded-xl px-4 py-3 text-[13px] leading-relaxed border",
               isSeller
-                ? "bg-emerald-700 text-white border-emerald-800/30 shadow-[0_16px_55px_rgba(16,185,129,0.18)]"
+                ? "bg-emerald-700 text-spv-ink border-emerald-800/30 shadow-none"
                 : isMercadoLivre
-                ? "bg-sky-500/10 text-sky-50 border-sky-400/20 shadow-[0_16px_55px_rgba(14,165,233,0.10)]"
-                : "bg-white/5 text-white border-white/10 shadow-[0_16px_55px_rgba(0,0,0,0.25)]"
+                ? "bg-sky-500/10 text-sky-50 border-sky-400/20 shadow-none"
+                : "bg-spv-surface text-spv-ink border-spv-line shadow-none"
             )}
           >
             {msg.text}
@@ -726,12 +726,12 @@ function InfoTile({
   value: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-black/18 px-3 py-3">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-white/42">
+    <div className="min-w-0 rounded-xl border border-spv-line bg-spv-page px-3 py-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-spv-muted">
         {icon}
         {label}
       </div>
-      <div className="mt-1 truncate text-[12px] font-semibold text-white/82">{value}</div>
+      <div className="mt-1 truncate text-[12px] font-semibold text-spv-ink">{value}</div>
     </div>
   );
 }
@@ -750,21 +750,21 @@ function MessagePreview({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-black/18 p-4 text-[12px] text-white/55">
+      <div className="rounded-xl border border-spv-line bg-spv-page p-4 text-[12px] text-spv-muted">
         Carregando comunicação...
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/18 p-4">
+    <div className="rounded-xl border border-spv-line bg-spv-page p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[12px] font-black text-white">
+        <div className="flex items-center gap-2 text-[12px] font-semibold text-spv-ink">
           <MessageSquareText className="h-4 w-4 text-sky-200" />
           Comunicação
         </div>
         <div className="flex gap-1.5 text-[10px] font-bold">
-          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-white/62">
+          <span className="rounded-full border border-spv-line bg-spv-surface px-2 py-1 text-spv-muted">
             comprador {buyerMessages.length}
           </span>
           <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-sky-100/75">
@@ -774,15 +774,15 @@ function MessagePreview({
       </div>
 
       <div className="mt-3 space-y-2 text-[12px]">
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-          <div className="font-bold text-white/48">Última com comprador</div>
-          <div className="mt-1 leading-relaxed text-white/75">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+          <div className="font-bold text-spv-muted">Última com comprador</div>
+          <div className="mt-1 leading-relaxed text-spv-ink">
             {lastBuyer ? shortText(`${lastBuyer.name}: ${lastBuyer.text}`, 150) : "Sem mensagem carregada."}
           </div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-          <div className="font-bold text-white/48">Última mediação</div>
-          <div className="mt-1 leading-relaxed text-white/75">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+          <div className="font-bold text-spv-muted">Última mediação</div>
+          <div className="mt-1 leading-relaxed text-spv-ink">
             {lastMediation
               ? shortText(`${lastMediation.name}: ${lastMediation.text}`, 150)
               : "Sem interação de mediação carregada."}
@@ -812,7 +812,7 @@ function CaseSidePanel({
 }) {
   if (!selected) {
     return (
-      <aside className="rounded-[26px] border border-white/10 bg-white/5 p-5 text-[13px] text-white/60">
+      <aside className="rounded-xl border border-spv-line bg-spv-surface p-5 text-[13px] text-spv-muted">
         Selecione um caso para ver a leitura operacional.
       </aside>
     );
@@ -837,19 +837,19 @@ function CaseSidePanel({
 
   return (
     <aside className="sticky top-28 space-y-4">
-      <div className="rounded-[26px] border border-white/10 bg-[#0d1520] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.32)]">
+      <div className="rounded-xl border border-spv-line bg-spv-page p-5 shadow-none">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("rounded-full border px-2 py-1 text-[10px] font-black", impactTone(selected.type))}>
+              <span className={cn("rounded-full border px-2 py-1 text-[10px] font-semibold", impactTone(selected.type))}>
                 {impactLabel(selected.type)}
               </span>
-              <span className={cn("rounded-full border px-2 py-1 text-[10px] font-black", priority.tone)}>
+              <span className={cn("rounded-full border px-2 py-1 text-[10px] font-semibold", priority.tone)}>
                 prioridade {priority.label}
               </span>
             </div>
-            <div className="mt-3 text-[18px] font-black leading-tight text-white">{itemTitle}</div>
-            <div className="mt-2 text-[12px] leading-relaxed text-white/62">
+            <div className="mt-3 text-[18px] font-semibold leading-tight text-spv-ink">{itemTitle}</div>
+            <div className="mt-2 text-[12px] leading-relaxed text-spv-muted">
               {shortText(displayText(details?.claim?.description, selected.reason), 220)}
             </div>
           </div>
@@ -858,11 +858,11 @@ function CaseSidePanel({
             <img
               src={thumbnail}
               alt={itemTitle}
-              className="h-16 w-16 shrink-0 rounded-2xl border border-white/10 object-cover"
+              className="h-16 w-16 shrink-0 rounded-xl border border-spv-line object-cover"
             />
           ) : (
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5">
-              <Package className="h-6 w-6 text-white/35" />
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-spv-line bg-spv-surface">
+              <Package className="h-6 w-6 text-spv-muted" />
             </div>
           )}
         </div>
@@ -875,65 +875,65 @@ function CaseSidePanel({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", statusGroupTone(selected.statusGroup))}>
+          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", statusGroupTone(selected.statusGroup))}>
             {statusGroupLabel(selected.statusGroup)}
           </span>
-          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", reputationImpactTone(selected.reputationImpact))}>
+          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", reputationImpactTone(selected.reputationImpact))}>
             {reputationImpactLabel(selected.reputationImpact)}
           </span>
-          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", removalEligibilityTone(selected.removalEligible))}>
+          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", removalEligibilityTone(selected.removalEligible))}>
             {removalEligibilityLabel(selected.removalEligible)}
           </span>
           {selected.type === "atrasos" && (
-            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", logisticTone(selected.logisticKey))}>
+            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", logisticTone(selected.logisticKey))}>
               {logisticLabel(selected.logisticKey, selected.logisticType)}
             </span>
           )}
           {selected.type === "atrasos" && (
-            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black", invoiceTone(selected.invoiceIssued, selected.invoiceStatus))}>
+            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", invoiceTone(selected.invoiceIssued, selected.invoiceStatus))}>
               {invoiceStatusLabel(selected.invoiceIssued, selected.invoiceStatus)}
             </span>
           )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 text-[12px]">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-            <span className="text-white/45">Status ML</span>
-            <span className="truncate font-semibold text-white/82">{displayText(claimStatus)}</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+            <span className="text-spv-muted">Status ML</span>
+            <span className="truncate font-semibold text-spv-ink">{displayText(claimStatus)}</span>
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-            <span className="text-white/45">Rastreio</span>
-            <span className="truncate font-semibold text-white/82">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+            <span className="text-spv-muted">Rastreio</span>
+            <span className="truncate font-semibold text-spv-ink">
               {displayText(details?.shipment?.trackingNumber, selected.trackingNumber)}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-            <span className="text-white/45">Situação envio</span>
-            <span className="truncate font-semibold text-white/82">{displayText(shipmentStatus)}</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+            <span className="text-spv-muted">Situação envio</span>
+            <span className="truncate font-semibold text-spv-ink">{displayText(shipmentStatus)}</span>
           </div>
           {selected.type === "atrasos" && (
             <>
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-                <span className="text-white/45">Prazo despacho ML</span>
-                <span className="truncate font-semibold text-white/82">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <span className="text-spv-muted">Prazo despacho ML</span>
+                <span className="truncate font-semibold text-spv-ink">
                   {displayDateTime(details?.shipment?.expectedDispatchDate || selected.expectedDispatchDate)}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-                <span className="text-white/45">Despacho realizado</span>
-                <span className="truncate font-semibold text-white/82">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <span className="text-spv-muted">Despacho realizado</span>
+                <span className="truncate font-semibold text-spv-ink">
                   {displayDateTime(details?.shipment?.shippedAt || selected.shippedAt || selected.dateShipped)}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-                <span className="text-white/45">Nota fiscal</span>
-                <span className="truncate font-semibold text-white/82">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <span className="text-spv-muted">Nota fiscal</span>
+                <span className="truncate font-semibold text-spv-ink">
                   {invoiceStatusLabel(details?.invoice?.issued ?? selected.invoiceIssued, details?.invoice?.status ?? selected.invoiceStatus)}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
-                <span className="text-white/45">Emissão NF</span>
-                <span className="truncate font-semibold text-white/82">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-page px-3 py-2">
+                <span className="text-spv-muted">Emissão NF</span>
+                <span className="truncate font-semibold text-spv-ink">
                   {displayDateTime(details?.invoice?.issuedAt || selected.invoiceIssuedAt)}
                 </span>
               </div>
@@ -942,7 +942,7 @@ function CaseSidePanel({
         </div>
 
         {loadingDetails && (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-[12px] text-white/55">
+          <div className="mt-4 rounded-xl border border-spv-line bg-spv-surface p-3 text-[12px] text-spv-muted">
             Atualizando dados completos...
           </div>
         )}
@@ -1492,32 +1492,32 @@ useEffect(() => {
         <div>
           <Link
             href={ROUTES.dashboard}
-            className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-200/90 hover:text-emerald-200"
+            className="inline-flex items-center gap-2 text-[12px] font-semibold text-spv-accent-text hover:text-spv-accent-text"
           >
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
             Voltar ao Dashboard
           </Link>
 
-          <h1 className="mt-2 text-[34px] leading-tight font-extrabold text-white">
+          <h1 className="mt-2 text-[34px] leading-tight font-extrabold text-spv-ink">
             Casos e Reclamações
           </h1>
 
-          <p className="mt-1 text-[13px] text-white/70">
+          <p className="mt-1 text-[13px] text-spv-ink">
             {loading
               ? "Carregando dados..."
               : "Visualize impactos por categoria e abra detalhes da venda + mensagens."}
           </p>
 
           {!!sellerId && (
-            <p className="mt-1 text-[12px] text-white/45">
-              Seller: <span className="font-semibold text-white/70">{sellerName || "Mercado Livre"}</span>
-              <span className="mx-1 text-white/25">•</span>
+            <p className="mt-1 text-[12px] text-spv-muted">
+              Seller: <span className="font-semibold text-spv-ink">{sellerName || "Mercado Livre"}</span>
+              <span className="mx-1 text-spv-muted">•</span>
               sellerId: <span className="font-mono">{sellerId}</span>
             </p>
           )}
 
           {error && (
-            <div className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[12px] text-rose-200">
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[12px] text-rose-200">
               {error}
             </div>
           )}
@@ -1527,16 +1527,16 @@ useEffect(() => {
           href={ML_DEFENSE_HELP_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-500/15 px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide text-emerald-50 shadow-[0_18px_70px_rgba(16,185,129,0.12)] hover:bg-emerald-500/22 sm:px-4 sm:py-3 sm:text-[12px]"
+          className="inline-flex items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-500/15 px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide text-emerald-50 shadow-none hover:bg-emerald-500/22 sm:px-4 sm:py-3 sm:text-[12px]"
         >
           Abrir defesa no ML
         </a>
 
-        <div className="hidden sm:flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl px-4 py-3 shadow-[0_18px_70px_rgba(0,0,0,0.35)]">
-          <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/10" />
+        <div className="hidden sm:flex items-center gap-3 rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none px-4 py-3 shadow-none">
+          <div className="h-10 w-10 rounded-xl bg-spv-surface border border-spv-line" />
           <div className="leading-tight">
-            <div className="text-[13px] font-extrabold text-white">{sellerName || "Seller Mercado Livre"}</div>
-            <div className="text-[11px] text-emerald-200/90 font-semibold">
+            <div className="text-[13px] font-extrabold text-spv-ink">{sellerName || "Seller Mercado Livre"}</div>
+            <div className="text-[11px] text-spv-accent-text font-semibold">
               Reputação • ações & sugestões
             </div>
           </div>
@@ -1552,8 +1552,8 @@ useEffect(() => {
         </div>
       </section>
 
-      <section className="mt-6 rounded-[26px] border border-white/10 bg-white/5 shadow-[0_24px_100px_rgba(0,0,0,0.35)]">
-        <div className="border-b border-white/10 px-5 py-4">
+      <section className="mt-6 rounded-xl border border-spv-line bg-spv-surface shadow-none">
+        <div className="border-b border-spv-line px-5 py-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <TabButton active={activeTab === "reclamacoes"} onClick={() => setActiveTab("reclamacoes")}>
@@ -1575,19 +1575,19 @@ useEffect(() => {
                 href={ML_DEFENSE_HELP_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-500/18 px-4 text-[12px] font-extrabold uppercase tracking-wide text-emerald-50 shadow-[0_18px_70px_rgba(16,185,129,0.12)] hover:bg-emerald-500/26"
+                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/18 px-4 text-[12px] font-extrabold uppercase tracking-wide text-emerald-50 shadow-none hover:bg-emerald-500/26"
               >
                 <MessageSquareText className="h-4 w-4" />
                 Abrir chamado no ML
               </a>
 
               <label className="relative block min-w-0 sm:w-[360px]">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-spv-muted" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar por pedido, comprador, claim ou status"
-                  className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 pl-10 pr-4 text-[13px] font-semibold text-white outline-none placeholder:text-white/32 focus:border-emerald-300/50"
+                  className="h-11 w-full rounded-xl border border-spv-line bg-spv-page pl-10 pr-4 text-[13px] font-semibold text-spv-ink outline-none placeholder:text-spv-muted focus:border-emerald-300/50"
                 />
               </label>
             </div>
@@ -1596,7 +1596,7 @@ useEffect(() => {
           <div className="mt-4 space-y-3">
             {(activeTab === "reclamacoes" || activeTab === "mediacoes") && (
               <div>
-                <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-white/35">
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-spv-muted">
                   Situação
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1623,7 +1623,7 @@ useEffect(() => {
             )}
 
             <div>
-              <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-white/35">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-spv-muted">
                 Reputação
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1656,7 +1656,7 @@ useEffect(() => {
 
             {activeTab === "atrasos" && (
               <div>
-                <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-white/35">
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-spv-muted">
                   Logística do atraso
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1710,29 +1710,29 @@ useEffect(() => {
         </div>
 
         <div className="grid grid-cols-1 gap-0 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <div className="border-white/10 p-5 xl:border-r">
+        <div className="border-spv-line p-5 xl:border-r">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[12px] font-black text-white">Fila de triagem</div>
-              <div className="mt-1 text-[11px] font-semibold text-white/45">
+              <div className="text-[12px] font-semibold text-spv-ink">Fila de triagem</div>
+              <div className="mt-1 text-[11px] font-semibold text-spv-muted">
                 {loading ? "Atualizando casos..." : `${visibleItems.length} de ${items.length} casos nesta visão`}
               </div>
             </div>
             {selected && (
-              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-white/62">
+              <span className="rounded-full border border-spv-line bg-spv-page px-3 py-1.5 text-[11px] font-bold text-spv-muted">
                 Selecionado: {selected.chip ?? selected.claimId ?? selected.orderId ?? selected.id}
               </span>
             )}
           </div>
           <div className="space-y-3">
           {!loading && items.length === 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-[13px] text-white/70">
+            <div className="rounded-xl border border-spv-line bg-spv-surface p-5 text-[13px] text-spv-ink">
               Nenhum item nessa categoria.
             </div>
           )}
 
           {!loading && items.length > 0 && visibleItems.length === 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-[13px] text-white/70">
+            <div className="rounded-xl border border-spv-line bg-spv-surface p-5 text-[13px] text-spv-ink">
               Nenhum caso encontrado para essa busca.
             </div>
           )}
@@ -1753,7 +1753,7 @@ useEffect(() => {
     <button
       onClick={() => setPage((p) => Math.max(1, p - 1))}
       disabled={page === 1}
-      className="px-3 py-1 rounded-lg border text-sm bg-white/5 text-white/70 border-white/10 disabled:opacity-40"
+      className="px-3 py-1 rounded-lg border text-sm bg-spv-surface text-spv-ink border-spv-line disabled:opacity-40"
     >
       Anterior
     </button>
@@ -1769,13 +1769,13 @@ useEffect(() => {
 
         return (
           <div key={p} className="flex items-center gap-2">
-            {showGap ? <span className="text-white/40">...</span> : null}
+            {showGap ? <span className="text-spv-muted">...</span> : null}
             <button
               onClick={() => setPage(p)}
               className={`px-3 py-1 rounded-lg border text-sm ${
                 p === page
-                  ? "bg-white text-black"
-                  : "bg-white/5 text-white/70 border-white/10"
+                  ? "bg-spv-accent-soft text-spv-accent-text"
+                  : "bg-spv-surface text-spv-ink border-spv-line"
               }`}
             >
               {p}
@@ -1787,7 +1787,7 @@ useEffect(() => {
     <button
       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
       disabled={page === totalPages}
-      className="px-3 py-1 rounded-lg border text-sm bg-white/5 text-white/70 border-white/10 disabled:opacity-40"
+      className="px-3 py-1 rounded-lg border text-sm bg-spv-surface text-spv-ink border-spv-line disabled:opacity-40"
     >
       Próxima
     </button>
@@ -1811,17 +1811,17 @@ useEffect(() => {
 
       {detailsOpen && selected && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-none-sm p-4"
           onClick={closeDetails}
         >
           <div
-            className="w-full max-w-6xl max-h-[90vh] overflow-auto rounded-[28px] border border-white/10 bg-[#0e1622] shadow-[0_30px_120px_rgba(0,0,0,0.55)]"
+            className="w-full max-w-6xl max-h-[90vh] overflow-auto rounded-xl border border-spv-line bg-spv-page shadow-none"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-[#0e1622]/95 backdrop-blur px-5 py-4">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-spv-line bg-spv-page backdrop-blur-none px-5 py-4">
               <div>
-                <div className="text-[18px] font-extrabold text-white">Detalhes do caso</div>
-                <div className="mt-1 text-[12px] text-white/60">
+                <div className="text-[18px] font-extrabold text-spv-ink">Detalhes do caso</div>
+                <div className="mt-1 text-[12px] text-spv-muted">
                   {selected.title} {selected.chip ? `• ${selected.chip}` : ""}
                 </div>
               </div>
@@ -1842,89 +1842,89 @@ useEffect(() => {
 
             <div className="grid grid-cols-12 gap-4 p-5">
               <div className="col-span-12 lg:col-span-4">
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-[12px] font-extrabold text-white">Resumo do caso</div>
+                    <div className="text-[12px] font-extrabold text-spv-ink">Resumo do caso</div>
                     <SmallPill>{selected?.type ?? "-"}</SmallPill>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="mt-4 rounded-xl border border-spv-line bg-spv-surface p-4">
                     <div className="flex items-start gap-3">
                       {detailThumbnail && detailThumbnail !== "-" ? (
                         <img
                           src={detailThumbnail}
                           alt={detailItemTitle}
-                          className="h-16 w-16 rounded-xl object-cover border border-white/10"
+                          className="h-16 w-16 rounded-xl object-cover border border-spv-line"
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded-xl bg-white/5 border border-white/10" />
+                        <div className="h-16 w-16 rounded-xl bg-spv-surface border border-spv-line" />
                       )}
 
                       <div className="min-w-0 flex-1">
-                        <div className="text-[12px] font-extrabold text-white">{selected?.chip ?? "#—"}</div>
-                        <div className="mt-1 text-[14px] font-bold text-white">{detailItemTitle}</div>
-                        <div className="mt-1 text-[12px] text-white/65">
+                        <div className="text-[12px] font-extrabold text-spv-ink">{selected?.chip ?? "#—"}</div>
+                        <div className="mt-1 text-[14px] font-bold text-spv-ink">{detailItemTitle}</div>
+                        <div className="mt-1 text-[12px] text-spv-muted">
                           {displayText(details?.claim?.description, selected?.reason)}
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-white/65">
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-spv-muted">
                       <div>
                         <div className="opacity-75">Criada</div>
-                        <div className="font-semibold text-white/80">
+                        <div className="font-semibold text-spv-ink">
                           {displayText(details?.claim?.dateCreated, selected?.createdAt)}
                         </div>
                       </div>
                       <div>
                         <div className="opacity-75">Atualização</div>
-                        <div className="font-semibold text-white/80">
+                        <div className="font-semibold text-spv-ink">
                           {displayText(details?.claim?.lastUpdated, selected?.updatedAt)}
                         </div>
                       </div>
                       <div>
                         <div className="opacity-75">Status</div>
-                        <div className="font-semibold text-white/80">
+                        <div className="font-semibold text-spv-ink">
                           {displayText(details?.claim?.status, selected?.statusPill)}
                         </div>
                       </div>
                       <div>
                         <div className="opacity-75">Idade</div>
-                        <div className="font-semibold text-white/80">{displayText(selected?.ageLabel)}</div>
+                        <div className="font-semibold text-spv-ink">{displayText(selected?.ageLabel)}</div>
                       </div>
                       <div>
                         <div className="opacity-75">Claim ID</div>
-                        <div className="font-semibold text-white/80 break-all">
+                        <div className="font-semibold text-spv-ink break-all">
                           {displayText(details?.claim?.id, selected?.claimId)}
                         </div>
                       </div>
                       <div>
                         <div className="opacity-75">Order ID</div>
-                        <div className="font-semibold text-white/80 break-all">
+                        <div className="font-semibold text-spv-ink break-all">
                           {displayText(details?.order?.id, selected?.orderId)}
                         </div>
                       </div>
                       <div>
                         <div className="opacity-75">Shipment ID</div>
-                        <div className="font-semibold text-white/80 break-all">
+                        <div className="font-semibold text-spv-ink break-all">
                           {displayText(details?.shipment?.id, selected?.shipmentId)}
                         </div>
                       </div>
                       <div>
                         <div className="opacity-75">Pack ID</div>
-                        <div className="font-semibold text-white/80 break-all">
+                        <div className="font-semibold text-spv-ink break-all">
                           {displayText(details?.order?.packId, selected?.packId)}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-[12px] leading-relaxed text-white/62">
+                  <div className="mt-4 rounded-xl border border-spv-line bg-spv-page p-3 text-[12px] leading-relaxed text-spv-muted">
                     Use os blocos ao lado para conferir venda, envio, claim e histórico de mensagens antes de decidir a tratativa.
                   </div>
 
                   {loadingDetails && (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-[12px] text-white/70">
+                    <div className="mt-4 rounded-xl border border-spv-line bg-spv-surface p-3 text-[12px] text-spv-ink">
                       Carregando detalhes completos...
                     </div>
                   )}
@@ -1932,276 +1932,276 @@ useEffect(() => {
               </div>
 
               <div className="col-span-12 lg:col-span-8 space-y-4">
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-                  <div className="text-[12px] font-extrabold text-white">Dados da venda</div>
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
+                  <div className="text-[12px] font-extrabold text-spv-ink">Dados da venda</div>
 
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Produto</div>
-                      <div className="mt-1 font-semibold text-white">{detailItemTitle}</div>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Produto</div>
+                      <div className="mt-1 font-semibold text-spv-ink">{detailItemTitle}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Item ID</div>
-                      <div className="mt-1 font-semibold text-white break-all">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Item ID</div>
+                      <div className="mt-1 font-semibold text-spv-ink break-all">
                         {displayText(details?.item?.itemId, selected?.itemId)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Variação</div>
-                      <div className="mt-1 font-semibold text-white break-all">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Variação</div>
+                      <div className="mt-1 font-semibold text-spv-ink break-all">
                         {displayText(details?.item?.variationId, selected?.variationId)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Quantidade</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Quantidade</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {details?.item?.quantity ?? selected?.quantity ?? "-"}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Valor unitário</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Valor unitário</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayMoney(
                           details?.item?.unitPrice ?? selected?.unitPrice,
                           details?.order?.currencyId ?? selected?.currencyId
                         )}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Status do pedido</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Status do pedido</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.order?.status, selected?.orderStatus)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Valor total</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Valor total</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayMoney(details?.order?.totalAmount, details?.order?.currencyId)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Valor pago</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Valor pago</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayMoney(details?.order?.paidAmount, details?.order?.currencyId)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Detalhe do status</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Detalhe do status</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.order?.statusDetail)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-                  <div className="text-[12px] font-extrabold text-white">Comprador</div>
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
+                  <div className="text-[12px] font-extrabold text-spv-ink">Comprador</div>
 
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Nickname</div>
-                      <div className="mt-1 font-semibold text-white">{detailBuyerNickname}</div>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Nickname</div>
+                      <div className="mt-1 font-semibold text-spv-ink">{detailBuyerNickname}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Nome</div>
-                      <div className="mt-1 font-semibold text-white">{detailBuyerName}</div>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Nome</div>
+                      <div className="mt-1 font-semibold text-spv-ink">{detailBuyerName}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Telefone</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Telefone</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.buyer?.phone, selected?.buyerPhone)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 md:col-span-2">
-                      <div className="text-white/50">Email</div>
-                      <div className="mt-1 font-semibold text-white break-all">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3 md:col-span-2">
+                      <div className="text-spv-muted">Email</div>
+                      <div className="mt-1 font-semibold text-spv-ink break-all">
                         {displayText(details?.buyer?.email, selected?.buyerEmail)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Documento</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Documento</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.buyer?.docType)} {displayText(details?.buyer?.docNumber, "")}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-                  <div className="text-[12px] font-extrabold text-white">Envio e rastreio</div>
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
+                  <div className="text-[12px] font-extrabold text-spv-ink">Envio e rastreio</div>
 
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Modo de envio</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Modo de envio</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.shipment?.shippingMode, selected?.shippingMode)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Tracking</div>
-                      <div className="mt-1 font-semibold text-white break-all">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Tracking</div>
+                      <div className="mt-1 font-semibold text-spv-ink break-all">
                         {displayText(details?.shipment?.trackingNumber, selected?.trackingNumber)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Status do envio</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Status do envio</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.shipment?.status, selected?.shippingStatus)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Substatus</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Substatus</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.shipment?.substatus, selected?.shippingSubstatus)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Logística</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Logística</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.shipment?.logisticType)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Método tracking</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Método tracking</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.shipment?.trackingMethod)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Data de envio</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Data de envio</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayDateTime(details?.shipment?.dateShipped || selected?.dateShipped)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Prazo despacho ML</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Prazo despacho ML</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayDateTime(details?.shipment?.expectedDispatchDate || selected?.expectedDispatchDate)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Despacho realizado</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Despacho realizado</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayDateTime(details?.shipment?.shippedAt || selected?.shippedAt || selected?.dateShipped)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Entrega estimada</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Entrega estimada</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayDateTime(details?.shipment?.estimatedDelivery || selected?.dateEstimatedDelivery)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Data entregue</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Data entregue</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayDateTime(details?.shipment?.dateDelivered || selected?.dateDelivered)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-                  <div className="text-[12px] font-extrabold text-white">Nota fiscal</div>
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
+                  <div className="text-[12px] font-extrabold text-spv-ink">Nota fiscal</div>
 
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Situação</div>
-                      <div className={cn("mt-1 inline-flex rounded-full border px-2 py-1 text-[11px] font-black", invoiceTone(details?.invoice?.issued ?? selected?.invoiceIssued, details?.invoice?.status ?? selected?.invoiceStatus))}>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Situação</div>
+                      <div className={cn("mt-1 inline-flex rounded-full border px-2 py-1 text-[11px] font-semibold", invoiceTone(details?.invoice?.issued ?? selected?.invoiceIssued, details?.invoice?.status ?? selected?.invoiceStatus))}>
                         {invoiceStatusLabel(details?.invoice?.issued ?? selected?.invoiceIssued, details?.invoice?.status ?? selected?.invoiceStatus)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Emissão</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Emissão</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayDateTime(details?.invoice?.issuedAt || selected?.invoiceIssuedAt)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Número</div>
-                      <div className="mt-1 font-semibold text-white break-all">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Número</div>
+                      <div className="mt-1 font-semibold text-spv-ink break-all">
                         {displayText(details?.invoice?.number, selected?.invoiceNumber)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Status API</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Status API</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.invoice?.status, selected?.invoiceStatus)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
-                  <div className="text-[12px] font-extrabold text-white">Claim</div>
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
+                  <div className="text-[12px] font-extrabold text-spv-ink">Claim</div>
 
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-[12px]">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Tipo</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(details?.claim?.type)}</div>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Tipo</div>
+                      <div className="mt-1 font-semibold text-spv-ink">{displayText(details?.claim?.type)}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Stage</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(details?.claim?.stage)}</div>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Stage</div>
+                      <div className="mt-1 font-semibold text-spv-ink">{displayText(details?.claim?.stage)}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div className="text-white/50">Resolution</div>
-                      <div className="mt-1 font-semibold text-white">{displayText(details?.claim?.resolution)}</div>
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3">
+                      <div className="text-spv-muted">Resolution</div>
+                      <div className="mt-1 font-semibold text-spv-ink">{displayText(details?.claim?.resolution)}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 md:col-span-3">
-                      <div className="text-white/50">Descrição detalhada</div>
-                      <div className="mt-1 font-semibold text-white">
+                    <div className="rounded-xl border border-spv-line bg-spv-surface p-3 md:col-span-3">
+                      <div className="text-spv-muted">Descrição detalhada</div>
+                      <div className="mt-1 font-semibold text-spv-ink">
                         {displayText(details?.claim?.description, selected?.reason)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_22px_90px_rgba(0,0,0,0.35)] p-5">
+                <div className="rounded-xl border border-spv-line bg-spv-surface backdrop-blur-none shadow-none p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10" />
+                      <div className="h-11 w-11 rounded-xl bg-spv-surface border border-spv-line" />
                       <div className="leading-tight">
-                        <div className="text-[13px] font-extrabold text-white">
+                        <div className="text-[13px] font-extrabold text-spv-ink">
                           {selected?.buyerName ?? "Comprador"}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-white/60 font-semibold">
+                        <div className="mt-0.5 text-[11px] text-spv-muted font-semibold">
                           Histórico de mensagens
                         </div>
                       </div>
                     </div>
 
-                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-extrabold text-white/80">
+                    <span className="inline-flex items-center rounded-full border border-spv-line bg-spv-surface px-3 py-1.5 text-[11px] font-extrabold text-spv-ink">
                       {selected?.claimId || selected?.packId || selected?.orderId ? "Mensagens reais" : "Sem mensagens"}
                     </span>
                   </div>
 
                   <div className="mt-5">
                     {loadingMessages ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                      <div className="rounded-xl border border-spv-line bg-spv-surface p-4 text-[13px] text-spv-ink">
                         Carregando mensagens...
                       </div>
                     ) : !selected?.claimId && !selected?.packId && !selected?.orderId ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                      <div className="rounded-xl border border-spv-line bg-spv-surface p-4 text-[13px] text-spv-ink">
                         Este item não possui claim, pack ou pedido vinculado para carregar mensagens.
                       </div>
                     ) : buyerMessages.length === 0 && mediationMessages.length === 0 ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/70">
+                      <div className="rounded-xl border border-spv-line bg-spv-surface p-4 text-[13px] text-spv-ink">
                         Nenhuma mensagem encontrada para este caso.
                       </div>
                     ) : (
                       <>
-                        <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/20 p-2">
+                        <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-spv-line bg-spv-page p-2">
                           <button
                             onClick={() => setMessageTab("buyer")}
                             className={cn(
                               "rounded-xl px-4 py-2 text-[12px] font-extrabold transition",
                               messageTab === "buyer"
-                                ? "bg-white/10 text-white border border-white/10"
-                                : "text-white/55 hover:text-white"
+                                ? "bg-spv-surface text-spv-ink border border-spv-line"
+                                : "text-spv-muted hover:text-spv-ink"
                             )}
                           >
                             Mensagens com comprador
-                            <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px]">
+                            <span className="ml-2 rounded-full bg-spv-surface px-2 py-0.5 text-[10px]">
                               {buyerMessages.length}
                             </span>
                           </button>
@@ -2212,7 +2212,7 @@ useEffect(() => {
                               "rounded-xl px-4 py-2 text-[12px] font-extrabold transition",
                               messageTab === "mediation"
                                 ? "bg-sky-500/15 text-sky-100 border border-sky-400/20"
-                                : "text-white/55 hover:text-white"
+                                : "text-spv-muted hover:text-spv-ink"
                             )}
                           >
                             Mediação Mercado Livre
@@ -2225,7 +2225,7 @@ useEffect(() => {
                         {messageTab === "buyer" ? (
                           <div className="space-y-3">
                             {buyerMessages.length === 0 ? (
-                              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] text-white/60">
+                              <div className="rounded-xl border border-spv-line bg-spv-surface p-4 text-[13px] text-spv-muted">
                                 Sem mensagens com comprador.
                               </div>
                             ) : (
@@ -2235,7 +2235,7 @@ useEffect(() => {
                         ) : (
                           <div className="space-y-3">
                             {mediationMessages.length === 0 ? (
-                              <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-[13px] text-sky-100/80">
+                              <div className="rounded-xl border border-sky-400/20 bg-sky-500/10 p-4 text-[13px] text-sky-100/80">
                                 Sem mensagens de mediação para este caso.
                               </div>
                             ) : (

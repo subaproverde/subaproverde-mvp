@@ -1,13 +1,12 @@
 .root {
-  --paper: #1d2224; --surface: #262c2e; --sidebar: #171c1e; --line: #3b4345; --ink: #eeeee7; --muted: #b0b7b5; --green: #60b838; --green-text: #9ad782;
-  background: var(--paper); color: var(--ink); color-scheme: dark; min-height: 100dvh; display: flex; font-family: var(--font-geist-sans), sans-serif; font-size: 14px; line-height: 1.6;
+  --paper: var(--spv-page); --surface: var(--spv-surface); --sidebar: var(--spv-sidebar); --line: var(--spv-line); --ink: var(--spv-ink); --muted: var(--spv-muted); --green: var(--spv-accent); --green-text: var(--spv-accent-text);
+  background: var(--paper); color: var(--ink); min-height: 100dvh; display: flex; font-family: var(--font-geist-sans), sans-serif; font-size: 14px; line-height: 1.6;
 }
 .root * { box-sizing: border-box; }
-.root a { text-decoration: none; color: inherit; }
-.root button { font: inherit; cursor: pointer; }
+:where(.root) a { text-decoration: none; }
+.root button { cursor: pointer; }
 .root button:disabled { cursor: wait; opacity: .65; }
-.root h1, .root h2, .root p { margin: 0; }
-.root h2 { font-size: 18px; font-weight: 550; letter-spacing: -.45px; }
+:where(.root) h2 { font-size: 18px; font-weight: 550; letter-spacing: -.45px; }
 .root svg { flex-shrink: 0; stroke-width: 1.7; }
 .root a:focus-visible, .root button:focus-visible, .root summary:focus-visible { outline: 2px solid var(--green-text); outline-offset: 4px; }
 .skip { position: fixed; top: -80px; left: 15px; padding: 12px; background: var(--surface); z-index: 200; }
@@ -18,10 +17,12 @@
 .workspaceLabel { margin: 24px 12px 27px; font-size: 12px; letter-spacing: 1.4px; font-weight: 600; }
 .workspaceLabel span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-top: 3px; }
 .nav { display: flex; flex-direction: column; gap: 5px; }
-.navLabel { color: #a7b0ac; font-size: 10px; letter-spacing: 1.2px; padding: 18px 12px 7px; }
+.navGroup { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 8px; }
+.navGroup summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 10px 12px; min-height: 44px; }
+.navLabel { color: var(--muted); font-size: 10px; letter-spacing: 1.2px; padding: 18px 12px 7px; }
 .nav a { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 11px 12px; border-radius: 7px; font-size: 13px; min-height: 44px; transition: background .15s, color .15s; }
-.nav a:hover { background: #292f31; color: var(--ink); }
-.nav .activeNav { background: #2b352b; color: #b3e59f; }
+.nav a:hover { background: var(--spv-raised); color: var(--ink); }
+.nav .activeNav { background: var(--spv-accent-soft); color: var(--green-text); }
 .activeNav svg { color: var(--green); }
 .sidebarFoot { display: flex; gap: 10px; align-items: center; padding: 36px 8px 24px; color: var(--green-text); margin-top: auto; font-size: 12px; }
 .sidebarFoot small { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
@@ -30,6 +31,9 @@
 .topbar { margin: 0 40px; border-bottom: 1px solid var(--line); min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .breadcrumb { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
 .breadcrumb strong { color: var(--ink); font-weight: 500; }
+.accountLabel { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; color: var(--muted); font-size: 11px; }
+.accountLabel small { display: block; color: var(--green-text); }
+@media (max-width: 650px) { .accountLabel { max-width: 130px; font-size: 10px; } }
 .connect { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border: 1px solid #4e633f; border-radius: 7px; font-size: 12px !important; color: var(--green-text); min-height: 42px; transition: background .15s; }
 .connect:hover { background: #2b352b; }
 .menuButton { display: none; }

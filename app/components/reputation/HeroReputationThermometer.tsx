@@ -46,10 +46,10 @@ export function HeroReputationThermometer({
       : "34px";
 
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-md ring-1 ring-slate-100">
+    <div className="rounded-xl border bg-spv-surface p-5 shadow-md ring-1 ring-slate-100">
       <div className="flex items-center gap-5">
         {/* Termômetro grande estilo Suba Pro Verde */}
-        <div className="relative w-[54px] h-[150px] rounded-[28px] border bg-white overflow-hidden shadow-lg">
+        <div className="relative w-[54px] h-[150px] rounded-xl border bg-spv-surface overflow-hidden shadow-lg">
           <div className="h-1/3 bg-red-500" />
           <div className="h-1/3 bg-yellow-400" />
           <div className="h-1/3 bg-green-500" />
@@ -72,23 +72,23 @@ export function HeroReputationThermometer({
 
         {/* Texto */}
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wide">
+          <div className="text-xs text-spv-muted uppercase tracking-wide">
             Reputação do Seller
           </div>
 
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-spv-ink">
             {labelText}
           </div>
 
-          <div className="text-sm text-gray-600 mt-1">
+          <div className="text-sm text-spv-muted mt-1">
             {subtitleText}
           </div>
         </div>
 
         {/* Score */}
         <div className="ml-auto text-right">
-          <div className="text-xs text-gray-500">Score</div>
-          <div className="text-4xl font-bold text-gray-900">
+          <div className="text-xs text-spv-muted">Score</div>
+          <div className="text-4xl font-bold text-spv-ink">
             {safeScore}
           </div>
         </div>

@@ -59,7 +59,7 @@ const TONES: Record<
   emerald: {
     card: "border-emerald-300/20 bg-emerald-400/[0.085]",
     text: "text-emerald-50",
-    dim: "text-emerald-100/62",
+    dim: "text-spv-accent-text",
     border: "border-emerald-300/22",
     bar: "linear-gradient(90deg, #34d399, #a3e635)",
     solid: "#34d399",
@@ -500,14 +500,14 @@ export default function LiveDashboardClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#030605] px-4 py-4 text-white sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-center lg:justify-between">
+    <main className="min-h-screen bg-spv-page px-4 py-4 text-spv-ink sm:px-6 lg:px-8">
+      <header className="flex flex-col gap-3 border-b border-spv-line pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/10">
-            <RadioTower className="h-5 w-5 text-emerald-100" aria-hidden={true} />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/10">
+            <RadioTower className="h-5 w-5 text-spv-accent-text" aria-hidden={true} />
           </div>
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/72">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-spv-accent-text">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
               Suba Pro Verde Live
             </div>
@@ -518,9 +518,9 @@ export default function LiveDashboardClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-2 text-right">
-            <div className="text-xs text-white/42">{formatDate(today)}</div>
-            <div className="font-mono text-2xl font-semibold tabular-nums text-white">
+          <div className="rounded-xl border border-spv-line bg-spv-surface px-4 py-2 text-right">
+            <div className="text-xs text-spv-muted">{formatDate(today)}</div>
+            <div className="font-mono text-2xl font-semibold tabular-nums text-spv-ink">
               {clockLabel(now)}
             </div>
           </div>
@@ -534,7 +534,7 @@ export default function LiveDashboardClient({
           </button>
           <Link
             href="/admin/dashboard"
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.045] px-4 text-sm font-semibold text-white/72 transition hover:bg-white/[0.08]"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-4 text-sm font-semibold text-spv-ink transition hover:bg-spv-raised"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden={true} />
             Voltar
@@ -543,13 +543,13 @@ export default function LiveDashboardClient({
       </header>
 
       {syncError ? (
-        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/[0.08] p-4 text-sm text-amber-50">
+        <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/[0.08] p-4 text-sm text-amber-50">
           Supabase: {syncError} Mantendo os últimos dados carregados na tela ao vivo.
         </div>
       ) : null}
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.08fr_.92fr]">
-        <div className={cn("relative overflow-hidden rounded-2xl border p-5", TONES[heroTone].card)}>
+        <div className={cn("relative overflow-hidden rounded-xl border p-5", TONES[heroTone].card)}>
           <div className="absolute inset-x-0 top-0 h-1" style={{ background: TONES[heroTone].bar }} />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
@@ -559,8 +559,8 @@ export default function LiveDashboardClient({
               <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
                 {heroTitle}
               </h2>
-              <p className="mt-4 text-xl font-medium text-white/86">{heroAction}</p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">{heroDetail}</p>
+              <p className="mt-4 text-xl font-medium text-spv-ink">{heroAction}</p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-spv-muted">{heroDetail}</p>
             </div>
 
             <div className="grid min-w-[260px] grid-cols-2 gap-3">
@@ -626,7 +626,7 @@ export default function LiveDashboardClient({
       </section>
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1fr_.95fr_.95fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <SectionHead icon={Zap} title="Alertas inteligentes" detail="Sinais que eu deixaria disparando na sua operacao" />
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {smartAlerts.map((alert) => (
@@ -635,21 +635,21 @@ export default function LiveDashboardClient({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <SectionHead icon={Clock3} title="Fila de agora" detail="O que a tela mandaria resolver primeiro" />
           <div className="mt-4 space-y-3">
             {queueItems.map((item, index) => (
               <QueueRow key={item.id} index={index + 1} {...item} />
             ))}
             {queueItems.length === 0 ? (
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/52">
+              <div className="rounded-xl border border-spv-line bg-spv-page p-4 text-sm text-spv-muted">
                 Nenhuma acao urgente nos dados atuais.
               </div>
             ) : null}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <SectionHead
             icon={Users}
             title="Clientes puxando atenção"
@@ -660,11 +660,11 @@ export default function LiveDashboardClient({
               const percent = clamp(item.score, 6, 100);
               const tone = index === 0 ? "sky" : item.high > 0 ? "amber" : "emerald";
               return (
-                <div key={item.client.id} className="rounded-xl border border-white/10 bg-black/18 p-3">
+                <div key={item.client.id} className="rounded-xl border border-spv-line bg-spv-page p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-white">{item.client.name}</div>
-                      <div className="mt-1 text-xs text-white/42">
+                      <div className="text-sm font-semibold text-spv-ink">{item.client.name}</div>
+                      <div className="mt-1 text-xs text-spv-muted">
                         {item.open} abertas | {item.waiting} aguardando | {formatCurrency(item.value)}
                       </div>
                     </div>
@@ -672,7 +672,7 @@ export default function LiveDashboardClient({
                       {index + 1}
                     </div>
                   </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-spv-surface">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${percent}%`, background: TONES[tone].bar }}
@@ -686,7 +686,7 @@ export default function LiveDashboardClient({
       </section>
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <SectionHead
             icon={TrendingUp}
             title="Mapa live da semana"
@@ -697,16 +697,16 @@ export default function LiveDashboardClient({
               const tone = toneForPercent(day.percent);
               return (
                 <div key={day.iso} className={cn("rounded-xl border p-3", TONES[tone].card)}>
-                  <div className="text-xs font-semibold text-white/76">{day.label}</div>
-                  <div className="mt-1 text-[11px] text-white/40">{formatDate(day.iso)}</div>
-                  <div className="mt-4 flex h-24 items-end overflow-hidden rounded-xl bg-black/25">
+                  <div className="text-xs font-semibold text-spv-ink">{day.label}</div>
+                  <div className="mt-1 text-[11px] text-spv-muted">{formatDate(day.iso)}</div>
+                  <div className="mt-4 flex h-24 items-end overflow-hidden rounded-xl bg-spv-page">
                     <div
                       className="w-full rounded-xl"
                       style={{ height: `${Math.max(day.percent, 8)}%`, background: TONES[tone].bar }}
                     />
                   </div>
-                  <div className="mt-3 text-sm font-semibold text-white">{day.percent}%</div>
-                  <div className="mt-1 text-[11px] text-white/42">
+                  <div className="mt-3 text-sm font-semibold text-spv-ink">{day.percent}%</div>
+                  <div className="mt-1 text-[11px] text-spv-muted">
                     {minutesToLabel(day.scheduled)} agenda | {minutesToLabel(day.due)} prazo
                   </div>
                 </div>
@@ -715,7 +715,7 @@ export default function LiveDashboardClient({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
           <SectionHead icon={CheckCircle2} title="Sugestões do dia" detail="Automações e gatilhos que fazem sentido" />
           <div className="mt-4 space-y-3">
             <Suggestion tone="rose" title="Escalar prazo vencido" detail="Quando passar da data prevista, subir para topo da fila e marcar como risco." />
@@ -741,20 +741,20 @@ function SectionHead({
   return (
     <div className="flex items-start justify-between gap-3">
       <div>
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-white/45">{detail}</p>
+        <h2 className="text-sm font-semibold text-spv-ink">{title}</h2>
+        <p className="mt-1 text-xs leading-5 text-spv-muted">{detail}</p>
       </div>
-      <Icon className="h-5 w-5 text-emerald-200" aria-hidden={true} />
+      <Icon className="h-5 w-5 text-spv-accent-text" aria-hidden={true} />
     </div>
   );
 }
 
 function HeroMini({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/22 px-4 py-3">
-      <div className="text-xs text-white/45">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-white">{value}</div>
-      <div className="mt-1 text-xs text-white/38">{hint}</div>
+    <div className="rounded-xl border border-spv-line bg-spv-page px-4 py-3">
+      <div className="text-xs text-spv-muted">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-spv-ink">{value}</div>
+      <div className="mt-1 text-xs text-spv-muted">{hint}</div>
     </div>
   );
 }
@@ -773,14 +773,14 @@ function LiveMetric({
   tone: Tone;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl border p-4", TONES[tone].card)}>
+    <div className={cn("relative overflow-hidden rounded-xl border p-4", TONES[tone].card)}>
       <div className="absolute inset-x-0 top-0 h-1" style={{ background: TONES[tone].bar }} />
       <div className="flex items-start justify-between gap-3">
-        <div className="text-xs font-medium text-white/48">{label}</div>
-        <Icon className="h-4 w-4 text-white/55" aria-hidden={true} />
+        <div className="text-xs font-medium text-spv-muted">{label}</div>
+        <Icon className="h-4 w-4 text-spv-muted" aria-hidden={true} />
       </div>
-      <div className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</div>
-      <div className="mt-1 text-xs leading-5 text-white/44">{hint}</div>
+      <div className="mt-3 text-2xl font-semibold tracking-tight text-spv-ink">{value}</div>
+      <div className="mt-1 text-xs leading-5 text-spv-muted">{hint}</div>
     </div>
   );
 }
@@ -801,17 +801,17 @@ function AlertTile({
   active: boolean;
 }) {
   return (
-    <div className={cn("rounded-xl border p-3", active ? TONES[tone].card : "border-white/10 bg-black/18")}>
+    <div className={cn("rounded-xl border p-3", active ? TONES[tone].card : "border-spv-line bg-spv-page")}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-medium text-white/45">{title}</div>
-          <div className="mt-1 text-xl font-semibold text-white">{value}</div>
+          <div className="text-xs font-medium text-spv-muted">{title}</div>
+          <div className="mt-1 text-xl font-semibold text-spv-ink">{value}</div>
         </div>
-        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl border bg-black/22", TONES[tone].border)}>
-          <Icon className="h-4 w-4 text-white/78" aria-hidden={true} />
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl border bg-spv-page", TONES[tone].border)}>
+          <Icon className="h-4 w-4 text-spv-ink" aria-hidden={true} />
         </div>
       </div>
-      <p className="mt-2 text-xs leading-5 text-white/48">{detail}</p>
+      <p className="mt-2 text-xs leading-5 text-spv-muted">{detail}</p>
     </div>
   );
 }
@@ -834,18 +834,18 @@ function QueueRow({
   return (
     <div className={cn("rounded-xl border p-3", TONES[tone].card)}>
       <div className="flex items-start gap-3">
-        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-black/22 text-sm font-semibold", TONES[tone].border)}>
+        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-spv-page text-sm font-semibold", TONES[tone].border)}>
           {index}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{title}</div>
-              <div className="mt-1 truncate text-xs text-white/48">{client}</div>
+              <div className="truncate text-sm font-semibold text-spv-ink">{title}</div>
+              <div className="mt-1 truncate text-xs text-spv-muted">{client}</div>
             </div>
-            <Icon className="h-4 w-4 shrink-0 text-white/58" aria-hidden={true} />
+            <Icon className="h-4 w-4 shrink-0 text-spv-muted" aria-hidden={true} />
           </div>
-          <div className="mt-2 text-xs leading-5 text-white/45">{meta}</div>
+          <div className="mt-2 text-xs leading-5 text-spv-muted">{meta}</div>
         </div>
       </div>
     </div>
@@ -858,8 +858,8 @@ function Suggestion({ tone, title, detail }: { tone: Tone; title: string; detail
       <div className="flex items-start gap-3">
         <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: TONES[tone].solid }} />
         <div>
-          <div className="text-sm font-semibold text-white">{title}</div>
-          <div className="mt-1 text-xs leading-5 text-white/48">{detail}</div>
+          <div className="text-sm font-semibold text-spv-ink">{title}</div>
+          <div className="mt-1 text-xs leading-5 text-spv-muted">{detail}</div>
         </div>
       </div>
     </div>

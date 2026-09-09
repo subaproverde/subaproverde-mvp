@@ -102,8 +102,8 @@ function ProgressRing({ percent }: { percent: number }) {
         background: `conic-gradient(rgb(52 211 153) ${deg}deg, rgba(255,255,255,0.1) ${deg}deg)`,
       }}
     >
-      <div className="grid h-20 w-20 place-items-center rounded-full bg-[#0b1118]">
-        <span className="text-2xl font-black text-white">{percent}%</span>
+      <div className="grid h-20 w-20 place-items-center rounded-full bg-spv-page">
+        <span className="text-2xl font-semibold text-spv-ink">{percent}%</span>
       </div>
     </div>
   );
@@ -232,7 +232,7 @@ export default function AppSettingsPage() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
+      <div className="rounded-xl border border-spv-line bg-spv-surface p-6 text-spv-ink">
         Carregando configurações...
       </div>
     );
@@ -240,7 +240,7 @@ export default function AppSettingsPage() {
 
   if (error || !state) {
     return (
-      <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-6 text-rose-100">
+      <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-6 text-rose-100">
         {error || "Não foi possível iniciar o teste de colaborador."}
       </div>
     );
@@ -250,30 +250,30 @@ export default function AppSettingsPage() {
     <div className="mx-auto max-w-6xl pb-14">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-spv-accent-text">
             <UserPlus className="h-4 w-4" />
             Teste operacional
           </div>
-          <h1 className="mt-3 text-3xl font-black tracking-tight text-white">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-spv-ink">
             Configurações
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/65">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-spv-muted">
             Ajustes operacionais da conta, começando pelo convite de colaborador que permite a Suba operar o contato do Mercado Livre sem senha principal do seller.
           </p>
-          <p className="mt-2 text-xs text-white/45">
-            Seller ativo: <span className="font-mono text-white/70">{sellerId}</span>
+          <p className="mt-2 text-xs text-spv-muted">
+            Seller ativo: <span className="font-mono text-spv-ink">{sellerId}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="flex items-center gap-4 rounded-xl border border-spv-line bg-spv-surface p-4">
           <ProgressRing percent={progress} />
           <div>
-            <div className="text-sm font-bold text-white">Status do onboarding</div>
-            <div className="mt-1 text-sm text-white/55">
+            <div className="text-sm font-bold text-spv-ink">Status do onboarding</div>
+            <div className="mt-1 text-sm text-spv-muted">
               {progress === 100 ? "Pronto para operação" : "Em validação"}
             </div>
             {state.updatedAt && (
-              <div className="mt-2 text-xs text-white/35">
+              <div className="mt-2 text-xs text-spv-muted">
                 Atualizado em {new Date(state.updatedAt).toLocaleString("pt-BR")}
               </div>
             )}
@@ -281,29 +281,29 @@ export default function AppSettingsPage() {
         </div>
       </div>
 
-      <section className="mt-6 overflow-hidden rounded-[26px] border border-emerald-300/18 bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(56,189,248,0.08),rgba(255,255,255,0.055))] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.26)]">
+      <section className="mt-6 overflow-hidden rounded-xl border border-emerald-300/18 bg-spv-surface p-5 shadow-none">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-300/20 bg-emerald-400/12">
-              <MonitorCog className="h-5 w-5 text-emerald-100" />
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-400/12">
+              <MonitorCog className="h-5 w-5 text-spv-accent-text" />
             </div>
             <div>
-              <div className="text-sm font-black text-white">Aparência do painel</div>
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/58">
+              <div className="text-sm font-semibold text-spv-ink">Aparência do painel</div>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-spv-muted">
                 Alterne entre o cockpit escuro e um modo claro mais leve, com fundo verde suave, vidro branco e acentos neon.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/20 p-1.5">
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-spv-line bg-spv-page p-1.5">
             <button
               type="button"
               onClick={() => changeTheme("dark")}
               className={cn(
-                "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition",
+                "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
                 theme === "dark"
-                  ? "bg-slate-950 text-white shadow-[0_12px_32px_rgba(0,0,0,0.28)]"
-                  : "text-white/55 hover:bg-white/8 hover:text-white"
+                  ? "bg-slate-950 text-spv-ink shadow-none"
+                  : "text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
               )}
             >
               <Moon className="h-4 w-4" />
@@ -313,10 +313,10 @@ export default function AppSettingsPage() {
               type="button"
               onClick={() => changeTheme("light")}
               className={cn(
-                "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition",
+                "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
                 theme === "light"
-                  ? "bg-white text-emerald-950 shadow-[0_12px_32px_rgba(16,185,129,0.18)]"
-                  : "text-white/55 hover:bg-white/8 hover:text-white"
+                  ? "bg-spv-accent-soft text-spv-accent-text shadow-none"
+                  : "text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
               )}
             >
               <Sun className="h-4 w-4" />
@@ -327,54 +327,54 @@ export default function AppSettingsPage() {
       </section>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_100px_rgba(0,0,0,0.28)]">
-          <div className="flex items-center gap-2 text-sm font-black text-white">
-            <Mail className="h-4 w-4 text-emerald-200" />
+        <section className="rounded-xl border border-spv-line bg-spv-surface p-5 shadow-none">
+          <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink">
+            <Mail className="h-4 w-4 text-spv-accent-text" />
             Identidade do colaborador
           </div>
 
           <label className="mt-5 block">
-            <span className="text-xs font-bold text-white/55">E-mail que receberá o convite</span>
+            <span className="text-xs font-bold text-spv-muted">E-mail que receberá o convite</span>
             <input
               value={state.email}
               onChange={(e) => persist({ ...state, email: e.target.value })}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-semibold text-white outline-none focus:border-emerald-300/50"
+              className="mt-2 w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm font-semibold text-spv-ink outline-none focus:border-emerald-300/50"
             />
           </label>
 
           <label className="mt-4 block">
-            <span className="text-xs font-bold text-white/55">Nome da função sugerida</span>
+            <span className="text-xs font-bold text-spv-muted">Nome da função sugerida</span>
             <input
               value={state.roleName}
               onChange={(e) => persist({ ...state, roleName: e.target.value })}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-semibold text-white outline-none focus:border-emerald-300/50"
+              className="mt-2 w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm font-semibold text-spv-ink outline-none focus:border-emerald-300/50"
             />
           </label>
 
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               onClick={() => copy(state.email, "email")}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white hover:bg-emerald-600"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600"
             >
               {copied === "email" ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
               {copied === "email" ? "E-mail copiado" : "Copiar e-mail"}
             </button>
             <button
               onClick={resetTest}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/80 hover:bg-white/10"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-4 py-3 text-sm font-bold text-spv-ink hover:bg-spv-raised"
             >
               <RefreshCcw className="h-4 w-4" />
               Reiniciar teste
             </button>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-50/85">
+          <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-50/85">
             O e-mail precisa existir ou ser um alias real da Suba, porque o Mercado Livre envia o convite por e-mail. Também não pode estar cadastrado em Mercado Livre ou Mercado Pago.
           </div>
         </section>
 
-        <section className="rounded-[26px] border border-white/10 bg-white/5 p-5 shadow-[0_24px_100px_rgba(0,0,0,0.28)]">
-          <div className="flex items-center gap-2 text-sm font-black text-white">
+        <section className="rounded-xl border border-spv-line bg-spv-surface p-5 shadow-none">
+          <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink">
             <ShieldCheck className="h-4 w-4 text-sky-200" />
             Checklist do convite
           </div>
@@ -385,49 +385,49 @@ export default function AppSettingsPage() {
                 key={step}
                 onClick={() => toggleStep(step)}
                 className={cn(
-                  "flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition",
+                  "flex items-center justify-between rounded-xl border px-4 py-3 text-left transition",
                   state.steps[step]
                     ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-50"
-                    : "border-white/10 bg-black/20 text-white/65 hover:bg-white/10"
+                    : "border-spv-line bg-spv-page text-spv-muted hover:bg-spv-raised"
                 )}
               >
                 <span className="text-sm font-bold">{stepLabels[step]}</span>
                 <CheckCircle2
-                  className={cn("h-5 w-5", state.steps[step] ? "text-emerald-300" : "text-white/25")}
+                  className={cn("h-5 w-5", state.steps[step] ? "text-spv-accent-text" : "text-spv-muted")}
                 />
               </button>
             ))}
           </div>
 
           <label className="mt-4 block">
-            <span className="text-xs font-bold text-white/55">Notas internas</span>
+            <span className="text-xs font-bold text-spv-muted">Notas internas</span>
             <textarea
               value={state.notes}
               onChange={(e) => persist({ ...state, notes: e.target.value })}
               rows={4}
-              className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none focus:border-emerald-300/50"
+              className="mt-2 w-full resize-none rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm text-spv-ink outline-none focus:border-emerald-300/50"
               placeholder="Ex.: convite enviado em 23/05, aguardando aceite do e-mail."
             />
           </label>
         </section>
       </div>
 
-      <section className="mt-4 rounded-[26px] border border-white/10 bg-gradient-to-br from-white/[0.07] to-emerald-500/[0.08] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.28)]">
+      <section className="mt-4 rounded-xl border border-spv-line bg-gradient-to-br from-white/[0.07] to-emerald-500/[0.08] p-5 shadow-none">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2 text-sm font-black text-white">
-            <KeyRound className="h-4 w-4 text-emerald-200" />
+          <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink">
+            <KeyRound className="h-4 w-4 text-spv-accent-text" />
             Mensagem para enviar ao seller
           </div>
           <button
             onClick={() => copy(instructions, "instructions")}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 hover:bg-emerald-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-spv-surface px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-50"
           >
             {copied === "instructions" ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
             {copied === "instructions" ? "Instrução copiada" : "Copiar instrução"}
           </button>
         </div>
 
-        <pre className="mt-4 max-h-[360px] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-[#07111b] p-4 text-xs leading-relaxed text-white/75">
+        <pre className="mt-4 max-h-[360px] overflow-auto whitespace-pre-wrap rounded-xl border border-spv-line bg-spv-page p-4 text-xs leading-relaxed text-spv-ink">
           {instructions}
         </pre>
       </section>

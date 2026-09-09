@@ -263,12 +263,12 @@ export default function InfluencersAdminPage() {
   }, [selectedInfluencerId, isAdmin]);
 
   if (loading) {
-    return <div className="text-white/70">Carregando…</div>;
+    return <div className="text-spv-ink">Carregando…</div>;
   }
 
   if (!isAdmin) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/80">
+      <div className="rounded-xl border border-spv-line bg-spv-surface p-6 text-spv-ink">
         Acesso restrito (admin).
         <div className="mt-3">
           <Link className="underline" href="/app">
@@ -284,8 +284,8 @@ export default function InfluencersAdminPage() {
       {/* HEADER */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Influencers</h1>
-          <p className="text-sm text-white/50">
+          <h1 className="text-2xl font-semibold text-spv-ink">Influencers</h1>
+          <p className="text-sm text-spv-muted">
             Crie influencers e lance os valores para comissão (manual).
           </p>
         </div>
@@ -293,14 +293,14 @@ export default function InfluencersAdminPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/sellers"
-            className="rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+            className="rounded-xl border border-spv-line px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised"
           >
             Ver Sellers
           </Link>
 
           <button
             onClick={() => fetchInfluencers().catch((e) => alert(e?.message ?? "Erro"))}
-            className="rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+            className="rounded-xl border border-spv-line px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised"
           >
             Atualizar
           </button>
@@ -312,15 +312,15 @@ export default function InfluencersAdminPage() {
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
           {/* Influencers cadastrados */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-5">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-white/90">Influencers cadastrados</div>
-              <div className="text-xs text-white/40">{influencers.length} itens</div>
+              <div className="text-sm font-semibold text-spv-ink">Influencers cadastrados</div>
+              <div className="text-xs text-spv-muted">{influencers.length} itens</div>
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+            <div className="mt-4 overflow-hidden rounded-xl border border-spv-line">
               <table className="w-full text-sm">
-                <thead className="bg-white/5 text-white/60">
+                <thead className="bg-spv-surface text-spv-muted">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Código</th>
                     <th className="px-3 py-2 text-left font-medium">Nome</th>
@@ -328,10 +328,10 @@ export default function InfluencersAdminPage() {
                     <th className="px-3 py-2 text-right font-medium">Comissão</th>
                   </tr>
                 </thead>
-                <tbody className="text-white/80">
+                <tbody className="text-spv-ink">
                   {influencers.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-3 text-white/50" colSpan={4}>
+                      <td className="px-3 py-3 text-spv-muted" colSpan={4}>
                         Nenhum influencer cadastrado.
                       </td>
                     </tr>
@@ -340,15 +340,15 @@ export default function InfluencersAdminPage() {
                       <tr
                         key={i.id}
                         className={[
-                          "border-t border-white/10 hover:bg-white/5 cursor-pointer",
-                          selectedInfluencerId === i.id ? "bg-white/5" : "",
+                          "border-t border-spv-line hover:bg-spv-raised cursor-pointer",
+                          selectedInfluencerId === i.id ? "bg-spv-surface" : "",
                         ].join(" ")}
                         onClick={() => setSelectedInfluencerId(i.id)}
                         title="Clique para filtrar os lançamentos por este influencer"
                       >
                         <td className="px-3 py-2 font-semibold">{i.code}</td>
                         <td className="px-3 py-2">{i.name}</td>
-                        <td className="px-3 py-2 text-white/60">{i.email ?? "—"}</td>
+                        <td className="px-3 py-2 text-spv-muted">{i.email ?? "—"}</td>
                         <td className="px-3 py-2 text-right">{Math.round(i.commission_rate * 100)}%</td>
                       </tr>
                     ))
@@ -359,13 +359,13 @@ export default function InfluencersAdminPage() {
           </div>
 
           {/* Últimos lançamentos */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-white/90">Últimos lançamentos</div>
-                <div className="text-xs text-white/50">
+                <div className="text-sm font-semibold text-spv-ink">Últimos lançamentos</div>
+                <div className="text-xs text-spv-muted">
                   Mostra o que foi adicionado no ledger{" "}
-                  <span className="text-white/80 font-medium">
+                  <span className="text-spv-ink font-medium">
                     (filtrado pelo influencer selecionado)
                   </span>
                   .
@@ -374,7 +374,7 @@ export default function InfluencersAdminPage() {
 
               <button
                 onClick={() => fetchLedger(selectedInfluencerId).catch((e) => alert(e?.message ?? "Erro"))}
-                className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+                className="rounded-xl border border-spv-line px-3 py-2 text-xs text-spv-ink hover:bg-spv-raised"
                 disabled={!selectedInfluencerId || ledgerLoading}
               >
                 {ledgerLoading ? "Atualizando…" : "Atualizar lançamentos"}
@@ -383,23 +383,23 @@ export default function InfluencersAdminPage() {
 
             {/* Cards de total */}
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-white/50">Total lançado (influencer)</div>
-                <div className="mt-1 text-sm text-white/80">{brl(totals.totalSpend)}</div>
+              <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+                <div className="text-xs text-spv-muted">Total lançado (influencer)</div>
+                <div className="mt-1 text-sm text-spv-ink">{brl(totals.totalSpend)}</div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-white/50">Comissão estimada</div>
-                <div className="mt-1 text-sm text-white/80">{brl(totals.commission)}</div>
+              <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+                <div className="text-xs text-spv-muted">Comissão estimada</div>
+                <div className="mt-1 text-sm text-spv-ink">{brl(totals.commission)}</div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-white/50">Influencer selecionado</div>
-                <div className="mt-1 text-sm text-white/80">
+              <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+                <div className="text-xs text-spv-muted">Influencer selecionado</div>
+                <div className="mt-1 text-sm text-spv-ink">
                   {selectedInfluencer ? (
                     <>
                       <span className="font-semibold">{selectedInfluencer.code}</span>
-                      <span className="text-white/40"> — </span>
+                      <span className="text-spv-muted"> — </span>
                       {selectedInfluencer.name}
                     </>
                   ) : (
@@ -410,9 +410,9 @@ export default function InfluencersAdminPage() {
             </div>
 
             {/* table */}
-            <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+            <div className="mt-4 overflow-hidden rounded-xl border border-spv-line">
               <table className="w-full text-sm">
-                <thead className="bg-white/5 text-white/60">
+                <thead className="bg-spv-surface text-spv-muted">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Data</th>
                     <th className="px-3 py-2 text-left font-medium">Seller ID</th>
@@ -422,10 +422,10 @@ export default function InfluencersAdminPage() {
                     <th className="px-3 py-2 text-right font-medium">Total</th>
                   </tr>
                 </thead>
-                <tbody className="text-white/80">
+                <tbody className="text-spv-ink">
                   {ledgerRows.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-3 text-white/50" colSpan={6}>
+                      <td className="px-3 py-3 text-spv-muted" colSpan={6}>
                         {ledgerLoading ? "Carregando lançamentos…" : "Nenhum lançamento para este influencer."}
                       </td>
                     </tr>
@@ -435,11 +435,11 @@ export default function InfluencersAdminPage() {
                       return (
                         <tr
                           key={r.id}
-                          className="border-t border-white/10 hover:bg-white/5"
+                          className="border-t border-spv-line hover:bg-spv-raised"
                           title={r.notes ? `Obs: ${r.notes}` : ""}
                         >
                           <td className="px-3 py-2">{fmtDate(r.created_at)}</td>
-                          <td className="px-3 py-2 text-white/70">{r.seller_id}</td>
+                          <td className="px-3 py-2 text-spv-ink">{r.seller_id}</td>
                           <td className="px-3 py-2">{r.kind}</td>
                           <td className="px-3 py-2 text-right">{r.qty}</td>
                           <td className="px-3 py-2 text-right">{brl(Number(r.unit_price) || 0)}</td>
@@ -452,7 +452,7 @@ export default function InfluencersAdminPage() {
               </table>
             </div>
 
-            <div className="mt-2 text-xs text-white/40">
+            <div className="mt-2 text-xs text-spv-muted">
               Dica: passe o mouse em cima de um lançamento para ver a observação (notes), se tiver.
             </div>
           </div>
@@ -461,55 +461,55 @@ export default function InfluencersAdminPage() {
         {/* RIGHT */}
         <div className="space-y-6">
           {/* Criar influencer */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm font-semibold text-white/90">Criar influencer</div>
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-5">
+            <div className="text-sm font-semibold text-spv-ink">Criar influencer</div>
 
             <div className="mt-4 space-y-3">
               <div>
-                <div className="text-xs text-white/60">Código (cupom)</div>
+                <div className="text-xs text-spv-muted">Código (cupom)</div>
                 <input
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="EX: DUDA10"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
               </div>
 
               <div>
-                <div className="text-xs text-white/60">Nome</div>
+                <div className="text-xs text-spv-muted">Nome</div>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nome do influencer"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
               </div>
 
               <div>
-                <div className="text-xs text-white/60">E-mail (opcional)</div>
+                <div className="text-xs text-spv-muted">E-mail (opcional)</div>
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@exemplo.com"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
               </div>
 
               <div>
-                <div className="text-xs text-white/60">Comissão (0 a 1)</div>
+                <div className="text-xs text-spv-muted">Comissão (0 a 1)</div>
                 <input
                   value={commissionRate}
                   onChange={(e) => setCommissionRate(e.target.value)}
                   placeholder="0.1"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
-                <div className="mt-1 text-[11px] text-white/40">Ex: 0.1 = 10% (atual: {Math.round((Number(commissionRate) || 0) * 100)}%)</div>
+                <div className="mt-1 text-[11px] text-spv-muted">Ex: 0.1 = 10% (atual: {Math.round((Number(commissionRate) || 0) * 100)}%)</div>
               </div>
 
               <button
                 onClick={onCreateInfluencer}
                 disabled={creating}
-                className="w-full rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-sm font-semibold text-white/90 hover:from-emerald-400/25 hover:to-emerald-900/25 disabled:opacity-60"
+                className="w-full rounded-xl border border-emerald-400/20 bg-gradient-to-b from-emerald-400/20 to-emerald-900/20 px-4 py-2 text-sm font-semibold text-spv-ink hover:from-emerald-400/25 hover:to-emerald-900/25 disabled:opacity-60"
               >
                 {creating ? "Criando…" : "Criar influencer"}
               </button>
@@ -517,16 +517,16 @@ export default function InfluencersAdminPage() {
           </div>
 
           {/* Adicionar lançamento */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm font-semibold text-white/90">Adicionar lançamento (ledger)</div>
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-5">
+            <div className="text-sm font-semibold text-spv-ink">Adicionar lançamento (ledger)</div>
 
             <div className="mt-4 space-y-3">
               <div>
-                <div className="text-xs text-white/60">Influencer</div>
+                <div className="text-xs text-spv-muted">Influencer</div>
                 <select
                   value={ledgerInfluencerId}
                   onChange={(e) => setLedgerInfluencerId(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 >
                   {influencers.map((i) => (
                     <option key={i.id} value={i.id}>
@@ -537,23 +537,23 @@ export default function InfluencersAdminPage() {
               </div>
 
               <div>
-                <div className="text-xs text-white/60">SellerId (UUID)</div>
+                <div className="text-xs text-spv-muted">SellerId (UUID)</div>
                 <input
                   value={sellerId}
                   onChange={(e) => setSellerId(e.target.value)}
                   placeholder="Cole o seller_accounts.seller_id aqui"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
-                <div className="mt-1 text-[11px] text-white/40">Dica: abra Sellers e copie o seller_id.</div>
+                <div className="mt-1 text-[11px] text-spv-muted">Dica: abra Sellers e copie o seller_id.</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs text-white/60">Tipo (kind)</div>
+                  <div className="text-xs text-spv-muted">Tipo (kind)</div>
                   <select
                     value={kind}
                     onChange={(e) => setKind(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                    className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                   >
                     <option value="impact_claims">impact_claims</option>
                     <option value="impact_delays">impact_delays</option>
@@ -563,45 +563,45 @@ export default function InfluencersAdminPage() {
                 </div>
 
                 <div>
-                  <div className="text-xs text-white/60">Qtd</div>
+                  <div className="text-xs text-spv-muted">Qtd</div>
                   <input
                     value={qty}
                     onChange={(e) => setQty(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                    className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="text-xs text-white/60">Valor unitário (R$)</div>
+                <div className="text-xs text-spv-muted">Valor unitário (R$)</div>
                 <input
                   value={unitPrice}
                   onChange={(e) => setUnitPrice(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
               </div>
 
               <div>
-                <div className="text-xs text-white/60">Obs (opcional)</div>
+                <div className="text-xs text-spv-muted">Obs (opcional)</div>
                 <input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ex: referente ao mês 02/2026"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                  className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
                 />
               </div>
 
               <button
                 onClick={onAddLedger}
                 disabled={addingLedger}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/10 disabled:opacity-60"
+                className="w-full rounded-xl border border-spv-line bg-spv-surface px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised disabled:opacity-60"
               >
                 {addingLedger ? "Adicionando…" : "Adicionar lançamento"}
               </button>
 
-              <div className="text-[11px] text-white/40">
+              <div className="text-[11px] text-spv-muted">
                 Total deste lançamento:{" "}
-                <span className="text-white/70">
+                <span className="text-spv-ink">
                   {brl((Number(qty) || 0) * (Number(unitPrice) || 0))}
                 </span>
               </div>
@@ -609,14 +609,14 @@ export default function InfluencersAdminPage() {
           </div>
 
           {/* Filtro rápido do painel */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm font-semibold text-white/90">Filtro de lançamentos</div>
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-5">
+            <div className="text-sm font-semibold text-spv-ink">Filtro de lançamentos</div>
             <div className="mt-3">
-              <div className="text-xs text-white/60">Mostrando lançamentos de:</div>
+              <div className="text-xs text-spv-muted">Mostrando lançamentos de:</div>
               <select
                 value={selectedInfluencerId}
                 onChange={(e) => setSelectedInfluencerId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+                className="mt-1 w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm text-spv-ink outline-none focus:border-emerald-500/50"
               >
                 {influencers.map((i) => (
                   <option key={i.id} value={i.id}>
@@ -624,7 +624,7 @@ export default function InfluencersAdminPage() {
                   </option>
                 ))}
               </select>
-              <div className="mt-2 text-[11px] text-white/40">
+              <div className="mt-2 text-[11px] text-spv-muted">
                 A tabela “Últimos lançamentos” sempre fica filtrada nesse influencer.
               </div>
             </div>

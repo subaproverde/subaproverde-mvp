@@ -15,8 +15,8 @@ export default function LogoutPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="rounded-2xl border bg-white p-6 text-sm text-gray-600">
+    <div className="min-h-screen flex items-center justify-center bg-spv-surface">
+      <div className="rounded-xl border bg-spv-surface p-6 text-sm text-spv-muted">
         Saindo…
       </div>
     </div>

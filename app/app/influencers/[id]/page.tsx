@@ -147,15 +147,15 @@ export default function InfluencerDetailPage() {
     }
   }
 
-  if (loadingGate) return <div className="text-white/70">Carregando...</div>;
-  if (!isAdmin) return <div className="text-white/70">Acesso restrito.</div>;
+  if (loadingGate) return <div className="text-spv-ink">Carregando...</div>;
+  if (!isAdmin) return <div className="text-spv-ink">Acesso restrito.</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-2xl font-semibold">{dash?.influencer_name ?? "Influencer"}</div>
-          <div className="text-sm text-white/60">
+          <div className="text-sm text-spv-muted">
             {dash?.influencer_code ? `Cupom: ${dash.influencer_code}` : ""}{" "}
             {dash?.influencer_email ? `• ${dash.influencer_email}` : ""}
           </div>
@@ -163,7 +163,7 @@ export default function InfluencerDetailPage() {
 
         <button
           onClick={loadAll}
-          className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/80 hover:bg-white/5"
+          className="rounded-xl border border-spv-line px-3 py-2 text-xs text-spv-ink hover:bg-spv-raised"
         >
           Atualizar
         </button>
@@ -177,20 +177,20 @@ export default function InfluencerDetailPage() {
 
       {/* Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs text-white/60">Total gasto (sellers)</div>
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+          <div className="text-xs text-spv-muted">Total gasto (sellers)</div>
           <div className="text-2xl font-semibold">
             R$ {(dash?.total_spend ?? 0).toFixed(2)}
           </div>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs text-white/60">Comissão</div>
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+          <div className="text-xs text-spv-muted">Comissão</div>
           <div className="text-2xl font-semibold">
             R$ {(dash?.total_commission ?? 0).toFixed(2)}
           </div>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-xs text-white/60">Taxa</div>
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
+          <div className="text-xs text-spv-muted">Taxa</div>
           <div className="text-2xl font-semibold">
             {(((dash?.commission_rate ?? 0) * 100) || 0).toFixed(0)}%
           </div>
@@ -198,20 +198,20 @@ export default function InfluencerDetailPage() {
       </div>
 
       {/* Sellers vinculados */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
         <div className="text-sm font-semibold mb-3">Sellers indicados</div>
 
         {sellers.length === 0 ? (
-          <div className="text-sm text-white/60">Nenhum seller vinculado ainda.</div>
+          <div className="text-sm text-spv-muted">Nenhum seller vinculado ainda.</div>
         ) : (
           <div className="divide-y divide-white/10">
             {sellers.map((s) => (
               <div key={s.seller_account_id} className="py-3">
                 <div className="text-sm font-semibold">
-                  {s.store_name ?? "Loja"} <span className="text-white/40">•</span>{" "}
+                  {s.store_name ?? "Loja"} <span className="text-spv-muted">•</span>{" "}
                   {s.seller_full_name ?? "Sem nome"}
                 </div>
-                <div className="text-xs text-white/50">
+                <div className="text-xs text-spv-muted">
                   cupom: {s.coupon_code ?? "-"} • seller_id: {s.seller_id ?? "-"}
                 </div>
               </div>
@@ -221,14 +221,14 @@ export default function InfluencerDetailPage() {
       </div>
 
       {/* Lançar ledger */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
         <div className="text-sm font-semibold mb-3">Lançar serviço (manual)</div>
 
         <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
           <div className="md:col-span-2 space-y-1">
-            <div className="text-xs text-white/60">Seller</div>
+            <div className="text-xs text-spv-muted">Seller</div>
             <select
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm outline-none"
               value={sellerId}
               onChange={(e) => setSellerId(e.target.value)}
             >
@@ -242,9 +242,9 @@ export default function InfluencerDetailPage() {
           </div>
 
           <div className="space-y-1">
-            <div className="text-xs text-white/60">Tipo</div>
+            <div className="text-xs text-spv-muted">Tipo</div>
             <select
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm outline-none"
               value={kind}
               onChange={(e) => setKind(e.target.value)}
             >
@@ -256,9 +256,9 @@ export default function InfluencerDetailPage() {
           </div>
 
           <div className="space-y-1">
-            <div className="text-xs text-white/60">Qtd</div>
+            <div className="text-xs text-spv-muted">Qtd</div>
             <input
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm outline-none"
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               placeholder="1"
@@ -266,9 +266,9 @@ export default function InfluencerDetailPage() {
           </div>
 
           <div className="space-y-1">
-            <div className="text-xs text-white/60">Valor unit (R$)</div>
+            <div className="text-xs text-spv-muted">Valor unit (R$)</div>
             <input
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm outline-none"
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
               placeholder="0"
@@ -279,16 +279,16 @@ export default function InfluencerDetailPage() {
             <button
               onClick={onAddLedger}
               disabled={!canSave || saving}
-              className="w-full rounded-xl border border-emerald-400/20 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-emerald-500/20 disabled:opacity-50"
+              className="w-full rounded-xl border border-emerald-400/20 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-emerald-500/20 disabled:opacity-50"
             >
               {saving ? "Salvando..." : "Lançar"}
             </button>
           </div>
 
           <div className="md:col-span-6 space-y-1">
-            <div className="text-xs text-white/60">Observação (opcional)</div>
+            <div className="text-xs text-spv-muted">Observação (opcional)</div>
             <input
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
+              className="w-full rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-sm outline-none"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ex: protocolo ML, descrição do caso, etc"
@@ -298,11 +298,11 @@ export default function InfluencerDetailPage() {
       </div>
 
       {/* Histórico ledger */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="rounded-xl border border-spv-line bg-spv-surface p-4">
         <div className="text-sm font-semibold mb-3">Histórico de lançamentos</div>
 
         {ledger.length === 0 ? (
-          <div className="text-sm text-white/60">Nenhum lançamento ainda.</div>
+          <div className="text-sm text-spv-muted">Nenhum lançamento ainda.</div>
         ) : (
           <div className="divide-y divide-white/10">
             {ledger.map((l) => (
@@ -311,11 +311,11 @@ export default function InfluencerDetailPage() {
                   <div className="font-semibold">
                     {l.kind} • {l.qty} x R$ {Number(l.unit_price).toFixed(2)}
                   </div>
-                  <div className="text-xs text-white/50">
+                  <div className="text-xs text-spv-muted">
                     {new Date(l.created_at).toLocaleString()}
                   </div>
                 </div>
-                <div className="text-xs text-white/60">
+                <div className="text-xs text-spv-muted">
                   seller: {l.seller_id} {l.notes ? `• ${l.notes}` : ""}
                 </div>
               </div>

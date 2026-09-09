@@ -86,7 +86,7 @@ export function CaseTimeline({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   return (
-    <div className="rounded-2xl border p-4 space-y-3">
+    <div className="rounded-xl border p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium">Timeline</div>
         <button
@@ -108,7 +108,7 @@ export function CaseTimeline({ caseId }: { caseId: string }) {
 
       <div className="space-y-2">
         {events.map((ev) => (
-          <div key={ev.id} className="rounded-2xl border p-3">
+          <div key={ev.id} className="rounded-xl border p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="font-medium text-sm">{titleFor(ev.type)}</div>
               <div className="text-xs text-muted-foreground">{fmt(ev.created_at)}</div>

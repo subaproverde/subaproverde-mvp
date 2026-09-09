@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BriefcaseBusiness, ChevronRight, LayoutDashboard, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ArrowUpRight, BarChart3, BriefcaseBusiness, CalendarDays, BrainCircuit, CircleDollarSign, KanbanSquare, MessageCircle, ChevronRight, LayoutDashboard, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
 import s from "./seller-home.module.css";
 
-export default function SellerHomeShell({ children, isAdmin, onConnect }: { children: ReactNode; isAdmin: boolean; onConnect: () => Promise<void> }) {
+export default function SellerHomeShell({ children, isAdmin, onConnect, mode = "seller", email }: { children: ReactNode; isAdmin: boolean; onConnect?: () => Promise<void>; mode?: "seller" | "admin"; email?: string }) {
+  const pathname = usePathname();
   const [menu, setMenu] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
@@ -30,33 +32,50 @@ export default function SellerHomeShell({ children, isAdmin, onConnect }: { chil
     window.addEventListener("keydown", keydown);
     return () => { document.body.style.overflow = previous; window.removeEventListener("keydown", keydown); trigger?.focus(); };
   }, [menu]);
+  const sellerItems = [
+    { href: "/app", label: "Resumo da conta", icon: LayoutDashboard },
+    { href: "/app/cases", label: "Meus chamados", icon: BriefcaseBusiness },
+    { href: "/app/reports", label: "Relatórios", icon: BarChart3 },
+    { href: "/app/settings", label: "Configurações", icon: Settings2 },
+  ];
+  const crmItems = [
+    { href: "/admin/crm", label: "Visão do CRM", icon: LayoutDashboard },
+    { href: "/admin/crm/funil", label: "Funil de vendas", icon: KanbanSquare },
+    { href: "/admin/crm/clientes", label: "Clientes", icon: Users },
+    { href: "/admin/crm/agenda", label: "Agenda", icon: CalendarDays },
+    { href: "/admin/crm/conversas", label: "Conversas", icon: MessageCircle },
+    { href: "/admin/crm/financeiro", label: "Financeiro", icon: CircleDollarSign },
+    { href: "/admin/crm/relatorios", label: "Relatórios do CRM", icon: BarChart3 },
+    { href: "/admin/crm/gestor-ia", label: "Gestor de IA", icon: BrainCircuit },
+    { href: "/admin/crm/inteligencia", label: "Inteligência", icon: BrainCircuit },
+  ];
+  const managementItems = [
+    { href: "/admin/dashboard", label: "Administração", icon: ShieldCheck },
+    { href: "/app/visao-geral", label: "Visão geral", icon: LayoutDashboard },
+    { href: "/admin/remocoes", label: "Remoções", icon: BriefcaseBusiness },
+    { href: "/app/sellers", label: "Sellers", icon: Users },
+    { href: "/app/influencers", label: "Influencers", icon: Users },
+  ];
+  const allItems = [...sellerItems, ...crmItems, ...managementItems];
+  const current = allItems.filter(item => pathname === item.href || pathname?.startsWith(item.href + "/")).sort((a,b)=>b.href.length-a.href.length)[0];
+  function links(items: typeof sellerItems) { return items.map(item => <Link key={item.href} href={item.href} className={current?.href === item.href ? s.activeNav : undefined} aria-current={current?.href === item.href ? "page" : undefined} onClick={() => setMenu(false)}><item.icon size={18} />{item.label}</Link>); }
   const navigation = <>
-    <span className={s.navLabel}>MEU ESPAÇO</span>
-    <Link href="/app" className={s.activeNav} aria-current="page" onClick={() => setMenu(false)}><LayoutDashboard size={18} /> Resumo da conta</Link>
-    <Link href="/app/cases"><BriefcaseBusiness size={18} /> Meus chamados</Link>
-    <Link href="/app/reports"><BarChart3 size={18} /> Relatórios</Link>
-    <Link href="/app/settings"><Settings2 size={18} /> Configurações</Link>
-    {isAdmin && <><span className={s.navLabel}>GESTÃO DA OPERAÇÃO</span>
-      <Link href="/admin/dashboard"><ShieldCheck size={18} /> Administração</Link>
-      <Link href="/app/visao-geral"><LayoutDashboard size={18} /> Visão geral</Link>
-      <Link href="/admin/remocoes"><BriefcaseBusiness size={18} /> Remoções</Link>
-      <Link href="/app/sellers"><Users size={18} /> Sellers</Link>
-      <Link href="/app/influencers"><Users size={18} /> Influencers</Link>
-    </>}
+    {mode === "admin" && isAdmin ? <><span className={s.navLabel}>CRM COMERCIAL</span>{links(crmItems)}<details className={s.navGroup}><summary>Meu espaço</summary>{links(sellerItems)}</details></> : <><span className={s.navLabel}>MEU ESPAÇO</span>{links(sellerItems)}{isAdmin && <details className={s.navGroup}><summary>CRM comercial</summary>{links(crmItems)}</details>}</>}
+    {isAdmin && <details className={s.navGroup} open={managementItems.some(item => current?.href === item.href)}><summary>Gestão da operação</summary>{links(managementItems)}</details>}
   </>;
-  return <div className={s.root}>
-    <a href="#seller-summary" className={s.skip}>Ir para o resumo</a>
+  return <div className={`${s.root} spv-workspace`} data-workspace={mode}>
+    <a href="#seller-summary" className={s.skip}>Ir para o conteúdo</a>
     <aside className={s.sidebar}>
       <Link href="/app" className={s.logo}><Image src="/brand/suba-logo.png" alt="Suba Pro Verde" width={170} height={54} priority /></Link>
-      <div className={s.workspaceLabel}>RADAR SPV <span>Painel de reputação</span></div>
-      <nav className={s.nav} aria-label="Navegação do seller">{navigation}</nav>
+      <div className={s.workspaceLabel}>RADAR SPV <span>{mode === "admin" ? "Operação e relacionamento" : "Painel de reputação"}</span></div>
+      <nav className={s.nav} aria-label="Navegação principal">{navigation}</nav>
       <div className={s.sidebarFoot}><ShieldCheck size={20} /><span>Clareza para crescer.<small>Sua operação, em perspectiva.</small></span></div>
       <Link href="/logout" className={s.logout}><LogOut size={17} /> Sair da conta</Link>
     </aside>
     <div className={s.shellPage}>
       <header className={s.topbar}>
-        <div className={s.breadcrumb}><button className={s.menuButton} ref={menuButton} aria-label="Abrir menu" aria-expanded={menu} onClick={() => setMenu(true)}><Menu size={21} /></button><span>Meu espaço</span><ChevronRight size={13} /><strong>Resumo</strong></div>
-        <button className={s.connect} disabled={connecting} onClick={async () => { setConnecting(true); setError(""); try { await onConnect(); } catch { setError("Não foi possível conectar. Tente novamente."); } finally { setConnecting(false); } }}>{connecting ? "Conectando…" : "Acessar Mercado Livre"}<ArrowUpRight size={16} /></button>
+        <div className={s.breadcrumb}><button className={s.menuButton} ref={menuButton} aria-label="Abrir menu" aria-expanded={menu} onClick={() => setMenu(true)}><Menu size={21} /></button><span>{mode === "admin" ? "Operação" : "Meu espaço"}</span><ChevronRight size={13} /><strong>{current?.label ?? "Radar SPV"}</strong></div>
+        {onConnect ? <button className={s.connect} disabled={connecting} onClick={async () => { setConnecting(true); setError(""); try { await onConnect(); } catch { setError("Não foi possível conectar. Tente novamente."); } finally { setConnecting(false); } }}>{connecting ? "Conectando…" : "Acessar Mercado Livre"}<ArrowUpRight size={16} /></button> : <span className={s.accountLabel}>{email || "Suba Pro Verde"}<small>Administração</small></span>}
       </header>
       {error && <p role="alert" className={s.connectionError}>{error}</p>}
       <main id="seller-summary" className={s.main}>{children}</main>

@@ -43,7 +43,7 @@ export function KanbanBoard({ columns, items, onOpen, onMove, renderCard }: Prop
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
       {columns.map((col) => (
-        <div key={col.key} className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+        <div key={col.key} className="rounded-xl border bg-spv-surface shadow-sm overflow-hidden">
           <div className="p-4 border-b flex justify-between">
             <div className="font-medium">{col.label}</div>
             <div className="text-xs text-muted-foreground">{byStatus[col.key]?.length ?? 0}</div>

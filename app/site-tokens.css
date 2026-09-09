@@ -1,0 +1,44 @@
+/* Shared visual system: Graphite + the green from the Suba Pro Verde logo. */
+:root {
+  --spv-page: #1d2224; --spv-surface: #262c2e; --spv-raised: #303739; --spv-sidebar: #171c1e;
+  --spv-ink: #eeeee7; --spv-muted: #b0b7b5; --spv-line: #3b4345; --spv-accent: #60b838; --spv-accent-text: #9ad782; --spv-accent-soft: #2b352b; --spv-on-accent: #15200f;
+  --background: var(--spv-page); --foreground: var(--spv-ink); color-scheme: dark;
+}
+html[data-spv-theme="light"] {
+  --spv-page: #eef0ec; --spv-surface: #fafbf7; --spv-raised: #e5e9e2; --spv-sidebar: #e4e8e0;
+  --spv-ink: #202a24; --spv-muted: #526257; --spv-line: #ced5cb; --spv-accent-text: #356720; --spv-accent-soft: #e0ecd8; color-scheme: light;
+  --color-rose-100:#9f183f; --color-rose-200:#9f183f; --color-rose-300:#a51d46; --color-rose-400:#b4244f;
+  --color-red-100:#9e2323; --color-red-200:#9e2323; --color-red-300:#a52727; --color-red-400:#b82b2b;
+  --color-amber-100:#805209; --color-amber-200:#805209; --color-amber-300:#805209;
+  --color-sky-100:#125a80; --color-sky-200:#125a80; --color-sky-300:#125a80;
+  --color-violet-100:#65429a; --color-violet-200:#65429a; --color-violet-300:#65429a;
+}
+@theme inline {
+  --color-background: var(--spv-page); --color-foreground: var(--spv-ink);
+  --color-spv-page: var(--spv-page); --color-spv-surface: var(--spv-surface); --color-spv-raised: var(--spv-raised); --color-spv-sidebar: var(--spv-sidebar);
+  --color-spv-ink: var(--spv-ink); --color-spv-muted: var(--spv-muted); --color-spv-line: var(--spv-line); --color-spv-accent: var(--spv-accent); --color-spv-accent-text: var(--spv-accent-text); --color-spv-accent-soft: var(--spv-accent-soft); --color-spv-on-accent: var(--spv-on-accent);
+  --font-sans: var(--font-geist-sans); --font-mono: var(--font-geist-mono);
+  --color-emerald-50: #eaf7e2; --color-emerald-100: #d4edc6; --color-emerald-200: #b3e59f; --color-emerald-300: #9ad782; --color-emerald-400: #60b838; --color-emerald-500: #4e9f2b; --color-emerald-600: #3e8023; --color-emerald-700: #326920; --color-emerald-800: #28541c; --color-emerald-900: #203e1c; --color-emerald-950: #15200f;
+}
+html, body { min-height: 100%; height: 100%; }
+body { margin: 0; background: var(--spv-page); color: var(--spv-ink); font-family: var(--font-geist-sans), sans-serif; overflow-x: clip; }
+:where(h1,h2,h3) { text-wrap: balance; letter-spacing: -.025em; }
+:where(button,a,input,select,textarea,summary):focus-visible { outline: 2px solid var(--spv-accent-text); outline-offset: 3px; }
+:where(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea) { color: var(--spv-ink); background-color: var(--spv-surface); border-color: var(--spv-line); }
+:where(input,textarea)::placeholder { color: var(--spv-muted); opacity: .8; }
+:where(select option) { color: var(--spv-ink); background: var(--spv-surface); }
+:where(input[type=checkbox],input[type=radio]) { accent-color: var(--spv-accent); }
+* { scrollbar-width: thin; scrollbar-color: #647268 transparent; }
+::selection { background: #467534; color: #fff; }
+.glass-card { background: var(--spv-surface); border: 1px solid var(--spv-line); box-shadow: none; border-radius: 12px; }
+.lift-card { transition: border-color .18s, transform .18s; }
+.lift-card:hover { transform: translateY(-2px); border-color: var(--spv-accent-text); }
+.spv-dark-surface { background: var(--spv-surface); }
+.input-finance { width:100%; min-height:44px; border:1px solid var(--spv-line); border-radius:8px; background:var(--spv-surface); color:var(--spv-ink); padding:.65rem .8rem; }
+.spv-brand-image { background:#f2f4ef; border-radius:8px; padding:8px; object-fit:contain; }
+.spv-workspace h1 { font-weight: 550; }
+.spv-workspace table { font-size: 13px; }
+.spv-workspace th { font-weight: 550; }
+.spv-workspace :where(pre) { white-space: pre-wrap; overflow-wrap:anywhere; }
+@media (pointer:coarse) { input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea { font-size:16px !important; } }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }

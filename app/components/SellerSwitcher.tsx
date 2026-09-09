@@ -198,7 +198,7 @@ export default function SellerSwitcher({ variant = "default" }: { variant?: "def
   if (loading) {
     if (variant === "graphite") return <span className={g.trigger}>Carregando seller…</span>;
     return (
-      <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60">
+      <div className="inline-flex items-center rounded-xl border border-spv-line bg-spv-surface px-3 py-2 text-sm text-spv-muted">
         Carregando seller...
       </div>
     );
@@ -207,7 +207,7 @@ export default function SellerSwitcher({ variant = "default" }: { variant?: "def
   if (!items.length) {
     if (variant === "graphite") return <span className={g.trigger}>Sem sellers</span>;
     return (
-      <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60">
+      <div className="inline-flex items-center rounded-xl border border-spv-line bg-spv-surface px-3 py-2 text-sm text-spv-muted">
         Sem sellers
       </div>
     );
@@ -225,16 +225,16 @@ export default function SellerSwitcher({ variant = "default" }: { variant?: "def
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={switching}
-        className="inline-flex min-w-[220px] items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-left text-sm text-white/90 hover:bg-white/10 disabled:opacity-60"
+        className="inline-flex min-w-[220px] items-center justify-between gap-3 rounded-xl border border-spv-line bg-spv-surface px-4 py-2 text-left text-sm text-spv-ink hover:bg-spv-raised disabled:opacity-60"
       >
         <div className="min-w-0">
-          <div className="text-[11px] text-white/50">Seller ativo</div>
+          <div className="text-[11px] text-spv-muted">Seller ativo</div>
           <div className="truncate font-semibold">
             {activeSeller?.nickname || activeSeller?.sellerId || "Selecionar"}
           </div>
         </div>
 
-        <div className="shrink-0 text-white/50">{switching ? "..." : "▾"}</div>
+        <div className="shrink-0 text-spv-muted">{switching ? "..." : "▾"}</div>
       </button>
 
       {mounted && open
@@ -242,11 +242,11 @@ export default function SellerSwitcher({ variant = "default" }: { variant?: "def
             <div
               ref={wrapRef}
               style={menuStyle}
-              className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f1620] shadow-[0_20px_80px_rgba(0,0,0,0.45)]"
+              className="overflow-hidden rounded-xl border border-spv-line bg-spv-page shadow-none"
             >
-              <div className="border-b border-white/10 px-4 py-3">
-                <div className="text-sm font-semibold text-white">Selecionar seller</div>
-                <div className="text-xs text-white/50">
+              <div className="border-b border-spv-line px-4 py-3">
+                <div className="text-sm font-semibold text-spv-ink">Selecionar seller</div>
+                <div className="text-xs text-spv-muted">
                   Escolha qual operação deseja visualizar
                 </div>
               </div>
@@ -263,8 +263,8 @@ export default function SellerSwitcher({ variant = "default" }: { variant?: "def
                       className={[
                         "mb-2 w-full rounded-xl border px-3 py-3 text-left transition",
                         active
-                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
-                          : "border-white/10 bg-white/5 text-white/85 hover:bg-white/10",
+                          ? "border-emerald-400/30 bg-emerald-400/10 text-spv-accent-text"
+                          : "border-spv-line bg-spv-surface text-spv-ink hover:bg-spv-raised",
                       ].join(" ")}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -272,18 +272,18 @@ export default function SellerSwitcher({ variant = "default" }: { variant?: "def
                           <div className="truncate text-sm font-semibold">
                             {item.nickname || "Seller sem nickname"}
                           </div>
-                          <div className="mt-1 truncate text-[11px] text-white/50">
+                          <div className="mt-1 truncate text-[11px] text-spv-muted">
                             sellerId: {item.sellerId}
                           </div>
                           {item.ml_user_id ? (
-                            <div className="truncate text-[11px] text-white/40">
+                            <div className="truncate text-[11px] text-spv-muted">
                               ml_user_id: {item.ml_user_id}
                             </div>
                           ) : null}
                         </div>
 
                         {active ? (
-                          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-emerald-100">
+                          <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-spv-accent-text">
                             ATIVO
                           </span>
                         ) : null}

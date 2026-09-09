@@ -323,14 +323,14 @@ export default function NotificationCenter({
     : "Nenhum evento futuro";
 
   return (
-    <section className="rounded-2xl border border-sky-300/18 bg-sky-400/[0.055] p-4">
+    <section className="rounded-xl border border-sky-300/18 bg-sky-400/[0.055] p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink">
             <BellRing className="h-4 w-4 text-sky-100" aria-hidden={true} />
             Central de alertas
           </div>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-white/50">
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-spv-muted">
             Resumo diário no WhatsApp, push no Chrome com som e lembretes 30, 10, 5 e 1 minuto antes.
           </p>
         </div>
@@ -347,7 +347,7 @@ export default function NotificationCenter({
           <button
             type="button"
             onClick={testChromeAlert}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 text-xs font-semibold text-white/72 transition hover:bg-white/[0.08]"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-3 text-xs font-semibold text-spv-ink transition hover:bg-spv-raised"
           >
             <Play className="h-3.5 w-3.5" aria-hidden={true} />
             Testar alerta
@@ -364,13 +364,13 @@ export default function NotificationCenter({
       </div>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr_.85fr]">
-        <div className="rounded-xl border border-white/10 bg-black/18 p-3">
+        <div className="rounded-xl border border-spv-line bg-spv-page p-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs text-white/45">Próximo evento</div>
-              <div className="mt-1 text-sm font-semibold text-white">{nextReminderText}</div>
+              <div className="text-xs text-spv-muted">Próximo evento</div>
+              <div className="mt-1 text-sm font-semibold text-spv-ink">{nextReminderText}</div>
             </div>
-            <Clock3 className="h-4 w-4 text-white/45" aria-hidden={true} />
+            <Clock3 className="h-4 w-4 text-spv-muted" aria-hidden={true} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {REMINDER_WINDOWS.map((minutes) => (
@@ -384,9 +384,9 @@ export default function NotificationCenter({
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/18 p-3">
+        <div className="rounded-xl border border-spv-line bg-spv-page p-3">
           <div className="flex items-center justify-between gap-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-white/78">
+            <label className="flex items-center gap-2 text-sm font-medium text-spv-ink">
               <input
                 type="checkbox"
                 checked={soundEnabled}
@@ -395,9 +395,9 @@ export default function NotificationCenter({
               />
               Som nos alertas
             </label>
-            <Volume2 className="h-4 w-4 text-white/45" aria-hidden={true} />
+            <Volume2 className="h-4 w-4 text-spv-muted" aria-hidden={true} />
           </div>
-          <label className="mt-3 flex items-center gap-2 text-sm font-medium text-white/78">
+          <label className="mt-3 flex items-center gap-2 text-sm font-medium text-spv-ink">
             <input
               type="checkbox"
               checked={whatsappEnabled}
@@ -409,7 +409,7 @@ export default function NotificationCenter({
           <input
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
-            className="mt-3 h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none"
+            className="mt-3 h-10 w-full rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none"
             aria-label="WhatsApp para alertas"
           />
         </div>
@@ -419,15 +419,15 @@ export default function NotificationCenter({
             "rounded-xl border p-3",
             sendState.kind === "success" && "border-emerald-300/18 bg-emerald-400/10",
             sendState.kind === "error" && "border-rose-300/18 bg-rose-400/10",
-            sendState.kind === "idle" && "border-white/10 bg-black/18"
+            sendState.kind === "idle" && "border-spv-line bg-spv-page"
           )}
         >
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <CheckCircle2 className="h-4 w-4 text-emerald-100" aria-hidden={true} />
+          <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink">
+            <CheckCircle2 className="h-4 w-4 text-spv-accent-text" aria-hidden={true} />
             Status
           </div>
-          <p className="mt-2 text-xs leading-5 text-white/52">{sendState.text}</p>
-          <p className="mt-2 text-[11px] leading-4 text-white/35">
+          <p className="mt-2 text-xs leading-5 text-spv-muted">{sendState.text}</p>
+          <p className="mt-2 text-[11px] leading-4 text-spv-muted">
             Hoje: {todayAppointments.length} agendamento(s). WhatsApp:{" "}
             {whatsappConfig.mode === "live-ready" ? "live pronto" : "mock"}.
             {whatsappConfig.templateName ? ` Template: ${whatsappConfig.templateName}.` : ""}
@@ -440,11 +440,11 @@ export default function NotificationCenter({
         </div>
       </div>
 
-      <details className="mt-3 rounded-xl border border-white/10 bg-black/18 p-3">
-        <summary className="cursor-pointer text-xs font-semibold text-white/70">
+      <details className="mt-3 rounded-xl border border-spv-line bg-spv-page p-3">
+        <summary className="cursor-pointer text-xs font-semibold text-spv-ink">
           Ver resumo que será enviado
         </summary>
-        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-black/30 p-3 text-xs leading-5 text-white/60">
+        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-spv-page p-3 text-xs leading-5 text-spv-muted">
           {dailySummary}
         </pre>
       </details>

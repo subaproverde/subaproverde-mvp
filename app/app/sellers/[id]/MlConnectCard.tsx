@@ -36,17 +36,17 @@ export default function MlConnectCard({ sellerId }: { sellerId: string }) {
   const connected = !!mlUser;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+    <div className="rounded-xl border border-spv-line bg-spv-page p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-white/90 font-semibold">Mercado Livre</div>
-          <div className="text-white/60 text-sm">
+          <div className="text-spv-ink font-semibold">Mercado Livre</div>
+          <div className="text-spv-muted text-sm">
             {meLoading ? "Verificando conexão..." : connected ? "Conectado ✓" : "Não conectado"}
           </div>
         </div>
 
         {connected ? (
-          <span className="text-xs px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-100">
+          <span className="text-xs px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 text-spv-accent-text">
             Conectado ✓
           </span>
         ) : (
@@ -59,7 +59,7 @@ export default function MlConnectCard({ sellerId }: { sellerId: string }) {
       <div className="mt-4 grid gap-2">
         <button
           onClick={loadMe}
-          className="w-full rounded-xl px-4 py-2 border border-white/10 bg-transparent text-white/70 hover:bg-white/5"
+          className="w-full rounded-xl px-4 py-2 border border-spv-line bg-transparent text-spv-ink hover:bg-spv-raised"
         >
           Recarregar status
         </button>

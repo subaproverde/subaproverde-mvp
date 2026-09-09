@@ -210,15 +210,15 @@ export default function ConversationsClient() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <Link href="/admin/crm" className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-200/75 hover:text-emerald-100">
+          <Link href="/admin/crm" className="inline-flex items-center gap-1.5 text-xs font-medium text-spv-accent-text hover:text-spv-accent-text">
             <ArrowLeft className="h-3.5 w-3.5" /> Visão geral do CRM
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Conversas do WhatsApp</h1>
-          <p className="mt-1 text-sm text-white/45">Atenda, assuma ou devolva conversas para a Bia sem sair do CRM.</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-spv-ink">Conversas do WhatsApp</h1>
+          <p className="mt-1 text-sm text-spv-muted">Atenda, assuma ou devolva conversas para a Bia sem sair do CRM.</p>
         </div>
         <div className="flex items-center gap-3 self-start">
-          <div className="flex items-center gap-2 text-xs text-emerald-200/65"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-45" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>Ao vivo{lastSyncAt ? ` · ${lastSyncAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}</div>
-          <button type="button" onClick={() => { void loadList(); if (selectedId) void loadDetail(selectedId); }} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 text-sm text-white/70 hover:bg-white/[0.09]">
+          <div className="flex items-center gap-2 text-xs text-spv-accent-text"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-45" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>Ao vivo{lastSyncAt ? ` · ${lastSyncAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}</div>
+          <button type="button" onClick={() => { void loadList(); if (selectedId) void loadDetail(selectedId); }} className="inline-flex h-10 items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-3.5 text-sm text-spv-ink hover:bg-spv-raised">
             <RefreshCw className="h-4 w-4" /> Atualizar
           </button>
         </div>
@@ -226,102 +226,102 @@ export default function ConversationsClient() {
 
       {notice ? <div className="rounded-xl border border-emerald-300/14 bg-emerald-300/[0.07] px-4 py-3 text-sm text-emerald-50/80">{notice}</div> : null}
 
-      <div className="grid h-[70dvh] min-h-[520px] min-w-0 overflow-hidden rounded-[20px] border border-white/10 bg-[#07100d]/90 sm:rounded-[24px] lg:h-[calc(100dvh-10.5rem)] lg:max-h-[920px] lg:min-h-[620px] lg:grid-cols-[330px_minmax(0,1fr)]">
-        <aside className={`${mobileChatOpen ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 flex-col border-b border-white/10 lg:border-b-0 lg:border-r`}>
-          <div className="border-b border-white/10 p-3.5">
-            <label className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 text-white/45">
+      <div className="grid h-[70dvh] min-h-[520px] min-w-0 overflow-hidden rounded-xl border border-spv-line bg-spv-page sm:rounded-xl lg:h-[calc(100dvh-10.5rem)] lg:max-h-[920px] lg:min-h-[620px] lg:grid-cols-[330px_minmax(0,1fr)]">
+        <aside className={`${mobileChatOpen ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 flex-col border-b border-spv-line lg:border-b-0 lg:border-r`}>
+          <div className="border-b border-spv-line p-3.5">
+            <label className="flex h-10 items-center gap-2 rounded-xl border border-spv-line bg-spv-page px-3 text-spv-muted">
               <Search className="h-4 w-4" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cliente ou mensagem" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cliente ou mensagem" className="min-w-0 flex-1 bg-transparent text-sm text-spv-ink outline-none placeholder:text-spv-muted" />
             </label>
             <div className="mt-2.5 flex gap-1.5">
               {([['all', 'Todas'], ['unread', 'Não lidas'], ['human', 'Comigo']] as const).map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${filter === value ? "bg-emerald-300/12 text-emerald-100" : "text-white/42 hover:bg-white/[0.05]"}`}>{label}</button>
+                <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${filter === value ? "bg-emerald-300/12 text-spv-accent-text" : "text-spv-muted hover:bg-spv-raised"}`}>{label}</button>
               ))}
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading ? <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-emerald-200" /></div> : filtered.length ? filtered.map((item) => (
-              <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setMobileChatOpen(true); }} className={`w-full border-b border-white/[0.06] p-3.5 text-left transition ${selectedId === item.id ? "bg-emerald-300/[0.08]" : "hover:bg-white/[0.035]"}`}>
+            {loading ? <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-spv-accent-text" /></div> : filtered.length ? filtered.map((item) => (
+              <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setMobileChatOpen(true); }} className={`w-full border-b border-spv-line p-3.5 text-left transition ${selectedId === item.id ? "bg-emerald-300/[0.08]" : "hover:bg-spv-raised"}`}>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300/20 to-cyan-300/10 text-sm font-semibold text-emerald-100">{displayName(item.contactName, item.phone).slice(0, 1).toUpperCase()}</div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-300/20 to-cyan-300/10 text-sm font-semibold text-spv-accent-text">{displayName(item.contactName, item.phone).slice(0, 1).toUpperCase()}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold text-white/88">{displayName(item.contactName, item.phone)}</span><span className="shrink-0 text-[10px] text-white/28">{relativeTime(item.last_message_at)}</span></div>
-                    <p className="mt-1 truncate text-xs text-white/42">{item.latestMessage?.direction === "outbound" ? "Você: " : ""}{item.latestMessage?.text || "Sem prévia"}</p>
-                    <div className="mt-2 flex items-center gap-2">{item.assistant_mode === "human" ? <span className="text-[10px] text-amber-200/75">Atendimento com você</span> : <span className="text-[10px] text-emerald-200/55">Bia ativa</span>}<span className={`text-[10px] ${item.latestAnalysisAt ? "text-cyan-200/55" : "text-white/25"}`}>{item.latestAnalysisAt ? "· analisada" : "· não analisada"}</span></div>
+                    <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold text-spv-ink">{displayName(item.contactName, item.phone)}</span><span className="shrink-0 text-[10px] text-spv-muted">{relativeTime(item.last_message_at)}</span></div>
+                    <p className="mt-1 truncate text-xs text-spv-muted">{item.latestMessage?.direction === "outbound" ? "Você: " : ""}{item.latestMessage?.text || "Sem prévia"}</p>
+                    <div className="mt-2 flex items-center gap-2">{item.assistant_mode === "human" ? <span className="text-[10px] text-amber-200/75">Atendimento com você</span> : <span className="text-[10px] text-spv-accent-text">Bia ativa</span>}<span className={`text-[10px] ${item.latestAnalysisAt ? "text-cyan-200/55" : "text-spv-muted"}`}>{item.latestAnalysisAt ? "· analisada" : "· não analisada"}</span></div>
                   </div>
                   {item.unread_count ? <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-400 px-1.5 text-[10px] font-bold text-[#042014]">{item.unread_count}</span> : null}
                 </div>
               </button>
-            )) : <div className="px-5 py-16 text-center text-sm text-white/35">Nenhuma conversa encontrada.</div>}
+            )) : <div className="px-5 py-16 text-center text-sm text-spv-muted">Nenhuma conversa encontrada.</div>}
           </div>
         </aside>
 
-        {!selectedId ? <div className="flex items-center justify-center p-8 text-white/35"><MessageCircle className="mr-2 h-5 w-5" /> Selecione uma conversa</div> : detailLoading && !detail ? <div className="flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-200" /></div> : (
+        {!selectedId ? <div className="flex items-center justify-center p-8 text-spv-muted"><MessageCircle className="mr-2 h-5 w-5" /> Selecione uma conversa</div> : detailLoading && !detail ? <div className="flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-spv-accent-text" /></div> : (
           <div className={`${mobileChatOpen ? "grid" : "hidden lg:grid"} min-h-0 min-w-0 xl:grid-cols-[minmax(0,1fr)_300px]`}>
-            <main className="flex min-h-0 min-w-0 flex-col border-r-0 border-white/10 xl:border-r">
-              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-4 sm:py-3.5">
-                <div className="flex min-w-0 items-center gap-2"><button type="button" onClick={() => setMobileChatOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/55 lg:hidden" aria-label="Voltar para conversas"><ArrowLeft className="h-4 w-4" /></button><div className="min-w-0"><div className="truncate font-semibold text-white">{displayName(detail?.contact.name || currentItem?.contactName || "", detail?.contact.phone || currentItem?.phone || "")}</div><div className="mt-0.5 truncate text-xs text-white/36">{formatPhone(detail?.contact.phone || currentItem?.phone || "")} · {stageLabel(detail?.lead?.stage || currentItem?.leadStage || "new")}</div></div></div>
+            <main className="flex min-h-0 min-w-0 flex-col border-r-0 border-spv-line xl:border-r">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-b border-spv-line px-3 py-3 sm:px-4 sm:py-3.5">
+                <div className="flex min-w-0 items-center gap-2"><button type="button" onClick={() => setMobileChatOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-spv-line text-spv-muted lg:hidden" aria-label="Voltar para conversas"><ArrowLeft className="h-4 w-4" /></button><div className="min-w-0"><div className="truncate font-semibold text-spv-ink">{displayName(detail?.contact.name || currentItem?.contactName || "", detail?.contact.phone || currentItem?.phone || "")}</div><div className="mt-0.5 truncate text-xs text-spv-muted">{formatPhone(detail?.contact.phone || currentItem?.phone || "")} · {stageLabel(detail?.lead?.stage || currentItem?.leadStage || "new")}</div></div></div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => void runAction("mark_read")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs text-white/60 hover:bg-white/[0.06]"><CheckCheck className="h-3.5 w-3.5" /> Lida</button>
-                  <button type="button" onClick={() => void runAction("follow_up")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs text-white/60 hover:bg-white/[0.06]"><Clock3 className="h-3.5 w-3.5" /> Follow-up</button>
+                  <button type="button" onClick={() => void runAction("mark_read")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-spv-line px-2.5 text-xs text-spv-muted hover:bg-spv-raised"><CheckCheck className="h-3.5 w-3.5" /> Lida</button>
+                  <button type="button" onClick={() => void runAction("follow_up")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-spv-line px-2.5 text-xs text-spv-muted hover:bg-spv-raised"><Clock3 className="h-3.5 w-3.5" /> Follow-up</button>
                   {detail?.conversation.assistant_mode === "human" ? (
-                    <button type="button" onClick={() => void runAction("return_to_bia")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-300/12 px-2.5 text-xs font-medium text-emerald-100"><RotateCcw className="h-3.5 w-3.5" /> Devolver à Bia</button>
+                    <button type="button" onClick={() => void runAction("return_to_bia")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-300/12 px-2.5 text-xs font-medium text-spv-accent-text"><RotateCcw className="h-3.5 w-3.5" /> Devolver à Bia</button>
                   ) : (
                     <button type="button" onClick={() => void runAction("take_over")} disabled={Boolean(acting)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-amber-300/10 px-2.5 text-xs font-medium text-amber-100"><Hand className="h-3.5 w-3.5" /> Assumir</button>
                   )}
                 </div>
               </header>
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.045),transparent_38%)] p-4 sm:p-6">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-spv-surface p-4 sm:p-6">
                 {detail?.messages.map((item) => {
                   const outbound = item.direction === "outbound";
                   const text = item.transcription || item.body || `[${item.message_type}]`;
                   return <div key={item.id} className={`flex ${outbound ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm sm:max-w-[72%] ${outbound ? "rounded-br-md bg-emerald-500/18 text-emerald-50" : "rounded-bl-md border border-white/[0.07] bg-white/[0.055] text-white/82"}`}>
-                      {item.message_type !== "text" ? <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35">{item.message_type === "audio" ? "Áudio transcrito" : item.message_type}</div> : null}
+                    <div className={`max-w-[86%] rounded-xl px-3.5 py-2.5 text-sm shadow-sm sm:max-w-[72%] ${outbound ? "rounded-br-md bg-emerald-500/18 text-emerald-50" : "rounded-bl-md border border-spv-line bg-spv-surface text-spv-ink"}`}>
+                      {item.message_type !== "text" ? <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-spv-muted">{item.message_type === "audio" ? "Áudio transcrito" : item.message_type}</div> : null}
                       <p className="whitespace-pre-wrap leading-5">{text}</p>
-                      <div className={`mt-1.5 flex items-center gap-1 text-[10px] ${outbound ? "justify-end text-emerald-100/42" : "text-white/28"}`}>{outbound ? (item.sender_type === "operator" ? "Bruno" : "Bia") : "Cliente"} · {dateTime.format(new Date(item.occurred_at))}</div>
+                      <div className={`mt-1.5 flex items-center gap-1 text-[10px] ${outbound ? "justify-end text-spv-accent-text" : "text-spv-muted"}`}>{outbound ? (item.sender_type === "operator" ? "Bruno" : "Bia") : "Cliente"} · {dateTime.format(new Date(item.occurred_at))}</div>
                     </div>
                   </div>;
                 })}
-                {!detail?.messages.length ? <div className="py-20 text-center text-sm text-white/32">Ainda não há mensagens nesta conversa.</div> : null}
+                {!detail?.messages.length ? <div className="py-20 text-center text-sm text-spv-muted">Ainda não há mensagens nesta conversa.</div> : null}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t border-white/10 p-3.5">
-                <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/25 p-2">
-                  <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} rows={2} maxLength={4000} placeholder="Escreva para o cliente…" className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-5 text-white outline-none placeholder:text-white/28" />
+              <div className="border-t border-spv-line p-3.5">
+                <div className="flex items-end gap-2 rounded-xl border border-spv-line bg-spv-page p-2">
+                  <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} rows={2} maxLength={4000} placeholder="Escreva para o cliente…" className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-5 text-spv-ink outline-none placeholder:text-spv-muted" />
                   <button type="button" onClick={() => void sendMessage()} disabled={!message.trim() || sending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400 text-[#062417] transition hover:bg-emerald-300 disabled:opacity-35">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button>
                 </div>
-                <div className="mt-1.5 px-1 text-[10px] text-white/27">Enter envia · Shift + Enter quebra a linha · envio pelo mesmo WhatsApp da Suba</div>
+                <div className="mt-1.5 px-1 text-[10px] text-spv-muted">Enter envia · Shift + Enter quebra a linha · envio pelo mesmo WhatsApp da Suba</div>
               </div>
             </main>
 
             <aside className="hidden min-h-0 space-y-4 overflow-y-auto p-4 xl:block">
-              <section className="rounded-2xl border border-emerald-300/12 bg-emerald-300/[0.045] p-4">
+              <section className="rounded-xl border border-emerald-300/12 bg-emerald-300/[0.045] p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-white"><BrainCircuit className="h-4 w-4 text-emerald-300" /> Resumo da Bia</div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink"><BrainCircuit className="h-4 w-4 text-spv-accent-text" /> Resumo da Bia</div>
                   <Link href="/admin/crm#inteligencia" className="text-[10px] font-medium text-cyan-200/65 hover:text-cyan-100">Revisar</Link>
                 </div>
-                {latestRun ? <div className="mt-3"><div className="flex items-center justify-between gap-2"><span className="rounded bg-white/[0.05] px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-white/46">{latestRun.decision}</span><span className="text-sm font-semibold text-emerald-200">{Math.round(Number(latestRun.confidence) * 100)}%</span></div><p className="mt-2 text-xs leading-5 text-white/52">{latestRun.reason}</p><div className="mt-2 text-[10px] text-white/28">{latestRun.model || "regra determinística"} · {latestRun.provider}</div></div> : <p className="mt-3 text-xs leading-5 text-white/38">Ainda não analisada. O histórico já está salvo e aguardará a Bia.</p>}
-                <div className="my-3 border-t border-white/[0.07]" />
-                <div className="flex items-center gap-2 text-xs font-semibold text-white/65"><Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Dados captados</div>
+                {latestRun ? <div className="mt-3"><div className="flex items-center justify-between gap-2"><span className="rounded bg-spv-surface px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-spv-muted">{latestRun.decision}</span><span className="text-sm font-semibold text-spv-accent-text">{Math.round(Number(latestRun.confidence) * 100)}%</span></div><p className="mt-2 text-xs leading-5 text-spv-muted">{latestRun.reason}</p><div className="mt-2 text-[10px] text-spv-muted">{latestRun.model || "regra determinística"} · {latestRun.provider}</div></div> : <p className="mt-3 text-xs leading-5 text-spv-muted">Ainda não analisada. O histórico já está salvo e aguardará a Bia.</p>}
+                <div className="my-3 border-t border-spv-line" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-spv-muted"><Sparkles className="h-3.5 w-3.5 text-cyan-300" /> Dados captados</div>
                 <div className="mt-2.5 space-y-2">
                   {detail?.intelligence.suggestions.length ? detail.intelligence.suggestions.slice(0, 8).map((item) => (
-                    <div key={item.id} className="rounded-xl bg-black/20 p-2.5">
-                      <div className="flex items-start justify-between gap-2"><div className="text-xs font-medium text-white/72">{item.title}</div><span className={`rounded px-1.5 py-0.5 text-[9px] ${item.status === "pending" ? "bg-amber-300/10 text-amber-100/75" : "bg-emerald-300/10 text-emerald-100/70"}`}>{item.status === "pending" ? "aguarda revisão" : item.status}</span></div>
-                      <div className="mt-1 text-[11px] leading-4 text-white/40">{item.description || item.evidence || item.category}</div>
+                    <div key={item.id} className="rounded-xl bg-spv-page p-2.5">
+                      <div className="flex items-start justify-between gap-2"><div className="text-xs font-medium text-spv-ink">{item.title}</div><span className={`rounded px-1.5 py-0.5 text-[9px] ${item.status === "pending" ? "bg-amber-300/10 text-amber-100/75" : "bg-emerald-300/10 text-spv-accent-text"}`}>{item.status === "pending" ? "aguarda revisão" : item.status}</span></div>
+                      <div className="mt-1 text-[11px] leading-4 text-spv-muted">{item.description || item.evidence || item.category}</div>
                     </div>
                   )) : detail?.intelligence.facts.length ? detail.intelligence.facts.slice(0, 8).map((fact) => (
-                    <div key={fact.id} className="rounded-xl bg-black/20 p-2.5"><div className="text-xs font-medium text-white/72">{fact.fact_key}</div><div className="mt-1 text-[11px] text-white/40">{String(fact.fact_value?.valueText || fact.evidence || fact.fact_type)}</div></div>
-                  )) : <div className="text-xs leading-5 text-white/34">Nenhum fato estruturado registrado.</div>}
+                    <div key={fact.id} className="rounded-xl bg-spv-page p-2.5"><div className="text-xs font-medium text-spv-ink">{fact.fact_key}</div><div className="mt-1 text-[11px] text-spv-muted">{String(fact.fact_value?.valueText || fact.evidence || fact.fact_type)}</div></div>
+                  )) : <div className="text-xs leading-5 text-spv-muted">Nenhum fato estruturado registrado.</div>}
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white"><UserRound className="h-4 w-4 text-violet-300" /> Operação</div>
+              <section className="rounded-xl border border-spv-line bg-spv-surface p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-spv-ink"><UserRound className="h-4 w-4 text-violet-300" /> Operação</div>
                 <div className="mt-3 grid grid-cols-2 gap-2"><SmallStat label="Pedidos" value={String(detail?.orders.length || 0)} /><SmallStat label="Tarefas" value={String(detail?.tasks.filter((task) => task.status === "pending").length || 0)} /></div>
-                {detail?.orders[0] ? <div className="mt-2.5 rounded-xl bg-black/20 p-2.5 text-xs text-white/48">Último pedido: <span className="font-semibold text-white/72">{money.format(Number(detail.orders[0].total_amount))}</span> · {detail.orders[0].status}</div> : null}
+                {detail?.orders[0] ? <div className="mt-2.5 rounded-xl bg-spv-page p-2.5 text-xs text-spv-muted">Último pedido: <span className="font-semibold text-spv-ink">{money.format(Number(detail.orders[0].total_amount))}</span> · {detail.orders[0].status}</div> : null}
               </section>
             </aside>
           </div>
@@ -332,5 +332,5 @@ export default function ConversationsClient() {
 }
 
 function SmallStat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl bg-black/20 p-2.5 text-center"><div className="text-[10px] uppercase tracking-[0.1em] text-white/28">{label}</div><div className="mt-1 text-lg font-semibold text-white/78">{value}</div></div>;
+  return <div className="rounded-xl bg-spv-page p-2.5 text-center"><div className="text-[10px] uppercase tracking-[0.1em] text-spv-muted">{label}</div><div className="mt-1 text-lg font-semibold text-spv-ink">{value}</div></div>;
 }

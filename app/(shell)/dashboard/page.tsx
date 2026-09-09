@@ -66,12 +66,12 @@ function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-gray-100">
+    <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-spv-line">
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="rounded-xl border border-spv-line bg-spv-surface px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Anterior
       </button>
@@ -87,8 +87,8 @@ function Pagination({
               className={[
                 "min-w-[40px] rounded-xl px-3 py-2 text-sm border",
                 active
-                  ? "border-green-600 bg-green-600 text-white"
-                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
+                  ? "border-green-600 bg-green-600 text-spv-ink"
+                  : "border-spv-line bg-spv-surface text-spv-ink hover:bg-spv-raised",
               ].join(" ")}
             >
               {page}
@@ -101,7 +101,7 @@ function Pagination({
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="rounded-xl border border-spv-line bg-spv-surface px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Próximo
       </button>
@@ -309,11 +309,11 @@ export default function DashboardHome() {
   if (!userId) {
     return (
       <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Início</h1>
-        <p className="text-sm text-gray-500">Você não está logado.</p>
+        <h1 className="text-2xl font-semibold text-spv-ink">Início</h1>
+        <p className="text-sm text-spv-muted">Você não está logado.</p>
         <Link
           href="/login"
-          className="inline-block rounded-xl bg-white px-4 py-2 text-sm shadow-sm border border-gray-200 hover:bg-gray-50"
+          className="inline-block rounded-xl bg-spv-surface px-4 py-2 text-sm shadow-sm border border-spv-line hover:bg-spv-raised"
         >
           Ir para Login
         </Link>
@@ -324,8 +324,8 @@ export default function DashboardHome() {
   if (!sellerId) {
     return (
       <div className="p-6 space-y-2">
-        <h1 className="text-2xl font-semibold text-gray-900">Início</h1>
-        <p className="text-sm text-gray-500">Usuário logado, mas sem seller conectado.</p>
+        <h1 className="text-2xl font-semibold text-spv-ink">Início</h1>
+        <p className="text-sm text-spv-muted">Usuário logado, mas sem seller conectado.</p>
       </div>
     );
   }
@@ -334,8 +334,8 @@ export default function DashboardHome() {
     <div className="space-y-6" key={sellerId}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Início</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-spv-ink">Início</h1>
+          <p className="text-sm text-spv-muted">
             Painel administrativo · visão geral da operação {nickname ? `· ${nickname}` : ""}
           </p>
         </div>
@@ -343,45 +343,45 @@ export default function DashboardHome() {
         <div className="flex gap-2">
           <button
             onClick={() => loadAll(sellerId)}
-            className="rounded-xl bg-white px-4 py-2 text-sm shadow-sm border border-gray-200 hover:bg-gray-50"
+            className="rounded-xl bg-spv-surface px-4 py-2 text-sm shadow-sm border border-spv-line hover:bg-spv-raised"
           >
             {loading ? "Atualizando..." : "Atualizar"}
           </button>
 
           <Link
             href={`/dashboard/cases?sellerId=${sellerId}`}
-            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700"
+            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-spv-ink shadow hover:bg-green-700"
           >
             Ir para Cases
           </Link>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6">
+      <div className="rounded-xl border border-spv-line bg-spv-surface shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold text-amber-700 bg-amber-50 inline-flex px-3 py-1 rounded-full border border-amber-100">
               ⚠️ ALERTA DA CONTA — ALTO RISCO
             </div>
 
-            <div className="mt-2 text-lg font-semibold text-gray-900">
+            <div className="mt-2 text-lg font-semibold text-spv-ink">
               Impactos detectados (oficial ML)
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+              <span className="rounded-full border border-spv-line bg-spv-surface px-3 py-1">
                 Reclamações impactando: <b>{stats.claimsImpact}</b>
               </span>
-              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+              <span className="rounded-full border border-spv-line bg-spv-surface px-3 py-1">
                 Atrasos impactando: <b>{stats.delaysImpact}</b>
               </span>
-              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+              <span className="rounded-full border border-spv-line bg-spv-surface px-3 py-1">
                 Cancelamentos impactando: <b>{stats.cancImpact}</b>
               </span>
-              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+              <span className="rounded-full border border-spv-line bg-spv-surface px-3 py-1">
                 SLA vencidos (operação): <b>{stats.overdue}</b>
               </span>
-              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+              <span className="rounded-full border border-spv-line bg-spv-surface px-3 py-1">
                 Chamados em andamento: <b>{stats.inProgress}</b>
               </span>
             </div>
@@ -391,7 +391,7 @@ export default function DashboardHome() {
             href={ML_DEFENSE_HELP_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-green-700"
+            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-spv-ink shadow hover:bg-green-700"
           >
             Abrir defesa urgente →
           </Link>
@@ -408,10 +408,10 @@ export default function DashboardHome() {
         ].map((k) => (
           <div
             key={k.label}
-            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200"
+            className="rounded-xl bg-spv-surface p-4 shadow-sm border border-spv-line"
           >
-            <div className="text-xs text-gray-500">{k.label}</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">
+            <div className="text-xs text-spv-muted">{k.label}</div>
+            <div className="text-2xl font-semibold text-spv-ink mt-1">
               {k.value}
             </div>
           </div>
@@ -419,11 +419,11 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="rounded-3xl bg-white shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="rounded-xl bg-spv-surface shadow-sm border border-spv-line overflow-hidden">
+          <div className="px-5 py-4 border-b border-spv-line flex items-center justify-between">
             <div>
-              <div className="font-semibold text-gray-900">Alertas — ação necessária</div>
-              <div className="text-xs text-gray-500">
+              <div className="font-semibold text-spv-ink">Alertas — ação necessária</div>
+              <div className="text-xs text-spv-muted">
                 Impactos em aberto na operação · {alerts.length} item(ns)
               </div>
             </div>
@@ -437,10 +437,10 @@ export default function DashboardHome() {
 
           <div className="divide-y divide-gray-100">
             {pagedAlerts.map((c) => (
-              <div key={c.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50">
+              <div key={c.id} className="px-5 py-4 flex items-center justify-between hover:bg-spv-raised">
                 <div>
-                  <div className="text-sm font-medium text-gray-900">{niceKind(c.kind)}</div>
-                  <div className="text-xs text-gray-500 line-clamp-1">{c.title}</div>
+                  <div className="text-sm font-medium text-spv-ink">{niceKind(c.kind)}</div>
+                  <div className="text-xs text-spv-muted line-clamp-1">{c.title}</div>
                 </div>
 
                 <span className="rounded-full bg-red-50 border border-red-100 px-3 py-1 text-xs font-semibold text-red-700">
@@ -450,7 +450,7 @@ export default function DashboardHome() {
             ))}
 
             {alerts.length === 0 && (
-              <div className="px-5 py-6 text-sm text-gray-500">Nenhum alerta ativo 🎉</div>
+              <div className="px-5 py-6 text-sm text-spv-muted">Nenhum alerta ativo 🎉</div>
             )}
           </div>
 
@@ -461,11 +461,11 @@ export default function DashboardHome() {
           />
         </div>
 
-        <div className="rounded-3xl bg-white shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="rounded-xl bg-spv-surface shadow-sm border border-spv-line overflow-hidden">
+          <div className="px-5 py-4 border-b border-spv-line flex items-center justify-between">
             <div>
-              <div className="font-semibold text-gray-900">Chamados em andamento</div>
-              <div className="text-xs text-gray-500">
+              <div className="font-semibold text-spv-ink">Chamados em andamento</div>
+              <div className="text-xs text-spv-muted">
                 Cases com protocolo / em análise do ML · {ongoing.length} item(ns)
               </div>
             </div>
@@ -479,11 +479,11 @@ export default function DashboardHome() {
 
           <div className="divide-y divide-gray-100">
             {pagedOngoing.map((c) => (
-              <div key={c.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50">
+              <div key={c.id} className="px-5 py-4 flex items-center justify-between hover:bg-spv-raised">
                 <div>
-                  <div className="text-sm font-medium text-gray-900">{niceKind(c.kind)}</div>
-                  <div className="text-xs text-gray-500 line-clamp-1">{c.title}</div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-sm font-medium text-spv-ink">{niceKind(c.kind)}</div>
+                  <div className="text-xs text-spv-muted line-clamp-1">{c.title}</div>
+                  <div className="text-xs text-spv-muted mt-1">
                     Protocolo: <span className="font-mono">{c.protocol ?? "—"}</span>
                   </div>
                 </div>
@@ -495,7 +495,7 @@ export default function DashboardHome() {
             ))}
 
             {ongoing.length === 0 && (
-              <div className="px-5 py-6 text-sm text-gray-500">Nenhum chamado em andamento.</div>
+              <div className="px-5 py-6 text-sm text-spv-muted">Nenhum chamado em andamento.</div>
             )}
           </div>
 

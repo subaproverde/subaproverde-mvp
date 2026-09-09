@@ -94,7 +94,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="relative min-h-[100vh] overflow-hidden bg-[#07120f] text-white">
+    <div className="relative min-h-[100vh] overflow-hidden bg-spv-page text-spv-ink">
       {/* BACKGROUND */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-48 -left-48 h-[520px] w-[520px] rounded-full bg-emerald-500/20 blur-3xl" />
@@ -120,30 +120,30 @@ export default function SignupPage() {
                 alt="Suba Pro Verde"
                 fill
                 sizes="200px"
-                className="object-contain"
+                className="object-contain spv-brand-image"
                 priority
               />
             </div>
-            <div className="mt-3 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-white/80">
+            <div className="mt-3 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-spv-ink">
               Cadastro do seller
             </div>
           </div>
 
           {/* CARD */}
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_70px_rgba(0,0,0,.55)] backdrop-blur-xl">
+          <div className="relative overflow-hidden rounded-xl border border-spv-line bg-spv-surface shadow-none backdrop-blur-none">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
             <div className="relative p-7 sm:p-10">
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Criar conta</h1>
-              <p className="mt-2 text-sm sm:text-base text-white/70">
+              <p className="mt-2 text-sm sm:text-base text-spv-ink">
                 Crie sua conta para acessar o Radar SPV. Se tiver cupom, você ganha <b>10% de desconto</b>.
               </p>
 
               <div className="mt-6 grid gap-4">
                 {/* Nome completo */}
                 <div className="space-y-2">
-                  <div className="text-sm text-white/80">Nome completo</div>
+                  <div className="text-sm text-spv-ink">Nome completo</div>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm text-spv-ink placeholder:text-spv-muted outline-none focus:border-emerald-400/30"
                     value={sellerFullName}
                     onChange={(e) => setSellerFullName(e.target.value)}
                     placeholder="Ex: Bruno Lima"
@@ -152,9 +152,9 @@ export default function SignupPage() {
 
                 {/* Loja */}
                 <div className="space-y-2">
-                  <div className="text-sm text-white/80">Nome da loja</div>
+                  <div className="text-sm text-spv-ink">Nome da loja</div>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm text-spv-ink placeholder:text-spv-muted outline-none focus:border-emerald-400/30"
                     value={storeName}
                     onChange={(e) => setStoreName(e.target.value)}
                     placeholder="Ex: Brud’s Glass"
@@ -163,23 +163,23 @@ export default function SignupPage() {
 
                 {/* Cupom */}
                 <div className="space-y-2">
-                  <div className="text-sm text-white/80">Cupom de desconto</div>
+                  <div className="text-sm text-spv-ink">Cupom de desconto</div>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm text-spv-ink placeholder:text-spv-muted outline-none focus:border-emerald-400/30"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
                     placeholder="Ex: INFLUENCER10"
                   />
-                  <div className="text-xs text-white/45">
+                  <div className="text-xs text-spv-muted">
                     Se tiver cupom, você ganha 10% de desconto. (A comissão do influencer é calculada depois pelo admin.)
                   </div>
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <div className="text-sm text-white/80">Email</div>
+                  <div className="text-sm text-spv-ink">Email</div>
                   <input
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm text-spv-ink placeholder:text-spv-muted outline-none focus:border-emerald-400/30"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seuemail@empresa.com"
@@ -188,10 +188,10 @@ export default function SignupPage() {
 
                 {/* Senha */}
                 <div className="space-y-2">
-                  <div className="text-sm text-white/80">Senha</div>
+                  <div className="text-sm text-spv-ink">Senha</div>
                   <input
                     type="password"
-                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border border-spv-line bg-spv-page px-4 py-3 text-sm text-spv-ink placeholder:text-spv-muted outline-none focus:border-emerald-400/30"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -200,28 +200,28 @@ export default function SignupPage() {
 
                 {/* CTA */}
                 <button
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 shadow-[0_18px_55px_rgba(16,185,129,.25)]"
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-500 disabled:opacity-60 shadow-none"
                   onClick={onSignup}
                   disabled={loading}
                 >
                   {loading ? "Criando..." : "Criar conta"}
                 </button>
 
-                <div className="text-sm text-white/60">
+                <div className="text-sm text-spv-muted">
                   Já tem conta?{" "}
-                  <Link className="text-white underline underline-offset-4" href="/login">
+                  <Link className="text-spv-ink underline underline-offset-4" href="/login">
                     Entrar
                   </Link>
                 </div>
 
-                <div className="text-xs text-white/40">
+                <div className="text-xs text-spv-muted">
                   Obs.: se a confirmação de e-mail estiver ativa no Supabase, você pode precisar confirmar o e-mail antes de logar.
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 text-center text-xs text-white/35">
+          <div className="mt-6 text-center text-xs text-spv-muted">
             © {new Date().getFullYear()} Suba Pro Verde
           </div>
         </div>

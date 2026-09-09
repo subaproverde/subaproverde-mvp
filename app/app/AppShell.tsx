@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 function navLinkClass(active: boolean) {
   return [
     "px-3 py-2 rounded-xl text-sm transition",
-    active ? "text-white bg-white/10" : "text-white/70 hover:bg-white/5 hover:text-white/90",
+    active ? "text-spv-ink bg-spv-surface" : "text-spv-ink hover:bg-spv-raised hover:text-spv-ink",
   ].join(" ");
 }
 
@@ -47,9 +47,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0f15] text-white">
+    <div className="min-h-screen bg-spv-page text-spv-ink">
       {/* TOP BAR */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0f15]/80 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-spv-line bg-spv-page backdrop-blur-none">
         <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
           {/* LOGO */}
           <div className="flex items-center gap-3">
@@ -66,9 +66,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             <div className="hidden md:block leading-tight">
               <div className="text-sm font-semibold tracking-wide">
-                SUBA <span className="text-white/30">|</span> RADAR SPV
+                SUBA <span className="text-spv-muted">|</span> RADAR SPV
               </div>
-              <div className="text-xs text-white/50">Painel do seller</div>
+              <div className="text-xs text-spv-muted">Painel do seller</div>
             </div>
           </div>
 
@@ -76,14 +76,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <Link
               href="/app/account"
-              className="hidden sm:inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+              className="hidden sm:inline-flex items-center rounded-xl border border-spv-line px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised"
             >
               Conta
             </Link>
 
             <Link
               href="/logout"
-              className="inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+              className="inline-flex items-center rounded-xl border border-spv-line px-3 py-2 text-sm text-spv-ink hover:bg-spv-raised"
             >
               Sair
             </Link>

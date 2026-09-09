@@ -403,23 +403,23 @@ export default function AdminOverviewPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-9 w-56 animate-pulse rounded-full bg-white/10" />
-        <div className="h-[560px] animate-pulse rounded-[2rem] border border-white/10 bg-white/[0.04]" />
+        <div className="h-9 w-56 animate-pulse rounded-full bg-spv-surface" />
+        <div className="h-[560px] animate-pulse rounded-xl border border-spv-line bg-spv-surface" />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+      <section className="rounded-xl border border-spv-line bg-spv-surface p-5 shadow-none backdrop-blur-none">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-spv-accent-text">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
               Admin
             </div>
-            <h1 className="mt-4 text-3xl font-black text-white">Visão Geral</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">
+            <h1 className="mt-4 text-3xl font-semibold text-spv-ink">Visão Geral</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-spv-muted">
               Reputação dos sellers ativos, alertas próximos do limite e oportunidades de ação.
             </p>
           </div>
@@ -428,7 +428,7 @@ export default function AdminOverviewPage() {
             type="button"
             onClick={load}
             disabled={refreshing}
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white/75 hover:bg-white/10 disabled:opacity-60"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-4 text-sm font-semibold text-spv-ink hover:bg-spv-raised disabled:opacity-60"
           >
             <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} aria-hidden="true" />
             Atualizar
@@ -436,7 +436,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-50">
+          <div className="mt-4 rounded-xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-50">
             {error}
           </div>
         ) : null}
@@ -450,18 +450,18 @@ export default function AdminOverviewPage() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
-        <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl">
+        <div className="rounded-xl border border-spv-line bg-spv-surface p-4 backdrop-blur-none">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-white">Sellers por prioridade</h2>
-              <p className="mt-1 text-sm text-white/45">Lista compacta, ordenada por risco operacional.</p>
+              <h2 className="text-base font-semibold text-spv-ink">Sellers por prioridade</h2>
+              <p className="mt-1 text-sm text-spv-muted">Lista compacta, ordenada por risco operacional.</p>
             </div>
-            <Store className="h-5 w-5 text-white/45" aria-hidden="true" />
+            <Store className="h-5 w-5 text-spv-muted" aria-hidden="true" />
           </div>
 
           <div className="space-y-3">
             {items.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-white/50">
+              <div className="rounded-xl border border-dashed border-spv-line p-6 text-sm text-spv-muted">
                 Nenhum seller conectado para exibir.
               </div>
             ) : (
@@ -478,22 +478,22 @@ export default function AdminOverviewPage() {
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl">
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-4 backdrop-blur-none">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-white">Central de ação</h2>
-                <p className="mt-1 text-sm text-white/45">
+                <h2 className="text-base font-semibold text-spv-ink">Central de ação</h2>
+                <p className="mt-1 text-sm text-spv-muted">
                   {selected ? selected.name : "Selecione um seller"}
                 </p>
               </div>
-              <MessageCircle className="h-5 w-5 text-emerald-100/70" aria-hidden="true" />
+              <MessageCircle className="h-5 w-5 text-spv-accent-text" aria-hidden="true" />
             </div>
 
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               rows={9}
-              className="mt-4 w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white outline-none placeholder:text-white/30"
+              className="mt-4 w-full resize-none rounded-xl border border-spv-line bg-spv-page p-4 text-sm leading-6 text-spv-ink outline-none placeholder:text-spv-muted"
               placeholder="Mensagem operacional..."
             />
 
@@ -509,7 +509,7 @@ export default function AdminOverviewPage() {
               {selected ? (
                 <Link
                   href={`/app/cases?sellerId=${encodeURIComponent(selected.id)}`}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 hover:bg-white/10"
+                  className="inline-flex items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised"
                 >
                   Abrir cases
                   <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
@@ -517,11 +517,11 @@ export default function AdminOverviewPage() {
               ) : null}
             </div>
 
-            {sendStatus ? <div className="mt-3 text-xs text-white/45">{sendStatus}</div> : null}
+            {sendStatus ? <div className="mt-3 text-xs text-spv-muted">{sendStatus}</div> : null}
           </div>
 
-          <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl">
-            <h2 className="text-base font-semibold text-white">Alertas quentes</h2>
+          <div className="rounded-xl border border-spv-line bg-spv-surface p-4 backdrop-blur-none">
+            <h2 className="text-base font-semibold text-spv-ink">Alertas quentes</h2>
             <div className="mt-4 space-y-2">
               {items.flatMap((seller) =>
                 seller.alerts.slice(0, 2).map((alert) => (
@@ -529,13 +529,13 @@ export default function AdminOverviewPage() {
                     key={`${seller.id}-${alert.key}`}
                     type="button"
                     onClick={() => selectSeller(seller)}
-                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left hover:bg-white/[0.07]"
+                    className="w-full rounded-xl border border-spv-line bg-spv-surface p-3 text-left hover:bg-spv-raised"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-white">{seller.name}</span>
+                      <span className="text-sm font-semibold text-spv-ink">{seller.name}</span>
                       <SeverityBadge severity={alert.severity} />
                     </div>
-                    <div className="mt-1 text-xs text-white/45">
+                    <div className="mt-1 text-xs text-spv-muted">
                       {alert.label} | {alert.detail}
                     </div>
                   </button>
@@ -563,7 +563,7 @@ function TopMetric({
   return (
     <div
       className={cn(
-        "rounded-2xl border p-4",
+        "rounded-xl border p-4",
         tone === "emerald" && "border-emerald-300/18 bg-emerald-400/10",
         tone === "amber" && "border-amber-300/18 bg-amber-400/10",
         tone === "rose" && "border-rose-300/18 bg-rose-400/10",
@@ -571,10 +571,10 @@ function TopMetric({
       )}
     >
       <div className="flex items-center justify-between">
-        <Icon className="h-5 w-5 text-white/60" aria-hidden={true} />
-        <div className="text-3xl font-black text-white">{value}</div>
+        <Icon className="h-5 w-5 text-spv-muted" aria-hidden={true} />
+        <div className="text-3xl font-semibold text-spv-ink">{value}</div>
       </div>
-      <div className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-white/45">{label}</div>
+      <div className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-spv-muted">{label}</div>
     </div>
   );
 }
@@ -593,20 +593,20 @@ function SellerPriorityCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full rounded-2xl border p-4 text-left transition",
-        selected ? "border-emerald-300/25 bg-emerald-400/10" : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]"
+        "w-full rounded-xl border p-4 text-left transition",
+        selected ? "border-emerald-300/25 bg-emerald-400/10" : "border-spv-line bg-spv-surface hover:bg-spv-raised"
       )}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-base font-bold text-white">{seller.name}</span>
+            <span className="truncate text-base font-bold text-spv-ink">{seller.name}</span>
             <ReputationBadge level={seller.reputation} />
-            <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-white/45">
+            <span className="rounded-full border border-spv-line px-2 py-1 text-[11px] text-spv-muted">
               {seller.medal}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/45">
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-spv-muted">
             <span>Claims {formatPercent(seller.rates.claims)}</span>
             <span>Mediações {formatPercent(seller.rates.mediations)}</span>
             <span>Atrasos {formatPercent(seller.rates.delays)}</span>
@@ -616,10 +616,10 @@ function SellerPriorityCard({
 
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="text-2xl font-black text-white">{seller.riskScore}</div>
-            <div className="text-[11px] text-white/40">risco</div>
+            <div className="text-2xl font-semibold text-spv-ink">{seller.riskScore}</div>
+            <div className="text-[11px] text-spv-muted">risco</div>
           </div>
-          <div className="grid grid-cols-4 gap-1 text-center text-[11px] text-white/55">
+          <div className="grid grid-cols-4 gap-1 text-center text-[11px] text-spv-muted">
             <MiniImpact label="R" value={seller.metrics.claims} />
             <MiniImpact label="M" value={seller.metrics.mediations} />
             <MiniImpact label="C" value={seller.metrics.cancellations} />
@@ -651,9 +651,9 @@ function SellerPriorityCard({
 
 function MiniImpact({ label, value }: { label: string; value: number }) {
   return (
-    <div className="min-w-10 rounded-xl border border-white/10 bg-black/15 px-2 py-1">
-      <div className="font-bold text-white">{value}</div>
-      <div className="text-white/35">{label}</div>
+    <div className="min-w-10 rounded-xl border border-spv-line bg-spv-page px-2 py-1">
+      <div className="font-bold text-spv-ink">{value}</div>
+      <div className="text-spv-muted">{label}</div>
     </div>
   );
 }

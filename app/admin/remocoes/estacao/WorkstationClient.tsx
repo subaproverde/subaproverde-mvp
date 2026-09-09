@@ -592,21 +592,21 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           --ws-sheet-text: #12372b;
         }
 
-        html[data-spv-theme="light"] .spv-workstation [class*="bg-[#050807]"] {
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-spv-page"] {
           background: #f8fcf9 !important;
           box-shadow: 0 24px 70px rgba(20, 83, 45, 0.10);
         }
 
-        html[data-spv-theme="light"] .spv-workstation [class*="bg-[#020403]"] {
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-spv-page"] {
           background: #fbfffc !important;
         }
 
-        html[data-spv-theme="light"] .spv-workstation [class*="bg-white/[0.025]"] {
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-spv-surface"] {
           background: #eef7f1 !important;
         }
 
-        html[data-spv-theme="light"] .spv-workstation [class*="bg-white/[0.018]"],
-        html[data-spv-theme="light"] .spv-workstation [class*="bg-white/[0.045]"] {
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-spv-surface"],
+        html[data-spv-theme="light"] .spv-workstation [class*="bg-spv-surface"] {
           background: #edf6f0 !important;
         }
 
@@ -614,18 +614,18 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           border-color: rgba(22, 78, 57, 0.16) !important;
         }
 
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/18"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/22"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/30"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/32"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/35"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/38"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/42"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/44"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/50"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/55"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/60"],
-        html[data-spv-theme="light"] .spv-workstation [class*="text-white/70"] {
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-muted"],
+        html[data-spv-theme="light"] .spv-workstation [class*="text-spv-ink"] {
           color: rgba(16, 32, 24, 0.62) !important;
         }
 
@@ -652,22 +652,22 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           color: #102018 !important;
         }
       `}</style>
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#050807]">
-        <div className="flex flex-col gap-4 border-b border-white/10 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="overflow-hidden rounded-xl border border-spv-line bg-spv-page">
+        <div className="flex flex-col gap-4 border-b border-spv-line px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/admin/remocoes"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-spv-line bg-spv-surface text-spv-ink transition hover:bg-spv-raised hover:text-spv-ink"
               aria-label="Voltar para Remoções"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden={true} />
             </Link>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/70">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-spv-accent-text">
                 <Code2 className="h-4 w-4" aria-hidden={true} />
                 workstation://remocoes
               </div>
-              <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight text-white">
+              <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight text-spv-ink">
                 Lousa operacional
               </h1>
             </div>
@@ -677,10 +677,10 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
             <select
               value={activeClientId}
               onChange={(event) => setSelectedClientId(event.target.value)}
-              className="h-10 rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-white outline-none focus:border-emerald-300/35"
+              className="h-10 rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none focus:border-emerald-300/35"
             >
               {clients.map((client) => (
-                <option key={client.id} value={client.id} className="bg-[#08100d]">
+                <option key={client.id} value={client.id} className="bg-spv-page">
                   {client.name}
                 </option>
               ))}
@@ -689,9 +689,9 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="h-10 rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-white outline-none focus:border-emerald-300/35"
+              className="h-10 rounded-xl border border-spv-line bg-spv-page px-3 text-sm text-spv-ink outline-none focus:border-emerald-300/35"
             />
-            <div className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-100">
+            <div className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 text-xs font-semibold text-spv-accent-text">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
               {savedAt || "salvo"}
             </div>
@@ -699,19 +699,19 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
         </div>
 
         <div className="grid min-h-[calc(100vh-260px)] lg:grid-cols-[270px_1fr]">
-          <aside className="border-b border-white/10 bg-white/[0.025] p-3 lg:border-b-0 lg:border-r">
-            <div className="rounded-xl border border-white/10 bg-black/28 p-3">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/42">
+          <aside className="border-b border-spv-line bg-spv-surface p-3 lg:border-b-0 lg:border-r">
+            <div className="rounded-xl border border-spv-line bg-spv-page p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-spv-muted">
                 <Users className="h-3.5 w-3.5" aria-hidden={true} />
                 clientes
               </div>
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/32" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-spv-muted" />
                 <input
                   value={clientQuery}
                   onChange={(event) => setClientQuery(event.target.value)}
                   placeholder="buscar cliente"
-                  className="ws-control-input h-10 w-full rounded-lg border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/28 focus:border-emerald-300/35"
+                  className="ws-control-input h-10 w-full rounded-lg border border-spv-line bg-spv-page pl-9 pr-3 text-sm text-spv-ink outline-none placeholder:text-spv-muted focus:border-emerald-300/35"
                 />
               </div>
               <div className="mt-3 max-h-[260px] space-y-1 overflow-y-auto pr-1">
@@ -729,12 +729,12 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                       className={cn(
                         "flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition",
                         active
-                          ? "border-emerald-300/25 bg-emerald-400/12 text-white"
-                          : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.045] hover:text-white"
+                          ? "border-emerald-300/25 bg-emerald-400/12 text-spv-ink"
+                          : "border-transparent text-spv-muted hover:border-spv-line hover:bg-spv-raised hover:text-spv-ink"
                       )}
                     >
                       <span className="truncate">{client.name}</span>
-                      <span className="shrink-0 rounded-full border border-white/10 bg-black/24 px-2 py-0.5 text-[11px] text-white/44">
+                      <span className="shrink-0 rounded-full border border-spv-line bg-spv-page px-2 py-0.5 text-[11px] text-spv-muted">
                         {filledDays}
                       </span>
                     </button>
@@ -743,8 +743,8 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
               </div>
             </div>
 
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/28 p-3">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/42">
+            <div className="mt-3 rounded-xl border border-spv-line bg-spv-page p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-spv-muted">
                 <CalendarDays className="h-3.5 w-3.5" aria-hidden={true} />
                 dias
               </div>
@@ -757,18 +757,18 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                     className={cn(
                       "flex items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition",
                       day.active
-                        ? "border-sky-300/25 bg-sky-400/12 text-white"
-                        : "border-transparent text-white/55 hover:border-white/10 hover:bg-white/[0.045] hover:text-white"
+                        ? "border-sky-300/25 bg-sky-400/12 text-spv-ink"
+                        : "border-transparent text-spv-muted hover:border-spv-line hover:bg-spv-raised hover:text-spv-ink"
                     )}
                   >
                     <span>
                       <span className="block font-semibold">{day.label}</span>
-                      <span className="text-white/35">{formatDate(day.date)}</span>
+                      <span className="text-spv-muted">{formatDate(day.date)}</span>
                     </span>
                     <span
                       className={cn(
                         "h-2 w-2 rounded-full",
-                        day.filled ? "bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,.8)]" : "bg-white/18"
+                        day.filled ? "bg-emerald-300 shadow-none" : "bg-spv-surface"
                       )}
                     />
                   </button>
@@ -784,7 +784,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
           </aside>
 
           <main className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_520px]">
-            <section className="border-b border-white/10 p-3 xl:border-b-0 xl:border-r">
+            <section className="border-b border-spv-line p-3 xl:border-b-0 xl:border-r">
               <PanelHeader
                 icon={Code2}
                 title="lousa.txt"
@@ -807,10 +807,10 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                 onClear={clearBoardFormatting}
                 onUseGlobal={() => setSelectedBoardLine(null)}
               />
-              <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-[#020403] font-mono">
-                <div className="flex border-b border-white/8 bg-white/[0.025] px-3 py-2 text-[11px] text-white/35">
+              <div className="mt-3 overflow-hidden rounded-xl border border-spv-line bg-spv-page font-mono">
+                <div className="flex border-b border-spv-line bg-spv-surface px-3 py-2 text-[11px] text-spv-muted">
                   <span>{activeClient?.name ?? "cliente"}</span>
-                  <span className="mx-2 text-white/18">/</span>
+                  <span className="mx-2 text-spv-muted">/</span>
                   <span>{selectedDate}</span>
                 </div>
                 <div className="min-h-[610px]">
@@ -824,8 +824,8 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                           type="button"
                           onClick={() => setSelectedBoardLine(index)}
                           className={cn(
-                            "select-none border-r border-white/8 bg-white/[0.018] px-3 text-right font-mono text-xs text-white/22 transition",
-                            active && "bg-emerald-400/10 text-emerald-100"
+                            "select-none border-r border-spv-line bg-spv-surface px-3 text-right font-mono text-xs text-spv-muted transition",
+                            active && "bg-emerald-400/10 text-spv-accent-text"
                           )}
                           style={{
                             minHeight: "26px",
@@ -852,7 +852,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                           }}
                           placeholder={index === 0 ? "Digite qualquer coisa aqui: vendas, datas, roteiro, defesa..." : ""}
                           className={cn(
-                            "ws-board-line h-[26px] w-full border-0 bg-transparent px-4 outline-none placeholder:text-white/22 focus:bg-emerald-400/[0.055]",
+                            "ws-board-line h-[26px] w-full border-0 bg-transparent px-4 outline-none placeholder:text-spv-muted focus:bg-emerald-400/[0.055]",
                             active && "ring-1 ring-inset ring-emerald-300/50"
                           )}
                           style={boardStyleToCss(lineStyle)}
@@ -887,12 +887,12 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                 onClear={clearSheetFormatting}
                 onUseGlobal={() => setSelectedCell(null)}
               />
-              <div className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-[#020403]">
+              <div className="mt-3 overflow-x-auto rounded-xl border border-spv-line bg-spv-page">
                 <table className="w-full min-w-[780px] text-left font-mono text-xs">
-                  <thead className="bg-white/[0.045] text-[11px] uppercase tracking-wide text-white/38">
+                  <thead className="bg-spv-surface text-[11px] uppercase tracking-wide text-spv-muted">
                     <tr>
                       {columns.map((column) => (
-                        <th key={column} className="border-r border-white/8 px-2 py-2 font-semibold last:border-r-0">
+                        <th key={column} className="border-r border-spv-line px-2 py-2 font-semibold last:border-r-0">
                           {column}
                         </th>
                       ))}
@@ -901,7 +901,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                   </thead>
                   <tbody>
                     {entry.rows.map((row) => (
-                      <tr key={row.id} className="border-t border-white/8">
+                      <tr key={row.id} className="border-t border-spv-line">
                         {columns.map((column, index) => {
                           const currentCellStyle = getSheetCellStyle(row.id, index);
                           const isSelected =
@@ -911,7 +911,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                             <td
                               key={`${row.id}-${column}`}
                               className={cn(
-                                "border-r border-white/8 last:border-r-0",
+                                "border-r border-spv-line last:border-r-0",
                                 isSelected && "ring-1 ring-inset ring-emerald-300/70"
                               )}
                             >
@@ -921,7 +921,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                                 onFocus={() => setSelectedCell({ rowId: row.id, columnIndex: index })}
                                 onPaste={(event) => pasteGrid(row.id, index, event)}
                                 placeholder={column}
-                                className="ws-sheet-cell h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-white/18 focus:bg-emerald-400/[0.055]"
+                                className="ws-sheet-cell h-10 w-full bg-transparent px-2 text-emerald-50 outline-none placeholder:text-spv-muted focus:bg-emerald-400/[0.055]"
                                 style={sheetStyleToCss(currentCellStyle)}
                               />
                             </td>
@@ -931,7 +931,7 @@ export default function WorkstationClient({ initialClients }: { initialClients: 
                           <button
                             type="button"
                             onClick={() => removeRow(row.id)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/30 transition hover:bg-rose-400/10 hover:text-rose-100"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-spv-muted transition hover:bg-rose-400/10 hover:text-rose-100"
                             aria-label="Remover linha"
                           >
                             <Trash2 className="h-3.5 w-3.5" aria-hidden={true} />
@@ -966,24 +966,24 @@ function BoardFormatToolbar({
   onUseGlobal: () => void;
 }) {
   return (
-    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-2">
+    <div className="mt-3 rounded-xl border border-spv-line bg-spv-surface p-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
-          formatando: <span className="text-emerald-100/80">{selectedLabel}</span>
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-spv-muted">
+          formatando: <span className="text-spv-accent-text">{selectedLabel}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onUseGlobal}
             disabled={!selected}
-            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-7 rounded-lg border border-spv-line bg-spv-page px-2 text-[11px] font-semibold text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             lousa toda
           </button>
           <button
             type="button"
             onClick={onClear}
-            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white"
+            className="h-7 rounded-lg border border-spv-line bg-spv-page px-2 text-[11px] font-semibold text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink"
           >
             limpar estilo
           </button>
@@ -1056,24 +1056,24 @@ function SheetFormatToolbar({
   onUseGlobal: () => void;
 }) {
   return (
-    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-2">
+    <div className="mt-3 rounded-xl border border-spv-line bg-spv-surface p-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-white/42">
-          formatando: <span className="text-emerald-100/80">{selectedLabel}</span>
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-spv-muted">
+          formatando: <span className="text-spv-accent-text">{selectedLabel}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onUseGlobal}
             disabled={!selected}
-            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-7 rounded-lg border border-spv-line bg-spv-page px-2 text-[11px] font-semibold text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             planilha toda
           </button>
           <button
             type="button"
             onClick={onClear}
-            className="h-7 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.05] hover:text-white"
+            className="h-7 rounded-lg border border-spv-line bg-spv-page px-2 text-[11px] font-semibold text-spv-muted transition hover:bg-spv-raised hover:text-spv-ink"
           >
             limpar estilo
           </button>
@@ -1135,9 +1135,9 @@ function ToolbarGroup({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-9 items-center gap-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-emerald-200/65" aria-hidden={true} />
-      <span className="mr-1 hidden font-mono text-[10px] font-semibold uppercase tracking-wide text-white/35 sm:inline">
+    <div className="flex min-h-9 items-center gap-1 rounded-lg border border-spv-line bg-spv-page px-2 py-1">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-spv-accent-text" aria-hidden={true} />
+      <span className="mr-1 hidden font-mono text-[10px] font-semibold uppercase tracking-wide text-spv-muted sm:inline">
         {label}
       </span>
       {children}
@@ -1153,7 +1153,7 @@ function SizeControl({ value, onChange }: { value: TextSize; onChange: (value: T
   ];
 
   return (
-    <div className="flex rounded-md border border-white/10 bg-black/20 p-0.5">
+    <div className="flex rounded-md border border-spv-line bg-spv-page p-0.5">
       {options.map((option) => (
         <button
           key={option.value}
@@ -1165,7 +1165,7 @@ function SizeControl({ value, onChange }: { value: TextSize; onChange: (value: T
             "h-6 min-w-6 rounded px-1.5 text-[11px] font-bold transition",
             value === option.value
               ? "bg-emerald-300 text-emerald-950"
-              : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+              : "text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
           )}
         >
           {option.label}
@@ -1187,7 +1187,7 @@ function AlignControl({ value, onChange }: { value: TextAlign; onChange: (value:
   ];
 
   return (
-    <div className="flex rounded-md border border-white/10 bg-black/20 p-0.5">
+    <div className="flex rounded-md border border-spv-line bg-spv-page p-0.5">
       {options.map((option) => {
         const Icon = option.icon;
         return (
@@ -1201,7 +1201,7 @@ function AlignControl({ value, onChange }: { value: TextAlign; onChange: (value:
               "inline-flex h-6 w-7 items-center justify-center rounded transition",
               value === option.value
                 ? "bg-emerald-300 text-emerald-950"
-                : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+                : "text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
             )}
           >
             <Icon className="h-3.5 w-3.5" aria-hidden={true} />
@@ -1230,10 +1230,10 @@ function ToggleButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 transition",
+        "inline-flex h-7 w-7 items-center justify-center rounded-md border border-spv-line transition",
         active
           ? "bg-emerald-300 text-emerald-950"
-          : "bg-black/20 text-white/55 hover:bg-white/[0.06] hover:text-white"
+          : "bg-spv-page text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
       )}
     >
       {children}
@@ -1256,10 +1256,10 @@ function SegmentButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "h-7 rounded-md border border-white/10 px-2 text-[11px] font-bold transition",
+        "h-7 rounded-md border border-spv-line px-2 text-[11px] font-bold transition",
         active
           ? "bg-emerald-300 text-emerald-950"
-          : "bg-black/20 text-white/55 hover:bg-white/[0.06] hover:text-white"
+          : "bg-spv-page text-spv-muted hover:bg-spv-raised hover:text-spv-ink"
       )}
     >
       {children}
@@ -1283,9 +1283,9 @@ function ColorControl({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex min-h-9 items-center gap-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1">
-      <Icon className="h-3.5 w-3.5 shrink-0 text-emerald-200/65" aria-hidden={true} />
-      <span className="mr-1 hidden font-mono text-[10px] font-semibold uppercase tracking-wide text-white/35 sm:inline">
+    <div className="flex min-h-9 items-center gap-1 rounded-lg border border-spv-line bg-spv-page px-2 py-1">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-spv-accent-text" aria-hidden={true} />
+      <span className="mr-1 hidden font-mono text-[10px] font-semibold uppercase tracking-wide text-spv-muted sm:inline">
         {label}
       </span>
       {colors.map((color) => (
@@ -1298,7 +1298,7 @@ function ColorControl({
           onClick={() => onChange(color.value)}
           className={cn(
             "h-6 w-6 rounded-full border transition hover:scale-105",
-            value === color.value ? "border-emerald-200 ring-2 ring-emerald-300/35" : "border-white/18"
+            value === color.value ? "border-emerald-200 ring-2 ring-emerald-300/35" : "border-spv-line"
           )}
           style={
             color.value === "transparent"
@@ -1317,7 +1317,7 @@ function ColorControl({
         aria-label={`${label}: cor personalizada`}
         value={colorInputValue(value, fallback)}
         onChange={(event) => onChange(event.target.value)}
-        className="h-6 w-7 cursor-pointer rounded-md border border-white/12 bg-transparent p-0.5"
+        className="h-6 w-7 cursor-pointer rounded-md border border-spv-line bg-transparent p-0.5"
       />
     </div>
   );
@@ -1334,8 +1334,8 @@ function PanelHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-white/50">
-        <Icon className="h-4 w-4 text-emerald-200/80" aria-hidden={true} />
+      <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-spv-muted">
+        <Icon className="h-4 w-4 text-spv-accent-text" aria-hidden={true} />
         {title}
       </div>
       {right}
@@ -1345,9 +1345,9 @@ function PanelHeader({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-black/24 px-2 py-2">
-      <div className="font-mono text-[10px] uppercase tracking-wide text-white/32">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-white">{value}</div>
+    <div className="rounded-lg border border-spv-line bg-spv-page px-2 py-2">
+      <div className="font-mono text-[10px] uppercase tracking-wide text-spv-muted">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-spv-ink">{value}</div>
     </div>
   );
 }

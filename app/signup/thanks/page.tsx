@@ -26,9 +26,9 @@ function buildWhatsappUrl(params: { name: string; store: string; coupon: string 
 function Badge({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
-    <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wide text-white/50">{label}</div>
-      <div className="text-sm font-medium text-white/85">{value}</div>
+    <div className="flex items-center gap-2 rounded-xl border border-spv-line bg-spv-surface px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-spv-muted">{label}</div>
+      <div className="text-sm font-medium text-spv-ink">{value}</div>
     </div>
   );
 }
@@ -43,7 +43,7 @@ function SignupThanksContent() {
   const whatsappUrl = buildWhatsappUrl({ name, store, coupon });
 
   return (
-    <div className="relative min-h-[100vh] overflow-hidden bg-[#07120f] text-white">
+    <div className="relative min-h-[100vh] overflow-hidden bg-spv-page text-spv-ink">
       {/* BACKGROUND */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-48 -left-48 h-[520px] w-[520px] rounded-full bg-emerald-500/20 blur-3xl" />
@@ -75,14 +75,14 @@ function SignupThanksContent() {
               />
             </div>
 
-            <div className="mt-3 flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-white/80">
+            <div className="mt-3 flex w-fit items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-spv-ink">
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
               Cadastro confirmado
             </div>
           </div>
 
           {/* glass card */}
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_70px_rgba(0,0,0,.55)] backdrop-blur-xl">
+          <div className="relative overflow-hidden rounded-xl border border-spv-line bg-spv-surface shadow-none backdrop-blur-none">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
 
             <div className="relative p-7 sm:p-10">
@@ -90,14 +90,14 @@ function SignupThanksContent() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-                      Cadastro recebido <span className="text-emerald-300">✅</span>
+                      Cadastro recebido <span className="text-spv-accent-text">✅</span>
                     </h1>
-                    <p className="mt-2 text-sm sm:text-base text-white/70">
+                    <p className="mt-2 text-sm sm:text-base text-spv-ink">
                       Você já pode acessar o painel (quando quiser) ou abrir um chamado agora no WhatsApp para a gente te ajudar.
                     </p>
                   </div>
 
-                  <div className="hidden sm:flex items-center justify-center rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/60">
+                  <div className="hidden sm:flex items-center justify-center rounded-xl border border-spv-line bg-spv-page px-3 py-2 text-xs text-spv-muted">
                     Suba Pro Verde
                   </div>
                 </div>
@@ -110,9 +110,9 @@ function SignupThanksContent() {
                 </div>
 
                 {/* highlight note */}
-                <div className="mt-5 rounded-2xl border border-emerald-400/15 bg-emerald-500/10 p-4">
-                  <div className="text-sm font-medium text-white/90">Dica rápida</div>
-                  <div className="mt-1 text-sm text-white/70">
+                <div className="mt-5 rounded-xl border border-emerald-400/15 bg-emerald-500/10 p-4">
+                  <div className="text-sm font-medium text-spv-ink">Dica rápida</div>
+                  <div className="mt-1 text-sm text-spv-ink">
                     Se seu objetivo agora é resolver rápido, clica em <b>“Abrir chamado”</b>. O painel do Radar SPV continua disponível,
                     mas o atendimento principal é pelo WhatsApp.
                   </div>
@@ -122,7 +122,7 @@ function SignupThanksContent() {
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
                   <Link
                     href="/login"
-                    className="inline-flex w-full sm:w-auto items-center justify-center rounded-2xl border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-white/85 hover:bg-white/8"
+                    className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl border border-spv-line bg-spv-surface px-5 py-3 text-sm font-semibold text-spv-ink hover:bg-spv-raised"
                   >
                     Acessar painel
                   </Link>
@@ -131,21 +131,21 @@ function SignupThanksContent() {
                     href={whatsappUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex w-full sm:flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-500 shadow-[0_18px_55px_rgba(16,185,129,.25)]"
+                    className="inline-flex w-full sm:flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-500 shadow-none"
                   >
-                    <span className="inline-flex h-2 w-2 rounded-full bg-white/90" />
+                    <span className="inline-flex h-2 w-2 rounded-full bg-spv-surface" />
                     Abrir chamado (WhatsApp)
                   </a>
                 </div>
 
-                <div className="mt-4 text-xs text-white/45">
+                <div className="mt-4 text-xs text-spv-muted">
                   Obs.: se a confirmação de e-mail estiver ativa no Supabase, você pode precisar confirmar o e-mail antes de logar.
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 text-center text-xs text-white/35">
+          <div className="mt-6 text-center text-xs text-spv-muted">
             © {new Date().getFullYear()} Suba Pro Verde • Atendimento rápido e rastreável
           </div>
         </div>
@@ -156,7 +156,7 @@ function SignupThanksContent() {
 
 export default function SignupThanksPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#07120f]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-spv-page" />}>
       <SignupThanksContent />
     </Suspense>
   );
