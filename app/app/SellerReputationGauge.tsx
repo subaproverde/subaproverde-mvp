@@ -3,42 +3,53 @@
 import { useId, type CSSProperties } from "react";
 import s from "./seller-gauge.module.css";
 
-const bands = [
-  { level: "vermelho", path: "M 45 166 A 135 135 0 0 1 80 75", light: "#faadb0", color: "#ce7278", dark: "#803a45" },
-  { level: "laranja", path: "M 87 68 A 135 135 0 0 1 175 31", light: "#f6cf9e", color: "#d79962", dark: "#885126" },
-  { level: "amarelo", path: "M 185 31 A 135 135 0 0 1 273 68", light: "#fff0ae", color: "#d9c46a", dark: "#8c7b30" },
-  { level: "verde", path: "M 280 75 A 135 135 0 0 1 315 166", light: "#ace880", color: "#60b838", dark: "#326221" },
+// Broad, faceted segments follow the brand symbol rather than an instrument dial.
+const segments = [
+  { from: -106, to: -82, color: "#a71830", light: "#c52c3a", dark: "#85162c" },
+  { from: -80, to: -43, color: "#e33518", light: "#f34e16", dark: "#b92418" },
+  { from: -41, to: -4, color: "#ffad00", light: "#ffc018", dark: "#e78b00" },
+  { from: -2, to: 35, color: "#ffda15", light: "#ffe440", dark: "#e9bc00" },
+  { from: 37, to: 68, color: "#91c91c", light: "#a6d731", dark: "#70a419" },
+  { from: 70, to: 106, color: "#22913c", light: "#41a64a", dark: "#137337" },
 ];
+
+function point(radius: number, degrees: number) {
+  const radians = degrees * Math.PI / 180;
+  // Stable serialization across server/browser floating-point implementations.
+  return `${(180 + radius * Math.sin(radians)).toFixed(3)} ${(158 - radius * Math.cos(radians)).toFixed(3)}`;
+}
+function sector(from: number, to: number, outer: number, inner: number) {
+  return `M ${point(outer, from)} A ${outer} ${outer} 0 0 1 ${point(outer, to)} L ${point(inner, to)} A ${inner} ${inner} 0 0 0 ${point(inner, from)} Z`;
+}
 
 export default function SellerReputationGauge({ level, label, available }: { level: string; label: string; available: boolean }) {
   const id = `seller-gauge-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const index = bands.findIndex((band) => band.level === level);
+  const index = ["vermelho", "laranja", "amarelo", "verde"].indexOf(level);
   const valid = available && index >= 0;
-  // Preserve the existing four-level mapping. The score is not a gauge angle.
+  // Retain the original reputation-level mapping; no score or business-data changes.
   const angle = -72 + Math.max(0, index) * 48;
-  const url = (name: string) => `url(#${id}-${name})`;
-  return <svg className={s.instrument} viewBox="0 0 360 215" role="img" aria-label={valid ? `Reputação: ${label}` : "Reputação indisponível"}>
+  return <svg className={s.instrument} viewBox="0 0 360 235" role="img" aria-label={valid ? `Reputação: ${label}` : "Reputação indisponível"}>
     <defs>
-      <radialGradient id={`${id}-face`} cx="50%" cy="90%" r="85%"><stop stopColor="#323b3b" /><stop offset=".65" stopColor="#202729" /><stop offset="1" stopColor="#171c1e" /></radialGradient>
-      <linearGradient id={`${id}-metal`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#f2f5eb" /><stop offset=".3" stopColor="#9da9a4" /><stop offset=".55" stopColor="#46524e" /><stop offset="1" stopColor="#202824" /></linearGradient>
-      <linearGradient id={`${id}-needle`} x1="0" y1="0" x2="1" y2="0"><stop stopColor="#7c9086" /><stop offset=".48" stopColor="#f6fff4" /><stop offset=".53" stopColor="#c4d5c8" /><stop offset="1" stopColor="#70837a" /></linearGradient>
-      {bands.map((band) => <linearGradient key={band.level} id={`${id}-${band.level}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor={band.light} /><stop offset=".4" stopColor={band.color} /><stop offset="1" stopColor={band.dark} /></linearGradient>)}
-      <filter id={`${id}-shadow`} x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="3" floodColor="#000" floodOpacity=".55" /></filter>
-      <filter id={`${id}-glow`} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" /></filter>
+      <linearGradient id={`${id}-arm`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#005b34" /><stop offset="1" stopColor="#21843d" /></linearGradient>
+      <filter id={`${id}-shadow`} x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="2" floodColor="#091b0c" floodOpacity=".22" /></filter>
     </defs>
-    <ellipse cx="180" cy="178" rx="139" ry="10" fill="#0d1214" opacity=".55" />
-    <path d="M 28 169 A 152 152 0 0 1 332 169 L 332 173 Q 180 193 28 173 Z" fill={url("face")} stroke="#3b4544" strokeWidth="1" />
-    <path d="M 30 163 A 150 150 0 0 1 330 163" fill="none" stroke="#57625c" strokeOpacity=".28" />
-    <g transform="translate(0 5)">{bands.map((band) => <path key={band.level} d={band.path} fill="none" stroke={band.dark} strokeWidth="22" />)}</g>
-    {valid && <path className={s.halo} d={bands[index].path} fill="none" stroke={bands[index].color} strokeWidth="24" filter={url("glow")} />}
-    <g filter={url("shadow")}>{bands.map((band) => <g key={band.level}><path d={band.path} fill="none" stroke={url(band.level)} strokeWidth="18" /><path d={band.path} transform="translate(0 -5)" fill="none" stroke={band.light} strokeWidth="1.5" strokeOpacity=".65" /></g>)}</g>
-    <path d="M 68 166 A 112 112 0 0 1 292 166" fill="none" stroke="#58685e" strokeWidth="1" strokeDasharray="2 9" />
-    {Array.from({ length: 9 }, (_, i) => <path key={i} d="M 180 56 L 180 63" stroke="#93a195" strokeOpacity=".65" strokeWidth="1.5" transform={`rotate(${-90 + i * 22.5} 180 166)`} />)}
+    <g filter={`url(#${id}-shadow)`}>{segments.map((band, i) => <g key={i}>
+      <path d={sector(band.from, band.to, 132, 82)} fill={band.color} />
+      <path d={sector(band.from, band.to, 132, 107)} fill={band.light} />
+      <path d={sector(band.from, band.to, 91, 82)} fill={band.dark} />
+    </g>)}</g>
     {valid && <g key={level} className={s.needle} style={{ "--needle-angle": `${angle}deg` } as CSSProperties}>
-      <path d="M 175 171 L 180 58 L 185 171 L 180 178 Z" fill={url("needle")} filter={url("shadow")} />
-      <path d="M 180 65 L 180 164" stroke="#fff" strokeOpacity=".7" strokeWidth=".8" />
+      <g transform="translate(3 4)"><path d="M 164 158 L 167 59 Q 180 44 193 59 L 196 158 Z" fill="#edf1e8" /><circle cx="180" cy="158" r="22" fill="#edf1e8" /></g>
+      <path d="M 164 158 L 167 59 Q 180 44 193 59 L 196 158 Z" fill={`url(#${id}-arm)`} />
+      <circle cx="180" cy="158" r="22" fill="#258442" />
+      <circle cx="180" cy="158" r="12" fill="#153a2c" />
+      <circle cx="180" cy="158" r="11" fill="none" stroke="#53a647" strokeWidth="2" />
+      {level === "verde" ? <g transform={`rotate(${-angle} 180 53)`}>
+        <circle cx="180" cy="53" r="29" fill="#262c2e" />
+        <circle cx="180" cy="53" r="24" fill="#5cb72f" />
+        <path d="M 168 53 L 177 62 L 192 45" fill="none" stroke="#07592f" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+      </g> : <path d="M 170 62 L 180 43 L 190 62 Z" fill="#0a6235" />}
     </g>}
-    {valid && <g><circle cx="180" cy="166" r="13" fill={url("metal")} filter={url("shadow")} /><circle cx="180" cy="166" r="8.5" fill="#25332c" stroke="#9eafa1" strokeWidth=".8" /><circle cx="180" cy="166" r="3" fill={bands[index].light} /></g>}
-    <text x="43" y="205" textAnchor="middle" fill="#aeb7b4" fontSize="10">EM RISCO</text><text x="310" y="205" textAnchor="middle" fill="#aeb7b4" fontSize="10">SAUDÁVEL</text>
+    <text x="59" y="223" textAnchor="middle" fill="#aeb7b4" fontSize="10">EM RISCO</text><text x="301" y="223" textAnchor="middle" fill="#aeb7b4" fontSize="10">SAUDÁVEL</text>
   </svg>;
 }
