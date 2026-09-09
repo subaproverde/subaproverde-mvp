@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { isAdminEmail } from "@/lib/adminEmails";
 import { applySpvTheme, readSpvTheme } from "@/lib/spvTheme";
 import { authFetch } from "@/lib/authFetch";
+import SellerHomeShell from "./SellerHomeShell";
 
 function navLinkClass(active: boolean) {
   return [
@@ -141,6 +142,10 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
     }
 
     window.location.href = "/login";
+  }
+
+  if (pathname === "/app") {
+    return <SellerHomeShell isAdmin={isAdmin} onConnect={handleConnectMl}>{children}</SellerHomeShell>;
   }
 
   return (

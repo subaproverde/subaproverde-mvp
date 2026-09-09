@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { authFetch } from "@/lib/authFetch";
+import g from "./SellerSwitcher.module.css";
 
 type SellerItem = {
   sellerId: string;
@@ -13,7 +14,7 @@ type SellerItem = {
   created_at?: string | null;
 };
 
-export default function SellerSwitcher() {
+export default function SellerSwitcher({ variant = "default" }: { variant?: "default" | "graphite" }) {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [open, setOpen] = useState(false);
@@ -91,7 +92,7 @@ export default function SellerSwitcher() {
     if (!buttonRef.current) return;
 
     const rect = buttonRef.current.getBoundingClientRect();
-    const width = 320;
+    const width = Math.min(320, window.innerWidth - 24);
     const gap = 8;
 
     let left = rect.right - width;
@@ -195,6 +196,7 @@ export default function SellerSwitcher() {
   }
 
   if (loading) {
+    if (variant === "graphite") return <span className={g.trigger}>Carregando seller…</span>;
     return (
       <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60">
         Carregando seller...
@@ -203,12 +205,18 @@ export default function SellerSwitcher() {
   }
 
   if (!items.length) {
+    if (variant === "graphite") return <span className={g.trigger}>Sem sellers</span>;
     return (
       <div className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60">
         Sem sellers
       </div>
     );
   }
+
+  if (variant === "graphite") return <>
+    <button ref={buttonRef} type="button" onClick={() => setOpen((v) => !v)} disabled={switching} aria-expanded={open} aria-label="Selecionar seller" className={g.trigger}><span><small>Conta selecionada</small><strong>{activeSeller?.nickname || "Selecionar seller"}</strong></span><span aria-hidden="true">{switching ? "…" : "⌄"}</span></button>
+    {mounted && open && createPortal(<div ref={wrapRef} style={menuStyle} className={g.menu}><div className={g.title}>Selecionar seller<small>Escolha a operação que deseja visualizar</small></div><div className={g.items}>{items.map((item) => <button key={`${item.sellerAccountId}-${item.sellerId}`} type="button" aria-pressed={item.sellerId === activeSellerId} disabled={switching} onClick={() => handleSelectSeller(item.sellerId)}><strong>{item.nickname || "Seller sem nome"}</strong><small>{item.ml_user_id ? `Conta ML ${item.ml_user_id}` : item.sellerId}</small>{item.sellerId === activeSellerId && <span>ATIVA</span>}</button>)}</div></div>, document.body)}
+  </>;
 
   return (
     <>
