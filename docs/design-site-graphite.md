@@ -16,6 +16,8 @@ Não modifica APIs, SQL, permissões, cobranças, mensagens nem configurações 
 - Verificação visual local de CRM e agenda no desktop, tema claro e Grafite.
 - Menu móvel, agenda e login em viewport 390 × 844; sem alargamento da página observado.
 - Fixture local de inspeção removida antes da publicação.
+- Deploy de produção confirmado para `cf79fa0`. Resumo do seller, chamados e relatórios conferidos no site; cards claros remanescentes de chamados corrigidos no acabamento seguinte.
+- A sessão de navegador disponível redirecionou `/admin/crm` para `/app` antes e depois da publicação. A conferência de CRM com dados reais depende de uma sessão administrativa válida; teste local não substitui essa conferência.
 - Validação funcional de gravações financeiras, mensagens e compromissos não é executada em produção nesta alteração visual.
 
 ## Reversão

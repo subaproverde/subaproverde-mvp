@@ -420,7 +420,7 @@ export default function AppSettingsPage() {
           </div>
           <button
             onClick={() => copy(instructions, "instructions")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-spv-surface px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-spv-surface px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-spv-raised"
           >
             {copied === "instructions" ? <ClipboardCheck className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
             {copied === "instructions" ? "Instrução copiada" : "Copiar instrução"}

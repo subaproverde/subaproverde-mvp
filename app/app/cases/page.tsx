@@ -408,10 +408,10 @@ function MetricCard({
   tint: "green" | "amber" | "rose" | "sky";
 }) {
   const tintMap = {
-    green: "bg-emerald-50/80 border-emerald-200 text-emerald-800",
-    amber: "bg-amber-50/80 border-amber-200 text-amber-800",
-    rose: "bg-rose-50/80 border-rose-200 text-rose-800",
-    sky: "bg-sky-50/80 border-sky-200 text-sky-800",
+    green: "bg-spv-surface border-spv-line text-spv-accent-text",
+    amber: "bg-spv-surface border-spv-line text-amber-300",
+    rose: "bg-spv-surface border-spv-line text-rose-300",
+    sky: "bg-spv-surface border-spv-line text-sky-300",
   } as const;
 
   return (
