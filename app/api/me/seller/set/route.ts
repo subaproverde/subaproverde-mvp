@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, requireRequestUser } from "@/lib/apiAuth";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,23 +19,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const auth = req.headers.get("authorization") || "";
-    const token = auth.replace("Bearer ", "");
-
-    const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
-    const user = userRes?.user;
-
-    if (userErr || !user) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    }
+    const auth = await requireRequestUser(req);
+    if (!auth.ok) return authErrorResponse(auth);
+    const user = auth.user;
 
     // 🔥 VALIDA SE O SELLER PERTENCE AO USUÁRIO
-    const { data: sellerAccount, error: sellerErr } = await supabase
+    let sellerQuery = supabase
       .from("seller_accounts")
       .select("seller_id")
-      .eq("owner_user_id", user.id)
-      .eq("seller_id", sellerId)
-      .maybeSingle();
+      .eq("seller_id", sellerId);
+
+    if (!auth.isAdmin) {
+      sellerQuery = sellerQuery.eq("owner_user_id", user.id);
+    }
+
+    const { data: sellerAccount, error: sellerErr } = await sellerQuery.limit(1).maybeSingle();
 
     if (sellerErr) {
       return NextResponse.json(

@@ -41,11 +41,18 @@ export async function GET(req: Request) {
       auth: { persistSession: false },
     });
 
-    const { data: accs, error: accErr } = await supabase
+    let accountsQuery = supabase
       .from("seller_accounts")
       .select("id, owner_user_id, seller_id, ml_user_id, nickname, created_at")
-      .eq("owner_user_id", userId)
       .order("created_at", { ascending: false });
+
+    // O administrador escolhe entre todas as operações. Para um seller comum,
+    // a lista segue limitada às contas que ele próprio possui.
+    if (!auth.isAdmin) {
+      accountsQuery = accountsQuery.eq("owner_user_id", userId);
+    }
+
+    const { data: accs, error: accErr } = await accountsQuery;
 
     if (accErr) {
       return NextResponse.json(
@@ -61,8 +68,14 @@ export async function GET(req: Request) {
     }
 
     const items = [];
+    const seenSellerIds = new Set<string>();
 
     for (const acc of rows) {
+      // Uma mesma operação pode estar vinculada a mais de um usuário. No
+      // seletor administrativo ela deve aparecer uma única vez.
+      if (!acc.seller_id || seenSellerIds.has(acc.seller_id)) continue;
+      seenSellerIds.add(acc.seller_id);
+
       let nickname = norm(acc.nickname);
       let mlUserId = norm(acc.ml_user_id);
 

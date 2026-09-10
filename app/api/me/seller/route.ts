@@ -23,11 +23,18 @@ export async function GET(req: NextRequest) {
   // =====================================================
   // 1) BUSCA SELLERS DO USUÁRIO
   // =====================================================
-  const { data: sellers, error: sellersErr } = await supabaseAdmin
+  let sellersQuery = supabaseAdmin
     .from("seller_accounts")
     .select("id, seller_id, ml_user_id, nickname, created_at")
-    .eq("owner_user_id", userId)
     .order("created_at", { ascending: false });
+
+  // Admins podem manter no user_settings a operação que estão inspecionando.
+  // Sellers comuns continuam restritos às contas que possuem.
+  if (!auth.isAdmin) {
+    sellersQuery = sellersQuery.eq("owner_user_id", userId);
+  }
+
+  const { data: sellers, error: sellersErr } = await sellersQuery;
 
   if (sellersErr) {
     return Response.json(
