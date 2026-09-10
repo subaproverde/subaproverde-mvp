@@ -139,6 +139,7 @@ export async function GET(req: Request) {
       supabaseAdmin
         .from("sellers")
         .select("id, name, company_name, status, created_at, ml_user_id")
+        .or("status.is.null,status.neq.archived")
         .order("created_at", { ascending: false }),
       supabaseAdmin
         .from("seller_accounts")

@@ -13,6 +13,7 @@ import {
   Search,
   ShieldAlert,
   Store,
+  Trash2,
   Users,
   WifiOff,
 } from "lucide-react";
@@ -159,6 +160,7 @@ export default function AdminSellersClient() {
   const [summary, setSummary] = useState<Summary>(emptySummary);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | TokenStatus>("all");
+  const [removingSellerId, setRemovingSellerId] = useState("");
 
   async function loadSellers() {
     try {
@@ -259,6 +261,41 @@ export default function AdminSellersClient() {
   async function openDashboard(sellerId: string) {
     await setActiveSeller(sellerId);
     router.push(`/app/sellers/${encodeURIComponent(sellerId)}/dashboard`);
+  }
+
+  async function removeSeller(seller: AdminSellerItem) {
+    const label = seller.name || seller.nickname || seller.id;
+    const confirmed = window.confirm(
+      `Remover ${label}?\n\nA conta sairá dos seletores e as credenciais Mercado Livre salvas serão apagadas. O histórico operacional será preservado. Para usar novamente, será necessário autorizar a conta ML outra vez.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setRemovingSellerId(seller.id);
+      setError("");
+
+      const {
+        data: { session },
+      } = await supabaseBrowser.auth.getSession();
+
+      if (!session?.access_token) throw new Error("Você não está logado.");
+
+      const response = await fetch(`/api/admin/sellers/${encodeURIComponent(seller.id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await response.json().catch(() => ({}));
+
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.error ?? "Não foi possível remover o seller.");
+      }
+
+      await loadSellers();
+    } catch (e: any) {
+      setError(e?.message ?? "Não foi possível remover o seller.");
+    } finally {
+      setRemovingSellerId("");
+    }
   }
 
   return (
@@ -414,6 +451,16 @@ export default function AdminSellersClient() {
                       >
                         Abrir dashboard
                         <ArrowUpRight className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => removeSeller(seller)}
+                        disabled={removingSellerId === seller.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-2.5 text-sm font-bold text-rose-100 hover:bg-rose-500/20 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        {removingSellerId === seller.id ? "Removendo…" : "Remover"}
                       </button>
                     </div>
                   </article>
