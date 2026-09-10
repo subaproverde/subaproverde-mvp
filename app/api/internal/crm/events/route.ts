@@ -391,13 +391,18 @@ async function backfillOracleRun(workspaceId: string, runId: string, facts: Orac
     const receiptKey = `oracle-backfill:${fact.id}:receipt-review`;
     if (await hasOracleAudit(workspaceId, receiptKey)) continue;
     const amount = positiveNumber(factValue(fact, "amount"), positiveNumber(factValue(fact, "numericValue")));
-    const { data: receipt, error } = await supabaseApiAdmin.from("crm_payment_receipts").upsert({
+    const { data: existingReceipt, error: existingReceiptError } = await supabaseApiAdmin.from("crm_payment_receipts")
+      .select("id").eq("source_suggestion_id", fact.id).maybeSingle();
+    if (existingReceiptError) throw existingReceiptError;
+    const { data: receipt, error } = existingReceipt?.id
+      ? { data: existingReceipt, error: null }
+      : await supabaseApiAdmin.from("crm_payment_receipts").insert({
       workspace_id: workspaceId, contact_id: fact.contact_id, conversation_id: fact.conversation_id,
       status: "review", claimed_amount: amount || null, extracted_amount: amount || null,
       extraction: { source: "bia-oracle-backfill", factSuggestionId: fact.id, evidence: fact.evidence, data: fact.structured_data ?? {} },
       confidence: boundedConfidence(fact.confidence), source_suggestion_id: fact.id, match_status: "unmatched",
       review_notes: "Comprovante histórico identificado pela Bia; aguarda conciliação financeira.",
-    }, { onConflict: "source_suggestion_id", ignoreDuplicates: true }).select("id").maybeSingle();
+    }).select("id").single();
     if (error) throw error;
     if (receipt?.id) {
       await recordOracleBackfill(workspaceId, receiptKey, "payment_receipt", receipt.id, { runId, amount, factId: fact.id });
@@ -411,12 +416,13 @@ async function runOracleBackfill(event: BridgeOracleBackfillEvent, workspaceId: 
   const limit = Math.min(500, Math.max(1, Math.floor(Number(event.data.limit ?? 250))));
   const { data, error } = await supabaseApiAdmin.from("crm_ai_suggestions")
     .select("id,run_id,contact_id,conversation_id,suggestion_type,category,title,description,structured_data,confidence,evidence,status")
-    .eq("workspace_id", workspaceId).eq("suggestion_type", "fact").eq("status", "pending")
+    .eq("workspace_id", workspaceId).eq("suggestion_type", "fact").in("status", ["pending", "applied"])
     .order("created_at", { ascending: true }).limit(limit);
   if (error) return NextResponse.json({ ok: false, error: "Falha ao carregar fatos históricos da Bia." }, { status: 500 });
   const facts = (data ?? []) as OracleSuggestion[];
   let appliedFacts = 0; let orders = 0; let receipts = 0; let estimates = 0;
   for (const fact of facts) {
+    if (fact.status !== "pending") continue;
     await applyOracleSuggestion(workspaceId, fact);
     appliedFacts += 1;
   }
