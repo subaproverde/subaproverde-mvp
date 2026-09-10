@@ -725,7 +725,15 @@ export async function POST(req: Request) {
     try {
       return await runOracleBackfill(event, workspace.id);
     } catch (error) {
-      const detail = String(error instanceof Error ? error.message : error || "erro desconhecido")
+      const candidate = error && typeof error === "object"
+        ? [
+          "code" in error ? error.code : "",
+          "message" in error ? error.message : "",
+          "details" in error ? error.details : "",
+          "hint" in error ? error.hint : "",
+        ].filter(Boolean).join(" | ")
+        : error;
+      const detail = String(candidate || "erro desconhecido")
         .replace(/[\r\n]+/g, " ").slice(0, 300);
       console.error("Falha na migração determinística da Bia:", detail);
       return NextResponse.json({ ok: false, error: "Falha na migração determinística da Bia.", diagnostic: detail }, { status: 500 });
