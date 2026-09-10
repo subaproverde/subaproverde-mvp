@@ -285,6 +285,7 @@ async function applyOracleSuggestion(workspaceId: string, suggestion: OracleSugg
     if (result.error || !result.data) throw result.error ?? new Error("Orçamento sem identificador");
     const item = await supabaseApiAdmin.from("crm_quote_items").insert({ quote_id: result.data.id, service_type: serviceType, description: String(suggestion.title).slice(0, 500), quantity, unit_price: unitPrice });
     if (item.error) throw item.error;
+    if (lead?.id) await supabaseApiAdmin.from("crm_leads").update({ stage: "proposal", estimated_value: total }).eq("id", lead.id);
     await markOracleApplied(workspaceId, suggestion, "quote", result.data.id, "Rascunho de orçamento criado automaticamente a partir de serviço e valor explícitos.");
     return;
   }
@@ -313,6 +314,7 @@ async function applyOracleSuggestion(workspaceId: string, suggestion: OracleSugg
     if (job.error) throw job.error;
     if (lead?.id) await supabaseApiAdmin.from("crm_leads").update({ stage: "won", status: "won", won_at: new Date().toISOString(), estimated_value: total }).eq("id", lead.id);
   }
+  if (lead?.id && !confirmed) await supabaseApiAdmin.from("crm_leads").update({ stage: "negotiation", estimated_value: total }).eq("id", lead.id);
   await markOracleApplied(workspaceId, suggestion, "order", order.data.id, confirmed
     ? "Pedido confirmado, serviço pendente e conta a receber criada pelo fluxo financeiro do CRM."
     : "Rascunho de pedido criado automaticamente para revisão operacional.");
