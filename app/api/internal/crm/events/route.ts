@@ -152,6 +152,158 @@ function boundedNumber(value: unknown) {
   return Number.isFinite(number) ? number : 0;
 }
 
+const ORACLE_ACTION_CONFIDENCE = 0.92;
+const LEAD_STAGES = new Set(["new", "contacted", "qualified", "proposal", "negotiation", "won", "lost"]);
+
+type OracleSuggestion = {
+  id: string;
+  run_id: string;
+  contact_id: string;
+  conversation_id: string | null;
+  suggestion_type: "fact" | "action";
+  category: string;
+  title: string;
+  description: string;
+  structured_data: Record<string, unknown> | null;
+  confidence: number;
+  evidence: string;
+  status: string;
+};
+
+function positiveNumber(value: unknown, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function oracleEvidenceIsStrong(suggestion: OracleSuggestion) {
+  return Number(suggestion.confidence) >= ORACLE_ACTION_CONFIDENCE
+    && String(suggestion.evidence || "").trim().length >= 12;
+}
+
+async function markOracleApplied(workspaceId: string, suggestion: OracleSuggestion, entityType: string, entityId: string, reasoning: string) {
+  const reviewedAt = new Date().toISOString();
+  const { error } = await supabaseApiAdmin.from("crm_ai_suggestions").update({
+    status: "applied",
+    applied_entity_type: entityType,
+    applied_entity_id: entityId,
+    reviewed_at: reviewedAt,
+  }).eq("id", suggestion.id).eq("status", "pending");
+  if (error) throw error;
+  await supabaseApiAdmin.from("crm_audit_events").insert({
+    workspace_id: workspaceId,
+    event_key: `oracle:${suggestion.id}`,
+    entity_type: entityType,
+    entity_id: entityId,
+    action: "crm.oracle.applied",
+    actor_type: "ai",
+    actor_id: "bia-observer",
+    after_data: { suggestionId: suggestion.id, category: suggestion.category, confidence: suggestion.confidence },
+    reasoning,
+    source_refs: [{ type: "ai_suggestion", id: suggestion.id }],
+  });
+}
+
+async function applyOracleSuggestion(workspaceId: string, suggestion: OracleSuggestion) {
+  if (suggestion.status !== "pending") return;
+  const { data: prior } = await supabaseApiAdmin.from("crm_audit_events")
+    .select("id").eq("workspace_id", workspaceId).eq("event_key", `oracle:${suggestion.id}`).maybeSingle();
+  if (prior) return;
+
+  const data = suggestion.structured_data ?? {};
+  if (suggestion.suggestion_type === "fact") {
+    if (!String(suggestion.evidence || "").trim()) return;
+    const result = await supabaseApiAdmin.from("crm_extracted_facts").insert({
+      workspace_id: workspaceId,
+      contact_id: suggestion.contact_id,
+      conversation_id: suggestion.conversation_id,
+      fact_type: cleanIdentifier(suggestion.category) || "other",
+      fact_key: cleanIdentifier(data.key || suggestion.title) || "observacao",
+      fact_value: data,
+      confidence: boundedConfidence(suggestion.confidence),
+      status: "observed",
+      evidence: String(suggestion.evidence).slice(0, 2_000),
+    }).select("id").single();
+    if (result.error || !result.data) throw result.error ?? new Error("Fato sem identificador");
+    await markOracleApplied(workspaceId, suggestion, "extracted_fact", result.data.id, "Fato explícito registrado automaticamente pela Bia, com evidência.");
+    return;
+  }
+
+  if (!oracleEvidenceIsStrong(suggestion)) return;
+  const { data: lead } = await supabaseApiAdmin.from("crm_leads").select("id")
+    .eq("workspace_id", workspaceId).eq("contact_id", suggestion.contact_id).eq("status", "open")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+  if (suggestion.category === "update_lead_stage" && lead?.id) {
+    const stage = cleanIdentifier(data.leadStage);
+    if (!LEAD_STAGES.has(stage)) return;
+    const result = await supabaseApiAdmin.from("crm_leads").update({ stage }).eq("id", lead.id).select("id").single();
+    if (result.error || !result.data) throw result.error ?? new Error("Lead sem identificador");
+    await markOracleApplied(workspaceId, suggestion, "lead", result.data.id, "Estágio atualizado automaticamente a partir de evidência explícita da conversa.");
+    return;
+  }
+
+  if (suggestion.category === "schedule_follow_up") {
+    const dueAt = String(data.dueAt || "");
+    if (!dueAt || Number.isNaN(new Date(dueAt).getTime())) return;
+    const result = await supabaseApiAdmin.from("crm_tasks").insert({
+      workspace_id: workspaceId, contact_id: suggestion.contact_id, lead_id: lead?.id ?? null,
+      conversation_id: suggestion.conversation_id, title: String(suggestion.title).slice(0, 240),
+      description: String(suggestion.description || "").slice(0, 2_000), task_type: "follow_up",
+      status: "pending", priority: "medium", due_at: new Date(dueAt).toISOString(), automation_key: `oracle:${suggestion.id}`,
+    }).select("id").single();
+    if (result.error || !result.data) throw result.error ?? new Error("Tarefa sem identificador");
+    await markOracleApplied(workspaceId, suggestion, "task", result.data.id, "Follow-up com data explícita criado automaticamente pela Bia.");
+    return;
+  }
+
+  const quantity = positiveNumber(data.quantity, 1);
+  const total = positiveNumber(data.totalAmount, positiveNumber(data.unitPrice) * quantity);
+  const unitPrice = positiveNumber(data.unitPrice, total / quantity);
+  const serviceType = cleanIdentifier(data.serviceType) || "servico";
+  if (!["create_quote_draft", "create_order_draft", "confirm_order_and_create_receivable"].includes(suggestion.category) || !total || !serviceType) return;
+
+  if (suggestion.category === "create_quote_draft") {
+    const result = await supabaseApiAdmin.from("crm_quotes").insert({
+      workspace_id: workspaceId, contact_id: suggestion.contact_id, lead_id: lead?.id ?? null, status: "draft",
+      subtotal: total, total_amount: total, source_conversation_id: suggestion.conversation_id,
+      notes: String(suggestion.description || "").slice(0, 2_000),
+    }).select("id").single();
+    if (result.error || !result.data) throw result.error ?? new Error("Orçamento sem identificador");
+    const item = await supabaseApiAdmin.from("crm_quote_items").insert({ quote_id: result.data.id, service_type: serviceType, description: String(suggestion.title).slice(0, 500), quantity, unit_price: unitPrice });
+    if (item.error) throw item.error;
+    await markOracleApplied(workspaceId, suggestion, "quote", result.data.id, "Rascunho de orçamento criado automaticamente a partir de serviço e valor explícitos.");
+    return;
+  }
+
+  const confirmed = suggestion.category === "confirm_order_and_create_receivable";
+  const existingOrder = suggestion.conversation_id ? await supabaseApiAdmin.from("crm_orders").select("id")
+    .eq("workspace_id", workspaceId).eq("contact_id", suggestion.contact_id).eq("source_conversation_id", suggestion.conversation_id)
+    .eq("total_amount", total).in("status", confirmed ? ["confirmed", "in_service", "completed"] : ["draft", "review"]).limit(1).maybeSingle() : { data: null, error: null };
+  if (existingOrder.error) throw existingOrder.error;
+  if (existingOrder.data?.id) {
+    await markOracleApplied(workspaceId, suggestion, "order", existingOrder.data.id, "Ação associada a pedido já existente; nenhuma duplicação foi criada.");
+    return;
+  }
+
+  const order = await supabaseApiAdmin.from("crm_orders").insert({
+    workspace_id: workspaceId, contact_id: suggestion.contact_id, lead_id: lead?.id ?? null,
+    status: confirmed ? "confirmed" : "review", payment_timing: "after_service", total_amount: total,
+    source_conversation_id: suggestion.conversation_id, confirmed_at: confirmed ? new Date().toISOString() : null,
+    notes: String(suggestion.description || "").slice(0, 2_000),
+  }).select("id").single();
+  if (order.error || !order.data) throw order.error ?? new Error("Pedido sem identificador");
+  const item = await supabaseApiAdmin.from("crm_order_items").insert({ order_id: order.data.id, service_type: serviceType, description: String(suggestion.title).slice(0, 500), quantity, unit_price: unitPrice }).select("id").single();
+  if (item.error || !item.data) throw item.error ?? new Error("Item do pedido sem identificador");
+  if (confirmed) {
+    const job = await supabaseApiAdmin.from("crm_service_jobs").insert({ workspace_id: workspaceId, order_id: order.data.id, order_item_id: item.data.id, service_type: serviceType, status: "pending", requested_quantity: quantity, notes: String(suggestion.description || "").slice(0, 2_000) });
+    if (job.error) throw job.error;
+    if (lead?.id) await supabaseApiAdmin.from("crm_leads").update({ stage: "won", status: "won", won_at: new Date().toISOString(), estimated_value: total }).eq("id", lead.id);
+  }
+  await markOracleApplied(workspaceId, suggestion, "order", order.data.id, confirmed
+    ? "Pedido confirmado, serviço pendente e conta a receber criada pelo fluxo financeiro do CRM."
+    : "Rascunho de pedido criado automaticamente para revisão operacional.");
+}
+
 async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: string) {
   const phone = digits(event.data.phone);
   const jid = cleanIdentifier(event.data.jid);
@@ -270,6 +422,7 @@ async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: stri
     evidence: String(action.evidence ?? "").slice(0, 2_000),
   }));
   const suggestionRows = [...factRows, ...actionRows];
+  let persistedSuggestions: OracleSuggestion[] = [];
   if (suggestionRows.length) {
     const { error: suggestionsError } = await supabaseApiAdmin
       .from("crm_ai_suggestions")
@@ -277,6 +430,13 @@ async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: stri
     if (suggestionsError) {
       return NextResponse.json({ ok: false, error: "Falha ao registrar sugestões da IA." }, { status: 500 });
     }
+    const { data, error: persistedError } = await supabaseApiAdmin.from("crm_ai_suggestions")
+      .select("id,run_id,contact_id,conversation_id,suggestion_type,category,title,description,structured_data,confidence,evidence,status")
+      .eq("run_id", runId);
+    if (persistedError) {
+      return NextResponse.json({ ok: false, error: "Falha ao preparar as automações da Bia." }, { status: 500 });
+    }
+    persistedSuggestions = (data ?? []) as OracleSuggestion[];
   }
 
   // Comprovante precisa aparecer no Financeiro assim que for identificado pela Bia.
@@ -287,7 +447,7 @@ async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: stri
   if (receiptSuggestionKeys.length) {
     const { data: receiptSuggestions, error: receiptSuggestionsError } = await supabaseApiAdmin
       .from("crm_ai_suggestions")
-      .select("id,suggestion_key,structured_data,confidence,evidence")
+      .select("id,suggestion_key,contact_id,conversation_id,run_id,suggestion_type,category,title,description,structured_data,confidence,evidence,status")
       .eq("run_id", runId)
       .in("suggestion_key", receiptSuggestionKeys);
     if (receiptSuggestionsError) {
@@ -337,7 +497,23 @@ async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: stri
       if (receiptError) {
         return NextResponse.json({ ok: false, error: "Falha ao registrar comprovante no financeiro." }, { status: 500 });
       }
+      const receiptSuggestion = suggestion as OracleSuggestion;
+      if (oracleEvidenceIsStrong(receiptSuggestion)) {
+        const { data: receipt } = await supabaseApiAdmin.from("crm_payment_receipts")
+          .select("id").eq("source_suggestion_id", suggestion.id).maybeSingle();
+        if (receipt?.id) {
+          await markOracleApplied(workspaceId, receiptSuggestion, "payment_receipt", receipt.id,
+            "Comprovante identificado e encaminhado automaticamente para revisão financeira; não confirma pagamento.");
+        }
+      }
     }
+  }
+
+  // Fatos entram como observados; ações só são aplicadas com evidência e confiança altas.
+  // O comprovante é tratado acima para preservar o vínculo com a mensagem de origem.
+  for (const suggestion of persistedSuggestions) {
+    if (suggestion.suggestion_type === "action" && suggestion.category === "review_payment_receipt") continue;
+    await applyOracleSuggestion(workspaceId, suggestion);
   }
 
   const { error: auditError } = await supabaseApiAdmin.from("crm_audit_events").upsert({
