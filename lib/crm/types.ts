@@ -71,6 +71,9 @@ export type CrmOverview = {
   intelligence: {
     observerActive: boolean;
     pendingSuggestions: number;
+    appliedSuggestionsToday: number;
+    factsObservedToday: number;
+    actionsAppliedToday: number;
     runsToday: number;
     averageConfidence: number;
     totalCostUsdToday: number;

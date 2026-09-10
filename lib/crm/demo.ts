@@ -83,6 +83,9 @@ export const crmDemoOverview: CrmOverview = {
   intelligence: {
     observerActive: false,
     pendingSuggestions: 2,
+    appliedSuggestionsToday: 5,
+    factsObservedToday: 3,
+    actionsAppliedToday: 2,
     runsToday: 7,
     averageConfidence: 0.91,
     totalCostUsdToday: 0,

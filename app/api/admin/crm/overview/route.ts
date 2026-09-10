@@ -35,7 +35,7 @@ function emptyOverview(): CrmOverview {
     recentActivities: [],
     finance: { accounts: [], receiptsToReview: 0 },
     fiscal: { enabled: false, environment: "sandbox", provider: null },
-    intelligence: { observerActive: false, pendingSuggestions: 0, runsToday: 0, averageConfidence: 0, totalCostUsdToday: 0, suggestions: [] },
+    intelligence: { observerActive: false, pendingSuggestions: 0, appliedSuggestionsToday: 0, factsObservedToday: 0, actionsAppliedToday: 0, runsToday: 0, averageConfidence: 0, totalCostUsdToday: 0, suggestions: [] },
   };
 }
 
@@ -168,6 +168,9 @@ export async function GET(req: Request) {
     intelligence: {
       observerActive: !aiSchemaUnavailable,
       pendingSuggestions: aiSuggestions.filter((item) => item.status === "pending").length,
+      appliedSuggestionsToday: aiSuggestions.filter((item) => item.status === "applied" && item.created_at >= todayIso).length,
+      factsObservedToday: aiSuggestions.filter((item) => item.suggestion_type === "fact" && item.status === "applied" && item.created_at >= todayIso).length,
+      actionsAppliedToday: aiSuggestions.filter((item) => item.suggestion_type === "action" && item.status === "applied" && item.created_at >= todayIso).length,
       runsToday: aiRuns.length,
       averageConfidence: aiRuns.length ? aiRuns.reduce((sum, item) => sum + Number(item.confidence ?? 0), 0) / aiRuns.length : 0,
       totalCostUsdToday: aiRuns.reduce((sum, item) => sum + Number(item.total_cost_usd ?? 0), 0),
