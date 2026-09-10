@@ -3,12 +3,13 @@ import { supabaseApiAdmin, authErrorResponse, requireAdminRequest } from "@/lib/
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { sellerId: string } }
+  { params }: { params: Promise<{ sellerId: string }> }
 ) {
   const auth = await requireAdminRequest(req);
   if (!auth.ok) return authErrorResponse(auth);
 
-  const sellerId = String(params.sellerId ?? "").trim();
+  const { sellerId: rawSellerId } = await params;
+  const sellerId = String(rawSellerId ?? "").trim();
   if (!sellerId) {
     return NextResponse.json({ ok: false, error: "sellerId obrigatório." }, { status: 400 });
   }
