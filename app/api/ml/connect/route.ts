@@ -65,8 +65,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    await supabaseAdmin.from("oauth_states").delete().eq("user_id", userId);
-
     const nonce = crypto.randomUUID();
     const state = sellerId ? `${nonce}:${sellerId}` : nonce;
 

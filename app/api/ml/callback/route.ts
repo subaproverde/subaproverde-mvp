@@ -89,21 +89,6 @@ async function resolveSellerId({
     return String(accountsByMlUser[0].seller_id);
   }
 
-  const { data: existingAccounts, error: accGetErr } = await supabase
-    .from("seller_accounts")
-    .select("id, seller_id, owner_user_id")
-    .eq("owner_user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(2);
-
-  if (accGetErr) {
-    throw new Error(`Falha ao recuperar seller_accounts por owner_user_id: ${accGetErr.message}`);
-  }
-
-  if ((existingAccounts?.length ?? 0) === 1 && existingAccounts?.[0]?.seller_id) {
-    return String(existingAccounts[0].seller_id);
-  }
-
   const { data: existingSeller, error: sellerFindErr } = await supabase
     .from("sellers")
     .select("id, ml_user_id")
@@ -269,6 +254,23 @@ export async function GET(req: NextRequest) {
             nickname,
           },
         },
+        { status: 500 }
+      );
+    }
+
+    // Após conectar uma conta nova, ela passa a ser a conta ativa. As demais
+    // continuam vinculadas e podem ser selecionadas normalmente no seletor.
+    const { error: activeSellerErr } = await supabase.from("user_settings").upsert(
+      {
+        user_id: userId,
+        active_seller_id: sellerId,
+      },
+      { onConflict: "user_id" }
+    );
+
+    if (activeSellerErr) {
+      return NextResponse.json(
+        { error: "Falha ao definir seller ativo", details: activeSellerErr.message },
         { status: 500 }
       );
     }

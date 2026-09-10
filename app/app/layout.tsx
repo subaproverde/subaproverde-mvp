@@ -122,8 +122,11 @@ export default function SellerAppLayout({ children }: { children: React.ReactNod
       return;
     }
 
+    // O acesso global adiciona uma nova conta Mercado Livre. Só uma tela de
+    // reconexão explícita deve enviar sellerId; caso contrário o callback
+    // associa pelo ml_user_id ou cria um seller novo, preservando os tokens
+    // das demais contas do mesmo cliente.
     const params = new URLSearchParams({ json: "1" });
-    if (activeSellerId && !isAdmin) params.set("sellerId", activeSellerId);
 
     const response = await authFetch(`/api/ml/connect?${params.toString()}`, { cache: "no-store" });
     const json = await response.json().catch(() => ({}));
