@@ -722,7 +722,14 @@ export async function POST(req: Request) {
     return handleAnalysisEvent(event, workspace.id);
   }
   if (event.type === "crm.oracle.backfill") {
-    return runOracleBackfill(event, workspace.id);
+    try {
+      return await runOracleBackfill(event, workspace.id);
+    } catch (error) {
+      const detail = String(error instanceof Error ? error.message : error || "erro desconhecido")
+        .replace(/[\r\n]+/g, " ").slice(0, 300);
+      console.error("Falha na migração determinística da Bia:", detail);
+      return NextResponse.json({ ok: false, error: "Falha na migração determinística da Bia.", diagnostic: detail }, { status: 500 });
+    }
   }
 
   const phone = digits(event.data.phone);
