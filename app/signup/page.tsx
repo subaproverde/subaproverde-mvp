@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabaseBrowser } from "@/lib/supabaseClient";
-import { authFetch } from "@/lib/authFetch";
 
 export default function SignupPage() {
   const [sellerFullName, setSellerFullName] = useState("");
@@ -26,6 +25,13 @@ export default function SignupPage() {
       const { data, error } = await supabaseBrowser.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: sellerFullName.trim(),
+            store_name: storeName.trim(),
+            coupon_code: normCoupon(couponCode),
+          },
+        },
       });
 
       if (error) {
@@ -35,38 +41,24 @@ export default function SignupPage() {
 
       const userId = data?.user?.id;
 
-      // cria seller_accounts (seu ensure já existe)
+      // Durante a confirmação de e-mail pode ainda existir uma sessão anterior no navegador.
+      // Não envie esse token: o endpoint valida que este usuário acabou de ser criado.
       if (userId) {
-        const r = await authFetch("/api/seller_accounts/ensure", {
+        const r = await fetch("/api/seller_accounts/ensure", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ userId }),
+          body: JSON.stringify({
+            userId,
+            fullName: sellerFullName.trim(),
+            storeName: storeName.trim(),
+            couponCode: normCoupon(couponCode),
+          }),
         });
 
         const j = await r.json().catch(() => ({}));
         if (!r.ok || !j?.ok) {
           alert(`Conta criada, mas falhou ao criar seller no banco: ${j?.error ?? "erro"}`);
           return;
-        }
-
-        // aplica cupom/vínculo (não trava fluxo se falhar)
-        const coupon = normCoupon(couponCode);
-        if (coupon) {
-          const rr = await authFetch("/api/referral/apply", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              sellerAccountId: j.sellerAccountId,
-              couponCode: coupon,
-              sellerFullName: sellerFullName.trim(),
-              storeName: storeName.trim(),
-            }),
-          });
-
-          const jj = await rr.json().catch(() => ({}));
-          if (!rr.ok || !jj?.ok) {
-            alert(`Cadastro criado, mas cupom não aplicado: ${jj?.error ?? "erro"}`);
-          }
         }
 
         // ✅ vai pra tela de obrigado (sempre)

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { authFetch } from "@/lib/authFetch";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,11 +38,32 @@ export default function LoginPage() {
       .eq("id", userId)
       .maybeSingle();
 
-    setLoading(false);
-
     if (roleError || !profile?.role) {
+      setLoading(false);
       return setMsg("Falha ao identificar perfil do usuário.");
     }
+
+    if (profile.role !== "admin") {
+      const metadata = data.user.user_metadata ?? {};
+      const ensureResponse = await authFetch("/api/seller_accounts/ensure", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          fullName: String(metadata.full_name ?? ""),
+          storeName: String(metadata.store_name ?? ""),
+          couponCode: String(metadata.coupon_code ?? ""),
+        }),
+      });
+
+      const ensured = await ensureResponse.json().catch(() => ({}));
+      if (!ensureResponse.ok || !ensured?.ok) {
+        setLoading(false);
+        return setMsg("Não foi possível preparar sua conta. Tente novamente em instantes.");
+      }
+    }
+
+    setLoading(false);
 
     if (profile.role === "admin") {
       const next = new URLSearchParams(window.location.search).get("next") || "";
