@@ -82,7 +82,17 @@ type BridgeAnalysisEvent = {
   };
 };
 
-type BridgeEvent = BridgeMessageEvent | BridgeAnalysisEvent;
+type BridgeOracleBackfillEvent = {
+  schema: 1;
+  eventId: string;
+  type: "crm.oracle.backfill";
+  occurredAt: string;
+  workspaceSlug?: string;
+  source: "suba-agent";
+  data: { limit?: number };
+};
+
+type BridgeEvent = BridgeMessageEvent | BridgeAnalysisEvent | BridgeOracleBackfillEvent;
 
 function secureEqual(a: string, b: string) {
   const left = Buffer.from(a);
@@ -135,6 +145,10 @@ function validEvent(value: unknown): value is BridgeEvent {
       && Boolean(analysisEvent.data?.analysis)
       && ["auto_reply", "no_reply", "needs_approval", "ack", "escalate"].includes(String(analysisEvent.data?.analysis?.decision))
       && Number.isFinite(Number(analysisEvent.data?.analysis?.confidence));
+  }
+  if (event.type === "crm.oracle.backfill" && event.source === "suba-agent") {
+    const limit = Number((event as Partial<BridgeOracleBackfillEvent>).data?.limit ?? 250);
+    return Number.isFinite(limit) && limit >= 1 && limit <= 500;
   }
   if (!["conversation.message.received", "conversation.message.sent"].includes(String(event.type)) || event.source !== "suba-bridge") return false;
   const messageEvent = event as Partial<BridgeMessageEvent>;
@@ -302,6 +316,124 @@ async function applyOracleSuggestion(workspaceId: string, suggestion: OracleSugg
   await markOracleApplied(workspaceId, suggestion, "order", order.data.id, confirmed
     ? "Pedido confirmado, serviço pendente e conta a receber criada pelo fluxo financeiro do CRM."
     : "Rascunho de pedido criado automaticamente para revisão operacional.");
+}
+
+async function hasOracleAudit(workspaceId: string, key: string) {
+  const { data, error } = await supabaseApiAdmin.from("crm_audit_events")
+    .select("id").eq("workspace_id", workspaceId).eq("event_key", key).maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
+}
+
+async function recordOracleBackfill(workspaceId: string, key: string, entityType: string, entityId: string, detail: Record<string, unknown>) {
+  const { error } = await supabaseApiAdmin.from("crm_audit_events").insert({
+    workspace_id: workspaceId, event_key: key, entity_type: entityType, entity_id: entityId,
+    action: "crm.oracle.backfill", actor_type: "ai", actor_id: "bia-observer", after_data: detail,
+    reasoning: "Registro histórico estruturado sem nova chamada ao modelo.", source_refs: [{ type: "oracle_backfill", id: key }],
+  });
+  if (error) throw error;
+}
+
+function factValue(suggestion: OracleSuggestion | undefined, field: string) {
+  return suggestion?.structured_data?.[field];
+}
+
+async function backfillOracleRun(workspaceId: string, runId: string, facts: OracleSuggestion[]) {
+  const first = facts[0];
+  if (!first) return { orders: 0, receipts: 0, estimates: 0 };
+  const byCategory = (category: string) => facts.filter((fact) => fact.category === category);
+  let orders = 0; let receipts = 0; let estimates = 0;
+  const serviceFact = byCategory("service_interest").find((fact) => String(factValue(fact, "valueText") || "").trim());
+  const valueFact = byCategory("commercial_value").find((fact) => positiveNumber(factValue(fact, "amount")) > 0 || positiveNumber(factValue(fact, "numericValue")) > 0);
+  const quantityFact = byCategory("service_quantity").find((fact) => positiveNumber(factValue(fact, "numericValue")) > 0);
+  const serviceType = cleanIdentifier(factValue(serviceFact, "valueText")).slice(0, 120);
+  const total = positiveNumber(factValue(valueFact, "amount"), positiveNumber(factValue(valueFact, "numericValue")));
+  const quantity = positiveNumber(factValue(quantityFact, "numericValue"), 1);
+
+  const { data: lead } = await supabaseApiAdmin.from("crm_leads").select("id,estimated_value")
+    .eq("workspace_id", workspaceId).eq("contact_id", first.contact_id).eq("status", "open")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+  if (lead?.id && total > Number(lead.estimated_value ?? 0)) {
+    const estimateKey = `oracle-backfill:${runId}:lead-estimate`;
+    if (!await hasOracleAudit(workspaceId, estimateKey)) {
+      const { error } = await supabaseApiAdmin.from("crm_leads").update({ estimated_value: total }).eq("id", lead.id);
+      if (error) throw error;
+      await recordOracleBackfill(workspaceId, estimateKey, "lead", lead.id, { runId, estimatedValue: total });
+      estimates += 1;
+    }
+  }
+
+  // Histórico com serviço, quantidade e valor forma um pedido em revisão. Não é venda confirmada.
+  if (serviceType && total > 0) {
+    const orderKey = `oracle-backfill:${runId}:order-review`;
+    if (!await hasOracleAudit(workspaceId, orderKey)) {
+      const { data: order, error: orderError } = await supabaseApiAdmin.from("crm_orders").insert({
+        workspace_id: workspaceId, contact_id: first.contact_id, lead_id: lead?.id ?? null,
+        status: "review", payment_timing: "after_service", total_amount: total,
+        source_conversation_id: first.conversation_id,
+        notes: "Pedido estruturado pela Bia a partir de fatos históricos; aguarda confirmação de contratação.",
+      }).select("id").single();
+      if (orderError || !order) throw orderError ?? new Error("Pedido histórico sem identificador");
+      const unitPrice = total / quantity;
+      const { error: itemError } = await supabaseApiAdmin.from("crm_order_items").insert({
+        order_id: order.id, service_type: serviceType, description: `Serviço identificado pela Bia: ${serviceType}`,
+        quantity, unit_price: unitPrice, metadata: { sourceRunId: runId, source: "oracle_backfill" },
+      });
+      if (itemError) throw itemError;
+      await recordOracleBackfill(workspaceId, orderKey, "order", order.id, { runId, total, quantity, serviceType });
+      orders += 1;
+    }
+  }
+
+  // Fato de comprovante vira uma fila financeira; não cria pagamento nem baixa recebível.
+  for (const fact of byCategory("payment_receipt")) {
+    const receiptKey = `oracle-backfill:${fact.id}:receipt-review`;
+    if (await hasOracleAudit(workspaceId, receiptKey)) continue;
+    const amount = positiveNumber(factValue(fact, "amount"), positiveNumber(factValue(fact, "numericValue")));
+    const { data: receipt, error } = await supabaseApiAdmin.from("crm_payment_receipts").upsert({
+      workspace_id: workspaceId, contact_id: fact.contact_id, conversation_id: fact.conversation_id,
+      status: "review", claimed_amount: amount || null, extracted_amount: amount || null,
+      extraction: { source: "bia-oracle-backfill", factSuggestionId: fact.id, evidence: fact.evidence, data: fact.structured_data ?? {} },
+      confidence: boundedConfidence(fact.confidence), source_suggestion_id: fact.id, match_status: "unmatched",
+      review_notes: "Comprovante histórico identificado pela Bia; aguarda conciliação financeira.",
+    }, { onConflict: "source_suggestion_id", ignoreDuplicates: true }).select("id").maybeSingle();
+    if (error) throw error;
+    if (receipt?.id) {
+      await recordOracleBackfill(workspaceId, receiptKey, "payment_receipt", receipt.id, { runId, amount, factId: fact.id });
+      receipts += 1;
+    }
+  }
+  return { orders, receipts, estimates };
+}
+
+async function runOracleBackfill(event: BridgeOracleBackfillEvent, workspaceId: string) {
+  const limit = Math.min(500, Math.max(1, Math.floor(Number(event.data.limit ?? 250))));
+  const { data, error } = await supabaseApiAdmin.from("crm_ai_suggestions")
+    .select("id,run_id,contact_id,conversation_id,suggestion_type,category,title,description,structured_data,confidence,evidence,status")
+    .eq("workspace_id", workspaceId).eq("suggestion_type", "fact").eq("status", "pending")
+    .order("created_at", { ascending: true }).limit(limit);
+  if (error) return NextResponse.json({ ok: false, error: "Falha ao carregar fatos históricos da Bia." }, { status: 500 });
+  const facts = (data ?? []) as OracleSuggestion[];
+  let appliedFacts = 0; let orders = 0; let receipts = 0; let estimates = 0;
+  for (const fact of facts) {
+    await applyOracleSuggestion(workspaceId, fact);
+    appliedFacts += 1;
+  }
+  const byRun = new Map<string, OracleSuggestion[]>();
+  for (const fact of facts) byRun.set(fact.run_id, [...(byRun.get(fact.run_id) ?? []), fact]);
+  for (const [runId, runFacts] of byRun) {
+    const result = await backfillOracleRun(workspaceId, runId, runFacts);
+    orders += result.orders; receipts += result.receipts; estimates += result.estimates;
+  }
+  const { error: auditError } = await supabaseApiAdmin.from("crm_audit_events").upsert({
+    workspace_id: workspaceId, event_key: event.eventId, entity_type: "oracle_backfill", entity_id: event.eventId,
+    action: event.type, actor_type: "ai", actor_id: "bia-observer",
+    after_data: { appliedFacts, orders, receipts, estimates, limit },
+    reasoning: "Migração determinística de fatos já extraídos, sem nova análise do modelo.", source_refs: [],
+  }, { onConflict: "workspace_id,event_key", ignoreDuplicates: true });
+  if (auditError) return NextResponse.json({ ok: false, error: "Falha ao auditar a migração da Bia." }, { status: 500 });
+  return NextResponse.json({ ok: true, appliedFacts, orders, receipts, estimates }, { status: 200 });
 }
 
 async function handleAnalysisEvent(event: BridgeAnalysisEvent, workspaceId: string) {
@@ -582,6 +714,9 @@ export async function POST(req: Request) {
 
   if (event.type === "conversation.analysis.completed") {
     return handleAnalysisEvent(event, workspace.id);
+  }
+  if (event.type === "crm.oracle.backfill") {
+    return runOracleBackfill(event, workspace.id);
   }
 
   const phone = digits(event.data.phone);
