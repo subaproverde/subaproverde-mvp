@@ -161,6 +161,12 @@ function Header() {
 
         <div className="flex items-center gap-2">
           <Link
+            href="/signup"
+            className="inline-flex rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-spv-on-accent shadow-none hover:bg-emerald-300"
+          >
+            Teste Grátis
+          </Link>
+          <Link
             href="/login"
             className="hidden rounded-lg border border-spv-line bg-spv-surface px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised sm:inline-flex"
           >
@@ -214,11 +220,18 @@ function HeroSection() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-spv-on-accent shadow-none hover:bg-emerald-300"
+            >
+              Teste Grátis
+              <ArrowRight className="h-4 w-4" />
+            </Link>
             <a
               href={WHATSAPP_LINK}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-bold text-spv-on-accent shadow-none hover:bg-emerald-300"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-spv-line bg-spv-surface px-6 py-3 text-sm font-bold text-spv-ink hover:bg-spv-raised"
             >
               <MessageCircle className="h-4 w-4" />
               Quero analisar minha operação
