@@ -938,3 +938,23 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, duplicate: false, contactId, conversationId, leadId: leadId || null }, { status: 202 });
 }
+
+// Consulta operacional sem conteúdo de clientes: permite auditar a migração sem repetir escrita.
+export async function GET(req: Request) {
+  const secret = process.env.CRM_BRIDGE_SECRET?.trim() ?? "";
+  if (secret.length < 32) return NextResponse.json({ ok: false, error: "Integração CRM não configurada." }, { status: 503 });
+  const signature = req.headers.get("x-spv-signature") ?? "";
+  if (!validSignature("", signature, secret)) return NextResponse.json({ ok: false, error: "Assinatura inválida." }, { status: 401 });
+  const { data: workspace, error: workspaceError } = await supabaseApiAdmin
+    .from("crm_workspaces").select("id").eq("slug", "suba-pro-verde").maybeSingle();
+  if (workspaceError || !workspace) return NextResponse.json({ ok: false, error: "Workspace não encontrado." }, { status: 404 });
+  const [facts, orders, receipts, audit] = await Promise.all([
+    supabaseApiAdmin.from("crm_extracted_facts").select("id", { count: "exact", head: true }).eq("workspace_id", workspace.id).eq("status", "observed"),
+    supabaseApiAdmin.from("crm_audit_events").select("id", { count: "exact", head: true }).eq("workspace_id", workspace.id).eq("action", "crm.oracle.backfill").eq("entity_type", "order"),
+    supabaseApiAdmin.from("crm_audit_events").select("id", { count: "exact", head: true }).eq("workspace_id", workspace.id).eq("action", "crm.oracle.backfill").eq("entity_type", "payment_receipt"),
+    supabaseApiAdmin.from("crm_audit_events").select("after_data").eq("workspace_id", workspace.id).eq("event_key", "oracle-backfill-20260910-001").maybeSingle(),
+  ]);
+  const error = [facts.error, orders.error, receipts.error, audit.error].find(Boolean);
+  if (error) return NextResponse.json({ ok: false, error: "Falha ao consultar o estado do oráculo." }, { status: 500 });
+  return NextResponse.json({ ok: true, observedFacts: facts.count ?? 0, reviewOrdersFromBackfill: orders.count ?? 0, receiptReviewsFromBackfill: receipts.count ?? 0, lastBackfill: audit.data?.after_data ?? null }, { headers: { "Cache-Control": "no-store" } });
+}
