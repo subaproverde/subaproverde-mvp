@@ -194,6 +194,23 @@ export default function ReportsPage() {
         <CountTile label="Mediações" value={counts.mediacoes} tone="sky" />
       </section>
 
+      <Link
+        href="/app/reports/custos-frete-devolucao"
+        className="mt-6 flex flex-col gap-4 rounded-xl border border-emerald-400/25 bg-emerald-500/10 p-5 transition hover:bg-emerald-500/15 md:flex-row md:items-center md:justify-between"
+      >
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-emerald-400/25 bg-spv-page text-spv-accent-text">
+            <Download className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-spv-accent-text">Novo relatório financeiro</div>
+            <div className="mt-1 text-lg font-semibold text-spv-ink">Custos de frete de devolução</div>
+            <p className="mt-1 max-w-2xl text-sm text-spv-muted">Selecione vendas com impacto e cobrança confirmada para visualizar a possível recuperação.</p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-2 text-sm font-bold text-spv-ink">Abrir relatório <BarChart3 className="h-4 w-4" /></span>
+      </Link>
+
       <section className="mt-6 rounded-xl border border-spv-line bg-spv-surface p-5 shadow-none">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>

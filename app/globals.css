@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @import "./site-tokens.css";
 
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .report-row:not(.selected) { display: none !important; }
+  .print-report { border-color: #d1d5db !important; background: white !important; }
+}
+
+.print-only { display: none; }
+
 .crm-agenda {
   --agenda-text:var(--spv-ink); --agenda-muted:var(--spv-muted); --agenda-subtle:var(--spv-muted); --agenda-panel:var(--spv-surface); --agenda-panel-strong:var(--spv-page); --agenda-card:var(--spv-surface); --agenda-hover:var(--spv-raised); --agenda-border:var(--spv-line); --agenda-border-soft:var(--spv-line); --agenda-input:var(--spv-surface); --agenda-shadow:none;
 }
