@@ -3,55 +3,59 @@ import { createClient } from "@supabase/supabase-js";
 import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 import { getValidMlAccessToken } from "@/lib/mlToken";
 
-type MlFetchResult = {
-  ok: boolean;
-  status: number;
-  json: any;
+type BillingCharge = {
+  amount: number;
+  currencyId: string;
+  createdAt: string | null;
 };
-
-function asArray(value: any): any[] {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.data)) return value.data;
-  if (Array.isArray(value?.results)) return value.results;
-  return [];
-}
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-async function mlFetch(url: string, accessToken: string, extraHeaders: HeadersInit = {}): Promise<MlFetchResult> {
+function asArray(value: any): any[] {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.results)) return value.results;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
+}
+
+function oneOrMany(value: any): any[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
+async function mlFetch(url: string, accessToken: string) {
   const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}`, ...extraHeaders },
+    headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
 
-  return {
-    ok: response.ok,
-    status: response.status,
-    json: await response.json().catch(() => null),
-  };
+  return { ok: response.ok, json: await response.json().catch(() => null) };
 }
 
-async function inBatches<T, R>(items: T[], size: number, task: (item: T) => Promise<R>) {
-  const results: R[] = [];
+function isReturnShippingCharge(charge: any) {
+  const text = [
+    charge?.transaction_detail,
+    charge?.detail_description,
+    charge?.description,
+    charge?.label,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("pt-BR");
 
-  for (let index = 0; index < items.length; index += size) {
-    const batch = items.slice(index, index + size);
-    results.push(...(await Promise.all(batch.map(task))));
-  }
-
-  return results;
+  const type = String(charge?.detail_type ?? "").toUpperCase();
+  return type === "CHARGE" && /(devolu|return)/.test(text);
 }
 
 /**
- * Parte da mesma fonte que alimenta o contador de reclamações impactando do seller
- * (reputation_issues/impact_claims) e lê a cobrança oficial de cada claim.
+ * Concilia somente as vendas que já impactam a reputação com os lançamentos
+ * financeiros vinculados à própria order no Faturamento do Mercado Livre.
  *
- * /charges/return-cost é a fonte primária. Em devoluções que não a exponham,
- * usamos o shipment da devolução e /shipments/{id}/costs, ambos documentados pela ML.
- * Não há estimativa de frete neste endpoint.
+ * Fonte: GET /billing/integration/group/ML/order/details?order_ids=...
+ * (máximo oficial de 60 orders por consulta).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -62,16 +66,6 @@ export async function GET(req: NextRequest) {
 
     const access = await requireSellerAccess(req, sellerId);
     if (!access.ok) return authErrorResponse(access);
-
-    const { accessToken } = await getValidMlAccessToken(sellerId);
-    const me = await mlFetch("https://api.mercadolibre.com/users/me", accessToken);
-
-    if (!me.ok || !me.json?.id) {
-      return NextResponse.json(
-        { ok: false, error: "Não foi possível identificar a conta do Mercado Livre conectada." },
-        { status: 502 }
-      );
-    }
 
     const { data: impactIssues, error: issuesError } = await supabaseAdmin
       .from("reputation_issues")
@@ -89,86 +83,100 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const issues = (impactIssues ?? []).filter((issue: any) => String(issue?.external_ref ?? "").trim());
-    const reportItems: Array<{
-      claimId: string;
-      saleId: string | null;
-      amount: number;
-      currencyId: string;
-      status: string | null;
-      stage: string | null;
-      dateCreated: string | null;
-      reason: string | null;
-    }> = [];
-
-    const inspectImpact = async (issue: any) => {
-      const claimId = String(issue.external_ref).trim();
+    const issues = (impactIssues ?? []).map((issue: any) => {
       const payload = issue?.payload ?? {};
-      const returnCost = await mlFetch(
-        `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/charges/return-cost`,
+      return {
+        claimId: String(issue?.external_ref ?? "").trim(),
+        saleId: issue?.resource_id != null
+          ? String(issue.resource_id)
+          : payload?.resource_id != null
+            ? String(payload.resource_id)
+            : "",
+        payload,
+        createdAt: issue?.created_at ? String(issue.created_at) : null,
+      };
+    }).filter((issue) => issue.claimId && issue.saleId);
+
+    const uniqueOrderIds = Array.from(new Set(issues.map((issue) => issue.saleId)));
+    if (uniqueOrderIds.length === 0) {
+      return NextResponse.json({ ok: true, items: [], impactingClaims: issues.length });
+    }
+
+    const { accessToken } = await getValidMlAccessToken(sellerId);
+    const chargesByOrder = new Map<string, BillingCharge[]>();
+    const seenDetails = new Set<string>();
+    let billingAvailable = false;
+
+    for (let index = 0; index < uniqueOrderIds.length; index += 60) {
+      const orderIds = uniqueOrderIds.slice(index, index + 60);
+      const billing = await mlFetch(
+        `https://api.mercadolibre.com/billing/integration/group/ML/order/details?order_ids=${encodeURIComponent(orderIds.join(","))}`,
         accessToken
       );
-      const directAmount = Number(returnCost.json?.amount);
 
-      let amount = Number.isFinite(directAmount) && directAmount > 0 ? directAmount : 0;
-      let currencyId = String(returnCost.json?.currency_id ?? "BRL");
+      if (!billing.ok) continue;
+      billingAvailable = true;
 
-      // Fallback documentado pela ML para quando a cobrança estiver registrada no
-      // shipment da devolução, mas não vier no endpoint primário da claim.
-      if (amount <= 0) {
-        const returnInfo = await mlFetch(
-          `https://api.mercadolibre.com/post-purchase/v2/claims/${encodeURIComponent(claimId)}/returns`,
-          accessToken
+      for (const orderReport of asArray(billing.json)) {
+        const orderId = String(
+          orderReport?.order_id ?? orderReport?.sales_info?.order_id ?? orderReport?.shipping_info?.order?.order_id ?? ""
         );
-        const shipmentIds = asArray(returnInfo.json?.shipments)
-          .map((shipment: any) => shipment?.shipment_id)
-          .filter((shipmentId: any) => shipmentId !== null && shipmentId !== undefined && shipmentId !== "");
+        if (!orderId) continue;
 
-        const shipmentCosts = await inBatches(shipmentIds, 4, async (shipmentId) =>
-          mlFetch(
-            `https://api.mercadolibre.com/shipments/${encodeURIComponent(String(shipmentId))}/costs`,
-            accessToken,
-            { "x-format-new": "true" }
-          )
-        );
+        for (const detail of oneOrMany(orderReport?.details)) {
+          const charge = detail?.charge_info ?? detail;
+          if (!isReturnShippingCharge(charge)) continue;
 
-        const fallbackAmounts = shipmentCosts.map((shipmentCost) => {
-          const sender = asArray(shipmentCost.json?.senders).find(
-            (entry: any) => String(entry?.user_id ?? "") === String(me.json.id)
-          );
-          return { amount: Number(sender?.cost), currencyId: String(shipmentCost.json?.currency_id ?? "BRL") };
-        }).filter((entry) => Number.isFinite(entry.amount) && entry.amount > 0);
+          const amount = Math.abs(Number(charge?.detail_amount));
+          if (!Number.isFinite(amount) || amount <= 0) continue;
 
-        amount = fallbackAmounts.reduce((total, entry) => total + entry.amount, 0);
-        currencyId = fallbackAmounts[0]?.currencyId ?? currencyId;
+          const detailKey = `${orderId}:${charge?.detail_id ?? ""}:${charge?.creation_date_time ?? ""}:${amount}`;
+          if (seenDetails.has(detailKey)) continue;
+          seenDetails.add(detailKey);
+
+          const charges = chargesByOrder.get(orderId) ?? [];
+          charges.push({
+            amount,
+            currencyId: String(detail?.currency_info?.currency_id ?? orderReport?.currency_info?.currency_id ?? "BRL"),
+            createdAt: charge?.creation_date_time ? String(charge.creation_date_time) : null,
+          });
+          chargesByOrder.set(orderId, charges);
+        }
       }
+    }
 
-      if (!Number.isFinite(amount) || amount <= 0) return null;
+    if (!billingAvailable) {
+      return NextResponse.json(
+        { ok: false, error: "O Mercado Livre não disponibilizou o relatório de faturamento para este seller." },
+        { status: 502 }
+      );
+    }
 
-      return {
-        claimId,
-        saleId: issue?.resource_id != null ? String(issue.resource_id) : payload?.resource_id != null ? String(payload.resource_id) : null,
-        amount,
-        currencyId,
-        status: payload?.status ? String(payload.status) : null,
-        stage: payload?.stage ? String(payload.stage) : null,
-        dateCreated: payload?.date_created ? String(payload.date_created) : issue?.created_at ? String(issue.created_at) : null,
-        reason: payload?.reason_id ? String(payload.reason_id) : null,
-      };
-    };
+    const items = issues.flatMap((issue) => {
+      const charges = chargesByOrder.get(issue.saleId) ?? [];
+      if (charges.length === 0) return [];
 
-    const candidates = await inBatches(issues, 8, inspectImpact);
-    reportItems.push(...candidates.filter(Boolean));
+      return [{
+        claimId: issue.claimId,
+        saleId: issue.saleId,
+        amount: charges.reduce((total, charge) => total + charge.amount, 0),
+        currencyId: charges[0].currencyId,
+        status: issue.payload?.status ? String(issue.payload.status) : null,
+        stage: issue.payload?.stage ? String(issue.payload.stage) : null,
+        dateCreated: charges[0].createdAt ?? (issue.payload?.date_created ? String(issue.payload.date_created) : issue.createdAt),
+        reason: issue.payload?.reason_id ? String(issue.payload.reason_id) : null,
+      }];
+    });
 
     return NextResponse.json({
       ok: true,
-      items: reportItems,
+      items,
       impactingClaims: issues.length,
-      paging: { hasMore: false, nextOffset: null },
+      source: "billing_order_details",
     });
   } catch (error: any) {
     return NextResponse.json(
-      { ok: false, error: error?.message ?? "Erro inesperado ao consultar custos de devolução." },
+      { ok: false, error: error?.message ?? "Erro inesperado ao conciliar cobranças de devolução." },
       { status: 500 }
     );
   }

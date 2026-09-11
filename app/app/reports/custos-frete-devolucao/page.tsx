@@ -121,7 +121,7 @@ export default function ReturnShippingCostsReportPage() {
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-spv-line bg-spv-page text-spv-accent-text"><Truck className="h-5 w-5" /></div>
             <div>
               <h2 className="text-sm font-semibold text-spv-ink">Valor real, sem estimativa</h2>
-              <p className="mt-1 text-sm leading-relaxed text-spv-muted">Cada valor vem da cobrança de frete de devolução vinculada à reclamação. Não incluímos tarifa de venda, cancelamento ou outros lançamentos do recebimento.</p>
+              <p className="mt-1 text-sm leading-relaxed text-spv-muted">Cada valor vem do lançamento de tarifa de devolução no Faturamento do Mercado Livre, vinculado à venda. Não incluímos tarifa de venda, cancelamento ou outros lançamentos.</p>
             </div>
           </div>
         </div>
