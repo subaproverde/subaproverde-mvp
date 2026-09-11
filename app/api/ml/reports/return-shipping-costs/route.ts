@@ -89,6 +89,11 @@ function orderIdFromReturn(value: any) {
   return id === null || id === undefined || id === "" ? "" : String(id);
 }
 
+function orderIdFromPack(value: any) {
+  const order = asArray(value?.orders).find((item: any) => item?.id !== null && item?.id !== undefined);
+  return order?.id === null || order?.id === undefined || order?.id === "" ? "" : String(order.id);
+}
+
 function returnCostFromResponse(value: any): ReturnCost | null {
   const amount = Math.abs(Number(value?.amount));
   if (!Number.isFinite(amount) || amount <= 0) return null;
@@ -178,11 +183,20 @@ async function loadImpactingClaims(accessToken: string) {
   });
 
   const claimsWithDisplayOrder = await mapWithConcurrency(claimsWithDetails, async (claim) => {
+    const referenceId = saleIdFromClaim(claim);
     const returns = await mlFetchWithRateLimit(
       `https://api.mercadolibre.com/post-purchase/v2/claims/${encodeURIComponent(String(claim.id))}/returns`,
       accessToken
     );
-    return { claim, displaySaleId: returns.ok ? orderIdFromReturn(returns.json) : "" };
+    const returnOrderId = returns.ok ? orderIdFromReturn(returns.json) : "";
+    if (returnOrderId) return { claim, displaySaleId: returnOrderId };
+
+    // O resource_id de uma claim pode ser um pack. Neste caso, /packs/{id}
+    // é a fonte oficial da lista de orders reais que compõem o carrinho.
+    const pack = referenceId
+      ? await mlFetchWithRateLimit(`https://api.mercadolibre.com/packs/${encodeURIComponent(referenceId)}`, accessToken)
+      : null;
+    return { claim, displaySaleId: pack?.ok ? orderIdFromPack(pack.json) : "" };
   });
 
   const impactingClaims = claimsWithDisplayOrder
