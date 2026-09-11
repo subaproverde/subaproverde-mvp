@@ -21,6 +21,7 @@ type ReportResponse = {
   ok?: boolean;
   error?: string;
   items?: ReturnShippingCost[];
+  scannedClaims?: number;
   paging?: { hasMore?: boolean; nextOffset?: number | null };
 };
 
@@ -39,6 +40,7 @@ export default function ReturnShippingCostsReportPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [scannedClaims, setScannedClaims] = useState(0);
 
   const selectedItems = useMemo(() => items.filter((item) => selected.has(item.claimId)), [items, selected]);
   const total = useMemo(() => selectedItems.reduce((sum, item) => sum + item.amount, 0), [selectedItems]);
@@ -70,6 +72,7 @@ export default function ReturnShippingCostsReportPage() {
 
       const newItems = report.items ?? [];
       setItems((current) => offset === 0 ? newItems : [...current, ...newItems.filter((item) => !current.some((old) => old.claimId === item.claimId))]);
+      setScannedClaims((current) => offset === 0 ? Number(report.scannedClaims ?? 0) : current + Number(report.scannedClaims ?? 0));
       setNextOffset(report.paging?.hasMore ? report.paging.nextOffset ?? null : null);
     } catch (cause: any) {
       setError(cause?.message ?? "Erro ao carregar o relatório.");
@@ -142,7 +145,7 @@ export default function ReturnShippingCostsReportPage() {
         <div className="no-print flex flex-col gap-3 border-b border-spv-line p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-spv-ink">Vendas elegíveis</h2>
-            <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.</p>
+            <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.{!loading && scannedClaims > 0 ? ` Consultadas ${scannedClaims} reclamações.` : ""}</p>
           </div>
           <button onClick={printReport} disabled={selectedItems.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
             <FileText className="h-4 w-4" /> Gerar relatório

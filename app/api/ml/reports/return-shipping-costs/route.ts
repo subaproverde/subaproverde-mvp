@@ -69,28 +69,28 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const params = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-      site_id: "MLB",
-      player_role: "respondent",
-      player_user_id: String(me.json.id),
-    });
+    // É comum as reclamações mais recentes não terem devolução cobrada. Portanto,
+    // uma página visual do relatório percorre até quatro páginas da API antes de
+    // concluir que não há resultados, evitando uma lista vazia enganosa.
+    const claimPageSize = 50;
+    const maxClaimPagesPerRequest = 4;
+    let scanOffset = offset;
+    let scannedClaims = 0;
+    let pagesScanned = 0;
+    let totalClaims: number | null = null;
+    let hasMoreClaims = false;
+    const reportItems: Array<{
+      claimId: string;
+      saleId: string | null;
+      amount: number;
+      currencyId: string;
+      status: string | null;
+      stage: string | null;
+      dateCreated: string | null;
+      reason: string | null;
+    }> = [];
 
-    const claimsResult = await mlFetch(
-      `https://api.mercadolibre.com/post-purchase/v1/claims/search?${params.toString()}`,
-      accessToken
-    );
-
-    if (!claimsResult.ok) {
-      return NextResponse.json(
-        { ok: false, error: "Não foi possível consultar as reclamações no Mercado Livre." },
-        { status: 502 }
-      );
-    }
-
-    const claims = asArray(claimsResult.json).filter((claim) => claim?.id != null);
-    const items = await inBatches(claims, 6, async (claim) => {
+    const inspectClaim = async (claim: any) => {
       const claimId = String(claim.id);
       const [returnCost, reputation] = await Promise.all([
         mlFetch(
@@ -120,23 +120,58 @@ export async function GET(req: NextRequest) {
         dateCreated: claim?.date_created ? String(claim.date_created) : null,
         reason: claim?.reason_id ? String(claim.reason_id) : null,
       };
-    });
+    };
 
-    const paging = claimsResult.json?.paging ?? {};
-    const total = Number(paging.total);
-    const hasMore = Number.isFinite(total)
-      ? offset + claims.length < total
-      : claims.length === limit;
+    while (pagesScanned < maxClaimPagesPerRequest) {
+      const params = new URLSearchParams({
+        limit: String(claimPageSize),
+        offset: String(scanOffset),
+        site_id: "MLB",
+        player_role: "respondent",
+        player_user_id: String(me.json.id),
+      });
+
+      const claimsResult = await mlFetch(
+        `https://api.mercadolibre.com/post-purchase/v1/claims/search?${params.toString()}`,
+        accessToken
+      );
+
+      if (!claimsResult.ok) {
+        return NextResponse.json(
+          { ok: false, error: "Não foi possível consultar as reclamações no Mercado Livre." },
+          { status: 502 }
+        );
+      }
+
+      const claims = asArray(claimsResult.json).filter((claim) => claim?.id != null);
+      const candidates = await inBatches(claims, 6, inspectClaim);
+      reportItems.push(...candidates.filter(Boolean));
+
+      scannedClaims += claims.length;
+      pagesScanned += 1;
+      scanOffset += claims.length;
+
+      const pageTotal = Number(claimsResult.json?.paging?.total);
+      if (Number.isFinite(pageTotal)) totalClaims = pageTotal;
+      hasMoreClaims = Number.isFinite(pageTotal)
+        ? scanOffset < pageTotal
+        : claims.length === claimPageSize;
+
+      // Pare assim que encontrar resultados. Se a página não trouxe nenhum,
+      // continue procurando automaticamente na próxima página histórica.
+      if (reportItems.length >= limit || claims.length < claimPageSize || !hasMoreClaims) break;
+    }
 
     return NextResponse.json({
       ok: true,
-      items: items.filter(Boolean),
+      items: reportItems,
+      scannedClaims,
       paging: {
         offset,
         limit,
-        total: Number.isFinite(total) ? total : null,
-        hasMore,
-        nextOffset: hasMore ? offset + claims.length : null,
+        total: totalClaims,
+        hasMore: hasMoreClaims,
+        nextOffset: hasMoreClaims ? scanOffset : null,
       },
     });
   } catch (error: any) {
