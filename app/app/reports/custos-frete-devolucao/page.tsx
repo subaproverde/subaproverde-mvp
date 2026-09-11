@@ -26,6 +26,7 @@ type ReportResponse = {
   linkedSales?: number;
   claimsScanned?: number;
   effectChecksUnavailable?: number;
+  returnCostChecksUnavailable?: number;
   periodDays?: number;
 };
 
@@ -47,6 +48,7 @@ export default function ReturnShippingCostsReportPage() {
   const [linkedSales, setLinkedSales] = useState(0);
   const [claimsScanned, setClaimsScanned] = useState(0);
   const [effectChecksUnavailable, setEffectChecksUnavailable] = useState(0);
+  const [returnCostChecksUnavailable, setReturnCostChecksUnavailable] = useState(0);
   const [periodDays, setPeriodDays] = useState(0);
 
   const selectedItems = useMemo(() => items.filter((item) => selected.has(item.claimId)), [items, selected]);
@@ -80,6 +82,7 @@ export default function ReturnShippingCostsReportPage() {
       setLinkedSales(Number(report.linkedSales ?? 0));
       setClaimsScanned(Number(report.claimsScanned ?? 0));
       setEffectChecksUnavailable(Number(report.effectChecksUnavailable ?? 0));
+      setReturnCostChecksUnavailable(Number(report.returnCostChecksUnavailable ?? 0));
       setPeriodDays(Number(report.periodDays ?? 0));
     } catch (cause: any) {
       setError(cause?.message ?? "Erro ao carregar o relatório.");
@@ -136,7 +139,7 @@ export default function ReturnShippingCostsReportPage() {
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-spv-line bg-spv-page text-spv-accent-text"><Truck className="h-5 w-5" /></div>
             <div>
               <h2 className="text-sm font-semibold text-spv-ink">Valor real, sem estimativa</h2>
-              <p className="mt-1 text-sm leading-relaxed text-spv-muted">Cada valor vem do lançamento de tarifa de devolução no Faturamento do Mercado Livre, vinculado à venda. Não incluímos tarifa de venda, cancelamento ou outros lançamentos.</p>
+              <p className="mt-1 text-sm leading-relaxed text-spv-muted">Cada valor vem da API específica de custo de devolução da reclamação e é conciliado com o faturamento da venda. Não incluímos tarifa de venda, cancelamento ou outros lançamentos.</p>
             </div>
           </div>
         </div>
@@ -153,7 +156,7 @@ export default function ReturnShippingCostsReportPage() {
             <h2 className="text-base font-semibold text-spv-ink">Vendas elegíveis</h2>
             <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.</p>
             {!loading && reputationMetricCount > 0 ? <p className="mt-2 text-xs font-medium text-spv-accent-text">
-              {effectChecksUnavailable > 0
+              {effectChecksUnavailable > 0 || returnCostChecksUnavailable > 0
                 ? "O Mercado Livre limitou esta consulta. Aguarde alguns minutos e atualize para concluir a conciliação."
                 : `${reputationMetricCount} impactos no período de reputação${periodDays ? ` (${periodDays} dias)` : ""} · ${impactingClaims} confirmados · ${linkedSales} vendas consultadas no faturamento.`}
             </p> : null}

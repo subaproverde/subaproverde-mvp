@@ -3,6 +3,7 @@ import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 import { getValidMlAccessToken } from "@/lib/mlToken";
 
 type BillingCharge = { amount: number; currencyId: string; createdAt: string | null };
+type ReturnCost = { amount: number; currencyId: string };
 type ImpactClaim = {
   claimId: string;
   saleId: string;
@@ -77,6 +78,12 @@ function saleIdFromClaim(claim: any) {
   const resource = String(claim?.resource ?? "").toLowerCase();
   const id = claim?.order_id ?? claim?.order?.id ?? (resource === "order" ? claim?.resource_id : null);
   return id === null || id === undefined || id === "" ? "" : String(id);
+}
+
+function returnCostFromResponse(value: any): ReturnCost | null {
+  const amount = Math.abs(Number(value?.amount));
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return { amount, currencyId: String(value?.currency_id ?? "BRL") };
 }
 
 async function mapWithConcurrency<T, R>(values: T[], fn: (value: T) => Promise<R>) {
@@ -187,8 +194,8 @@ async function loadImpactingClaims(accessToken: string) {
 }
 
 /**
- * Confirma impacto com /affects-reputation e, só então, busca a cobrança
- * vinculada à order em /billing/integration/group/ML/order/details.
+ * Confirma impacto, obtém o custo específico de devolução da claim e consulta
+ * o faturamento por order como trilha de conciliação.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -201,6 +208,23 @@ export async function GET(req: NextRequest) {
     const { accessToken } = await getValidMlAccessToken(sellerId);
     const source = await loadImpactingClaims(accessToken);
     const uniqueOrderIds = Array.from(new Set(source.impactingClaims.map((claim) => claim.saleId)));
+    const returnCostChecks = await mapWithConcurrency(source.impactingClaims, async (claim) => {
+      const response = await mlFetchWithRateLimit(
+        `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claim.claimId)}/charges/return-cost`,
+        accessToken
+      );
+      // 404 significa que a claim não tem custo de devolução consultável; não
+      // deve ser apresentado como falha de rate limit nem como valor estimado.
+      return {
+        claimId: claim.claimId,
+        complete: response.ok || response.status === 404,
+        cost: response.ok ? returnCostFromResponse(response.json) : null,
+      };
+    });
+    const returnCostsByClaim = new Map(
+      returnCostChecks.filter((check) => check.cost).map((check) => [check.claimId, check.cost as ReturnCost])
+    );
+    const returnCostChecksUnavailable = returnCostChecks.filter((check) => !check.complete).length;
 
     if (uniqueOrderIds.length === 0) {
       return NextResponse.json({
@@ -212,7 +236,8 @@ export async function GET(req: NextRequest) {
         linkedSales: 0,
         claimsScanned: source.claimsScanned,
         effectChecksUnavailable: source.effectChecksUnavailable,
-        source: "claims_affects_reputation_then_billing",
+        returnCostChecksUnavailable,
+        source: "claims_return_cost_then_billing_audit",
       });
     }
 
@@ -250,18 +275,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (!billingAvailable) {
-      return NextResponse.json({ ok: false, error: "O Mercado Livre não disponibilizou o relatório de faturamento para este seller." }, { status: 502 });
-    }
-
     const items = source.impactingClaims.flatMap((claim) => {
-      const charges = chargesByOrder.get(claim.saleId) ?? [];
-      if (charges.length === 0) return [];
+      const returnCost = returnCostsByClaim.get(claim.claimId);
+      if (!returnCost) return [];
+      const billingCharges = chargesByOrder.get(claim.saleId) ?? [];
       return [{
         ...claim,
-        amount: charges.reduce((total, charge) => total + charge.amount, 0),
-        currencyId: charges[0].currencyId,
-        dateCreated: charges[0].createdAt ?? claim.dateCreated,
+        amount: returnCost.amount,
+        currencyId: returnCost.currencyId,
+        dateCreated: billingCharges[0]?.createdAt ?? claim.dateCreated,
       }];
     });
 
@@ -274,7 +296,9 @@ export async function GET(req: NextRequest) {
       linkedSales: uniqueOrderIds.length,
       claimsScanned: source.claimsScanned,
       effectChecksUnavailable: source.effectChecksUnavailable,
-      source: "claims_affects_reputation_then_billing",
+      returnCostChecksUnavailable,
+      billingAvailable,
+      source: "claims_return_cost_then_billing_audit",
     });
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error?.message ?? "Erro inesperado ao conciliar cobranças de devolução." }, { status: 500 });
