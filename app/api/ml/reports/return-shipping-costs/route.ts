@@ -83,12 +83,6 @@ function saleIdFromClaim(claim: any) {
   return id === null || id === undefined || id === "" ? "" : String(id);
 }
 
-function orderIdFromReturn(value: any) {
-  const order = asArray(value?.orders).find((item: any) => item?.order_id !== null && item?.order_id !== undefined);
-  const id = order?.order_id ?? (String(value?.resource_type ?? "").toLowerCase() === "order" ? value?.resource_id : null);
-  return id === null || id === undefined || id === "" ? "" : String(id);
-}
-
 function orderIdFromPack(value: any) {
   const order = asArray(value?.orders).find((item: any) => item?.id !== null && item?.id !== undefined);
   return order?.id === null || order?.id === undefined || order?.id === "" ? "" : String(order.id);
@@ -173,40 +167,14 @@ async function loadImpactingClaims(accessToken: string) {
     if (reputationMetricCount > 0 && affecting.length >= reputationMetricCount) break;
     if (pageClaims.length < CLAIMS_PAGE_SIZE) break;
   }
-  const claimsWithDetails = await mapWithConcurrency(affecting, async (claim) => {
-    const claimId = String(claim?.id ?? "");
-    const detail = await mlFetchWithRateLimit(
-      `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}`,
-      accessToken
-    );
-    return detail.ok ? { ...claim, ...detail.json } : claim;
-  });
-
-  const claimsWithDisplayOrder = await mapWithConcurrency(claimsWithDetails, async (claim) => {
-    const referenceId = saleIdFromClaim(claim);
-    const returns = await mlFetchWithRateLimit(
-      `https://api.mercadolibre.com/post-purchase/v2/claims/${encodeURIComponent(String(claim.id))}/returns`,
-      accessToken
-    );
-    const returnOrderId = returns.ok ? orderIdFromReturn(returns.json) : "";
-    if (returnOrderId) return { claim, displaySaleId: returnOrderId };
-
-    // O resource_id de uma claim pode ser um pack. Neste caso, /packs/{id}
-    // é a fonte oficial da lista de orders reais que compõem o carrinho.
-    const pack = referenceId
-      ? await mlFetchWithRateLimit(`https://api.mercadolibre.com/packs/${encodeURIComponent(referenceId)}`, accessToken)
-      : null;
-    return { claim, displaySaleId: pack?.ok ? orderIdFromPack(pack.json) : "" };
-  });
-
-  const impactingClaims = claimsWithDisplayOrder
-    .map(({ claim, displaySaleId }: any): ImpactClaim | null => {
+  const impactingClaims = affecting
+    .map((claim: any): ImpactClaim | null => {
       const saleId = saleIdFromClaim(claim);
       if (!saleId) return null;
       return {
         claimId: String(claim.id),
         saleId,
-        displaySaleId: displaySaleId || saleId,
+        displaySaleId: saleId,
         status: claim?.status ? String(claim.status) : null,
         stage: claim?.stage ? String(claim.stage) : null,
         dateCreated: claim?.date_created ? String(claim.date_created) : null,
@@ -257,6 +225,18 @@ export async function GET(req: NextRequest) {
       returnCostChecks.filter((check) => check.cost).map((check) => [check.claimId, check.cost as ReturnCost])
     );
     const returnCostChecksUnavailable = returnCostChecks.filter((check) => !check.complete).length;
+    const claimsWithReturnCost = source.impactingClaims.filter((claim) => returnCostsByClaim.has(claim.claimId));
+
+    // Só fazemos a resolução pack -> order para linhas que irão aparecer no
+    // relatório. Isso preserva o cálculo e evita limitar a API com packs sem custo.
+    const displaySales = await mapWithConcurrency(claimsWithReturnCost, async (claim) => {
+      const pack = await mlFetchWithRateLimit(
+        `https://api.mercadolibre.com/packs/${encodeURIComponent(claim.saleId)}`,
+        accessToken
+      );
+      return [claim.claimId, pack.ok ? orderIdFromPack(pack.json) || claim.saleId : claim.saleId] as const;
+    });
+    const displaySaleIdByClaim = new Map(displaySales);
 
     if (uniqueOrderIds.length === 0) {
       return NextResponse.json({
@@ -313,6 +293,7 @@ export async function GET(req: NextRequest) {
       const billingCharges = chargesByOrder.get(claim.saleId) ?? [];
       return [{
         ...claim,
+        displaySaleId: displaySaleIdByClaim.get(claim.claimId) ?? claim.saleId,
         amount: returnCost.amount,
         currencyId: returnCost.currencyId,
         dateCreated: billingCharges[0]?.createdAt ?? claim.dateCreated,
