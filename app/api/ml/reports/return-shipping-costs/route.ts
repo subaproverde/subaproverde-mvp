@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 import { getValidMlAccessToken } from "@/lib/mlToken";
 
@@ -15,9 +16,14 @@ function asArray(value: any): any[] {
   return [];
 }
 
-async function mlFetch(url: string, accessToken: string): Promise<MlFetchResult> {
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+async function mlFetch(url: string, accessToken: string, extraHeaders: HeadersInit = {}): Promise<MlFetchResult> {
   const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}`, ...extraHeaders },
     cache: "no-store",
   });
 
@@ -40,18 +46,16 @@ async function inBatches<T, R>(items: T[], size: number, task: (item: T) => Prom
 }
 
 /**
- * Lista apenas reclamações que simultaneamente:
- * - afetam a reputação segundo /affects-reputation; e
- * - têm valor positivo efetivamente cobrado em /charges/return-cost.
+ * Parte da mesma fonte que alimenta o contador de reclamações impactando do seller
+ * (reputation_issues/impact_claims) e lê a cobrança oficial de cada claim.
  *
- * Não há cálculo ou estimativa de frete neste endpoint.
+ * /charges/return-cost é a fonte primária. Em devoluções que não a exponham,
+ * usamos o shipment da devolução e /shipments/{id}/costs, ambos documentados pela ML.
+ * Não há estimativa de frete neste endpoint.
  */
 export async function GET(req: NextRequest) {
   try {
     const sellerId = req.nextUrl.searchParams.get("sellerId")?.trim();
-    const offset = Math.max(0, Number(req.nextUrl.searchParams.get("offset") ?? "0") || 0);
-    const limit = Math.min(50, Math.max(1, Number(req.nextUrl.searchParams.get("limit") ?? "30") || 30));
-
     if (!sellerId) {
       return NextResponse.json({ ok: false, error: "sellerId é obrigatório" }, { status: 400 });
     }
@@ -69,16 +73,23 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // É comum as reclamações mais recentes não terem devolução cobrada. Portanto,
-    // uma página visual do relatório percorre até quatro páginas da API antes de
-    // concluir que não há resultados, evitando uma lista vazia enganosa.
-    const claimPageSize = 50;
-    const maxClaimPagesPerRequest = 4;
-    let scanOffset = offset;
-    let scannedClaims = 0;
-    let pagesScanned = 0;
-    let totalClaims: number | null = null;
-    let hasMoreClaims = false;
+    const { data: impactIssues, error: issuesError } = await supabaseAdmin
+      .from("reputation_issues")
+      .select("external_ref, resource_id, payload, created_at")
+      .eq("seller_id", sellerId)
+      .eq("kind", "impact_claims")
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (issuesError) {
+      return NextResponse.json(
+        { ok: false, error: "Não foi possível consultar as vendas que impactam a reputação." },
+        { status: 500 }
+      );
+    }
+
+    const issues = (impactIssues ?? []).filter((issue: any) => String(issue?.external_ref ?? "").trim());
     const reportItems: Array<{
       claimId: string;
       saleId: string | null;
@@ -90,89 +101,70 @@ export async function GET(req: NextRequest) {
       reason: string | null;
     }> = [];
 
-    const inspectClaim = async (claim: any) => {
-      const claimId = String(claim.id);
-      const [returnCost, reputation] = await Promise.all([
-        mlFetch(
-          `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/charges/return-cost`,
-          accessToken
-        ),
-        mlFetch(
-          `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/affects-reputation`,
-          accessToken
-        ),
-      ]);
+    const inspectImpact = async (issue: any) => {
+      const claimId = String(issue.external_ref).trim();
+      const payload = issue?.payload ?? {};
+      const returnCost = await mlFetch(
+        `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/charges/return-cost`,
+        accessToken
+      );
+      const directAmount = Number(returnCost.json?.amount);
 
-      const amount = Number(returnCost.json?.amount);
-      const affectsReputation = String(reputation.json?.affects_reputation ?? "").toLowerCase();
+      let amount = Number.isFinite(directAmount) && directAmount > 0 ? directAmount : 0;
+      let currencyId = String(returnCost.json?.currency_id ?? "BRL");
 
-      if (!returnCost.ok || !reputation.ok || !Number.isFinite(amount) || amount <= 0 || affectsReputation !== "affected") {
-        return null;
+      // Fallback documentado pela ML para quando a cobrança estiver registrada no
+      // shipment da devolução, mas não vier no endpoint primário da claim.
+      if (amount <= 0) {
+        const returnInfo = await mlFetch(
+          `https://api.mercadolibre.com/post-purchase/v2/claims/${encodeURIComponent(claimId)}/returns`,
+          accessToken
+        );
+        const shipmentIds = asArray(returnInfo.json?.shipments)
+          .map((shipment: any) => shipment?.shipment_id)
+          .filter((shipmentId: any) => shipmentId !== null && shipmentId !== undefined && shipmentId !== "");
+
+        const shipmentCosts = await inBatches(shipmentIds, 4, async (shipmentId) =>
+          mlFetch(
+            `https://api.mercadolibre.com/shipments/${encodeURIComponent(String(shipmentId))}/costs`,
+            accessToken,
+            { "x-format-new": "true" }
+          )
+        );
+
+        const fallbackAmounts = shipmentCosts.map((shipmentCost) => {
+          const sender = asArray(shipmentCost.json?.senders).find(
+            (entry: any) => String(entry?.user_id ?? "") === String(me.json.id)
+          );
+          return { amount: Number(sender?.cost), currencyId: String(shipmentCost.json?.currency_id ?? "BRL") };
+        }).filter((entry) => Number.isFinite(entry.amount) && entry.amount > 0);
+
+        amount = fallbackAmounts.reduce((total, entry) => total + entry.amount, 0);
+        currencyId = fallbackAmounts[0]?.currencyId ?? currencyId;
       }
+
+      if (!Number.isFinite(amount) || amount <= 0) return null;
 
       return {
         claimId,
-        saleId: claim?.resource_id != null ? String(claim.resource_id) : null,
+        saleId: issue?.resource_id != null ? String(issue.resource_id) : payload?.resource_id != null ? String(payload.resource_id) : null,
         amount,
-        currencyId: String(returnCost.json?.currency_id ?? "BRL"),
-        status: claim?.status ? String(claim.status) : null,
-        stage: claim?.stage ? String(claim.stage) : null,
-        dateCreated: claim?.date_created ? String(claim.date_created) : null,
-        reason: claim?.reason_id ? String(claim.reason_id) : null,
+        currencyId,
+        status: payload?.status ? String(payload.status) : null,
+        stage: payload?.stage ? String(payload.stage) : null,
+        dateCreated: payload?.date_created ? String(payload.date_created) : issue?.created_at ? String(issue.created_at) : null,
+        reason: payload?.reason_id ? String(payload.reason_id) : null,
       };
     };
 
-    while (pagesScanned < maxClaimPagesPerRequest) {
-      const params = new URLSearchParams({
-        limit: String(claimPageSize),
-        offset: String(scanOffset),
-        site_id: "MLB",
-        player_role: "respondent",
-        player_user_id: String(me.json.id),
-      });
-
-      const claimsResult = await mlFetch(
-        `https://api.mercadolibre.com/post-purchase/v1/claims/search?${params.toString()}`,
-        accessToken
-      );
-
-      if (!claimsResult.ok) {
-        return NextResponse.json(
-          { ok: false, error: "Não foi possível consultar as reclamações no Mercado Livre." },
-          { status: 502 }
-        );
-      }
-
-      const claims = asArray(claimsResult.json).filter((claim) => claim?.id != null);
-      const candidates = await inBatches(claims, 6, inspectClaim);
-      reportItems.push(...candidates.filter(Boolean));
-
-      scannedClaims += claims.length;
-      pagesScanned += 1;
-      scanOffset += claims.length;
-
-      const pageTotal = Number(claimsResult.json?.paging?.total);
-      if (Number.isFinite(pageTotal)) totalClaims = pageTotal;
-      hasMoreClaims = Number.isFinite(pageTotal)
-        ? scanOffset < pageTotal
-        : claims.length === claimPageSize;
-
-      // Pare assim que encontrar resultados. Se a página não trouxe nenhum,
-      // continue procurando automaticamente na próxima página histórica.
-      if (reportItems.length >= limit || claims.length < claimPageSize || !hasMoreClaims) break;
-    }
+    const candidates = await inBatches(issues, 8, inspectImpact);
+    reportItems.push(...candidates.filter(Boolean));
 
     return NextResponse.json({
       ok: true,
       items: reportItems,
-      scannedClaims,
-      paging: {
-        offset,
-        limit,
-        total: totalClaims,
-        hasMore: hasMoreClaims,
-        nextOffset: hasMoreClaims ? scanOffset : null,
-      },
+      impactingClaims: issues.length,
+      paging: { hasMore: false, nextOffset: null },
     });
   } catch (error: any) {
     return NextResponse.json(

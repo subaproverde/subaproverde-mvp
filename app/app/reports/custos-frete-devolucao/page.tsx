@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Download, FileText, RefreshCcw, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileText, RefreshCcw, ShieldCheck, Truck } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
@@ -21,8 +21,7 @@ type ReportResponse = {
   ok?: boolean;
   error?: string;
   items?: ReturnShippingCost[];
-  scannedClaims?: number;
-  paging?: { hasMore?: boolean; nextOffset?: number | null };
+  impactingClaims?: number;
 };
 
 const money = (amount: number, currency = "BRL") =>
@@ -37,21 +36,15 @@ export default function ReturnShippingCostsReportPage() {
   const [items, setItems] = useState<ReturnShippingCost[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-  const [nextOffset, setNextOffset] = useState<number | null>(null);
-  const [scannedClaims, setScannedClaims] = useState(0);
+  const [impactingClaims, setImpactingClaims] = useState(0);
 
   const selectedItems = useMemo(() => items.filter((item) => selected.has(item.claimId)), [items, selected]);
   const total = useMemo(() => selectedItems.reduce((sum, item) => sum + item.amount, 0), [selectedItems]);
 
-  async function load(offset = 0) {
-    if (offset === 0) {
-      setLoading(true);
-      setError("");
-    } else {
-      setLoadingMore(true);
-    }
+  async function load() {
+    setLoading(true);
+    setError("");
 
     try {
       const { data } = await supabaseBrowser.auth.getUser();
@@ -64,22 +57,20 @@ export default function ReturnShippingCostsReportPage() {
       }
 
       const response = await authFetch(
-        `/api/ml/reports/return-shipping-costs?sellerId=${encodeURIComponent(String(seller.sellerId))}&offset=${offset}&limit=30`,
+        `/api/ml/reports/return-shipping-costs?sellerId=${encodeURIComponent(String(seller.sellerId))}`,
         { cache: "no-store" }
       );
       const report = (await response.json().catch(() => ({}))) as ReportResponse;
       if (!response.ok || !report.ok) throw new Error(report.error ?? "Não foi possível carregar o relatório.");
 
       const newItems = report.items ?? [];
-      setItems((current) => offset === 0 ? newItems : [...current, ...newItems.filter((item) => !current.some((old) => old.claimId === item.claimId))]);
-      setScannedClaims((current) => offset === 0 ? Number(report.scannedClaims ?? 0) : current + Number(report.scannedClaims ?? 0));
-      setNextOffset(report.paging?.hasMore ? report.paging.nextOffset ?? null : null);
+      setItems(newItems);
+      setImpactingClaims(Number(report.impactingClaims ?? 0));
     } catch (cause: any) {
       setError(cause?.message ?? "Erro ao carregar o relatório.");
-      if (offset === 0) setItems([]);
+      setItems([]);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   }
 
@@ -145,7 +136,7 @@ export default function ReturnShippingCostsReportPage() {
         <div className="no-print flex flex-col gap-3 border-b border-spv-line p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-spv-ink">Vendas elegíveis</h2>
-            <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.{!loading && scannedClaims > 0 ? ` Consultadas ${scannedClaims} reclamações.` : ""}</p>
+            <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.{!loading && impactingClaims > 0 ? ` Analisadas ${impactingClaims} vendas que impactam a reputação.` : ""}</p>
           </div>
           <button onClick={printReport} disabled={selectedItems.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
             <FileText className="h-4 w-4" /> Gerar relatório
@@ -162,7 +153,7 @@ export default function ReturnShippingCostsReportPage() {
             </thead>
             <tbody className="divide-y divide-spv-line">
               {loading ? <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-spv-muted">Consultando cobranças no Mercado Livre...</td></tr> : null}
-              {!loading && items.length === 0 ? <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-spv-muted">Nenhuma venda com impacto na reputação e tarifa de devolução cobrada foi encontrada.</td></tr> : null}
+              {!loading && items.length === 0 ? <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-spv-muted">Nenhuma das {impactingClaims} vendas que impactam a reputação teve tarifa de devolução cobrada identificada.</td></tr> : null}
               {items.map((item) => <tr key={item.claimId} className={`report-row ${selected.has(item.claimId) ? "selected" : ""} text-spv-ink hover:bg-spv-raised/50`}>
                 <td className="px-5 py-4"><input aria-label={`Selecionar venda ${item.saleId ?? item.claimId}`} type="checkbox" checked={selected.has(item.claimId)} onChange={() => toggle(item.claimId)} className="h-4 w-4 accent-emerald-500" /></td>
                 <td className="px-3 py-4 font-mono text-xs font-semibold">{item.saleId ? `#${item.saleId}` : "Venda não informada"}</td>
@@ -174,7 +165,6 @@ export default function ReturnShippingCostsReportPage() {
             </tbody>
           </table>
         </div>
-        {nextOffset !== null && <div className="no-print border-t border-spv-line p-4 text-center"><button onClick={() => load(nextOffset)} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-lg border border-spv-line px-4 py-2 text-sm font-semibold text-spv-ink hover:bg-spv-raised disabled:opacity-50"><Download className="h-4 w-4" />{loadingMore ? "Carregando..." : "Carregar mais reclamações"}</button></div>}
       </section>
 
       <section className="print-report mt-6 rounded-xl border border-spv-line bg-spv-page p-5">
