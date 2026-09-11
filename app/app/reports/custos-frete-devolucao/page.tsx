@@ -9,6 +9,7 @@ import { supabaseBrowser } from "@/lib/supabaseClient";
 type ReturnShippingCost = {
   claimId: string;
   saleId: string | null;
+  displaySaleId?: string | null;
   amount: number;
   currencyId: string;
   status: string | null;
@@ -201,7 +202,7 @@ export default function ReturnShippingCostsReportPage() {
         pdf.setTextColor(...ink);
         pdf.setFont("helvetica", "bold");
         pdf.setFontSize(8.5);
-        pdf.text(item.saleId ? `#${item.saleId}` : "Venda não informada", columns.sale + 3, y + 6.7);
+        pdf.text(item.displaySaleId || item.saleId ? `#${item.displaySaleId || item.saleId}` : "Venda não informada", columns.sale + 3, y + 6.7);
         pdf.setFont("helvetica", "normal");
         pdf.text(`#${item.claimId}`, columns.claim, y + 6.7);
         pdf.text(date(item.dateCreated), columns.date, y + 6.7);
@@ -299,8 +300,8 @@ export default function ReturnShippingCostsReportPage() {
                   : `Nenhuma das ${linkedSales} vendas vinculadas a impactos confirmados teve tarifa de devolução cobrada identificada no faturamento.`}
               </td></tr> : null}
               {items.map((item) => <tr key={item.claimId} className={`report-row ${selected.has(item.claimId) ? "selected" : ""} text-spv-ink hover:bg-spv-raised/50`}>
-                <td className="px-5 py-4"><input aria-label={`Selecionar venda ${item.saleId ?? item.claimId}`} type="checkbox" checked={selected.has(item.claimId)} onChange={() => toggle(item.claimId)} className="h-4 w-4 accent-emerald-500" /></td>
-                <td className="px-3 py-4 font-mono text-xs font-semibold">{item.saleId ? `#${item.saleId}` : "Venda não informada"}</td>
+                <td className="px-5 py-4"><input aria-label={`Selecionar venda ${item.displaySaleId ?? item.saleId ?? item.claimId}`} type="checkbox" checked={selected.has(item.claimId)} onChange={() => toggle(item.claimId)} className="h-4 w-4 accent-emerald-500" /></td>
+                <td className="px-3 py-4 font-mono text-xs font-semibold">{item.displaySaleId || item.saleId ? `#${item.displaySaleId || item.saleId}` : "Venda não informada"}</td>
                 <td className="px-3 py-4 font-mono text-xs text-spv-muted">#{item.claimId}</td>
                 <td className="px-3 py-4 text-xs text-spv-muted">{date(item.dateCreated)}</td>
                 <td className="px-3 py-4"><span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-spv-accent-text"><CheckCircle2 className="h-3.5 w-3.5" /> Impacta reputação</span></td>

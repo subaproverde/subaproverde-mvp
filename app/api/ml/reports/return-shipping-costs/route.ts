@@ -6,7 +6,10 @@ type BillingCharge = { amount: number; currencyId: string; createdAt: string | n
 type ReturnCost = { amount: number; currencyId: string };
 type ImpactClaim = {
   claimId: string;
+  // Mantém a referência original para a conciliação financeira. Em compras de
+  // carrinho ela pode ser um pack, e não deve ser exibida como número de venda.
   saleId: string;
+  displaySaleId: string;
   status: string | null;
   stage: string | null;
   dateCreated: string | null;
@@ -77,6 +80,12 @@ function isReturnShippingCharge(charge: any) {
 function saleIdFromClaim(claim: any) {
   const resource = String(claim?.resource ?? "").toLowerCase();
   const id = claim?.order_id ?? claim?.order?.id ?? (resource === "order" ? claim?.resource_id : null);
+  return id === null || id === undefined || id === "" ? "" : String(id);
+}
+
+function orderIdFromReturn(value: any) {
+  const order = asArray(value?.orders).find((item: any) => item?.order_id !== null && item?.order_id !== undefined);
+  const id = order?.order_id ?? (String(value?.resource_type ?? "").toLowerCase() === "order" ? value?.resource_id : null);
   return id === null || id === undefined || id === "" ? "" : String(id);
 }
 
@@ -168,13 +177,22 @@ async function loadImpactingClaims(accessToken: string) {
     return detail.ok ? { ...claim, ...detail.json } : claim;
   });
 
-  const impactingClaims = claimsWithDetails
-    .map((claim: any): ImpactClaim | null => {
+  const claimsWithDisplayOrder = await mapWithConcurrency(claimsWithDetails, async (claim) => {
+    const returns = await mlFetchWithRateLimit(
+      `https://api.mercadolibre.com/post-purchase/v2/claims/${encodeURIComponent(String(claim.id))}/returns`,
+      accessToken
+    );
+    return { claim, displaySaleId: returns.ok ? orderIdFromReturn(returns.json) : "" };
+  });
+
+  const impactingClaims = claimsWithDisplayOrder
+    .map(({ claim, displaySaleId }: any): ImpactClaim | null => {
       const saleId = saleIdFromClaim(claim);
       if (!saleId) return null;
       return {
         claimId: String(claim.id),
         saleId,
+        displaySaleId: displaySaleId || saleId,
         status: claim?.status ? String(claim.status) : null,
         stage: claim?.stage ? String(claim.stage) : null,
         dateCreated: claim?.date_created ? String(claim.date_created) : null,
