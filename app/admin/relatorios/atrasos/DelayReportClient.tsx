@@ -13,7 +13,7 @@ type ReportData = {
 };
 
 function formatDate(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "Não despachado";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(parsed);
 }

@@ -72,6 +72,7 @@ function impactType(serviceKind: DelayRow["serviceKind"], expectedDispatchAt: st
   if (serviceKind === "carrier") return "Sistema Correios";
   const expectedDay = normalizedDate(expectedDispatchAt);
   const shippedDay = normalizedDate(shippedAt);
+  if (["agency", "collection", "flex"].includes(serviceKind) && !shippedDay) return "Instabilidade NFe";
   if (serviceKind === "agency" && expectedDay && shippedDay && expectedDay === shippedDay) return "Bipagem Tardia";
   if (["agency", "collection", "flex"].includes(serviceKind) && expectedDay && shippedDay && expectedDay !== shippedDay) {
     return "Instabilidade NFe";
@@ -82,6 +83,27 @@ function impactType(serviceKind: DelayRow["serviceKind"], expectedDispatchAt: st
 function expectedDispatchAt(sla: any) {
   const value = sla?.expected_date ?? sla?.deadline ?? sla?.handling?.expected_date ?? null;
   return value ? String(value) : null;
+}
+
+function historyEventAt(history: any, states: string[]) {
+  const event = asArray(history).find((entry: any) => {
+    const text = [entry?.status, entry?.substatus].filter(Boolean).join(" ").toLowerCase();
+    return states.some((state) => text.includes(state));
+  });
+  const value = event?.date ?? event?.date_created ?? event?.created_at ?? null;
+  return value ? String(value) : null;
+}
+
+function dispatchedAt(shipment: any, history: any, serviceKind: DelayRow["serviceKind"]) {
+  // Em Coleta, o marco de despacho que afeta a métrica é a entrada no hub.
+  // Nas outras modalidades, priorizamos o envio registrado pelo shipment.
+  if (serviceKind === "collection") {
+    const inHub = historyEventAt(history, ["in_hub"]);
+    if (inHub) return inHub;
+  }
+  const direct = shipment?.date_shipped ?? shipment?.shipping_option?.date_shipped ?? shipment?.tracking?.date_shipped ?? null;
+  if (direct) return String(direct);
+  return historyEventAt(history, ["shipped", "dropped_off", "in_hub"]);
 }
 
 async function mlFetch(url: string, accessToken: string, extraHeaders?: HeadersInit): Promise<MlResponse> {
@@ -165,7 +187,7 @@ export async function GET(req: NextRequest) {
     });
 
     const orders: any[] = [];
-    const delayedShipments = new Map<string, { shipment: any; sla: any }>();
+    const delayedShipments = new Map<string, { shipment: any; sla: any; history: any }>();
     const checkedShipmentIds = new Set<string>();
     let offset = 0;
     let total = Number.POSITIVE_INFINITY;
@@ -190,16 +212,17 @@ export async function GET(req: NextRequest) {
 
       const checks = await mapWithConcurrency(newShipmentIds, async (shipmentId) => {
         const delays = await mlFetchWithRetry(`https://api.mercadolibre.com/shipments/${encodeURIComponent(shipmentId)}/delays`, accessToken);
-        if (delays.status === 404) return { shipmentId, delayed: false, unavailable: false, shipment: null, sla: null };
-        if (!delays.ok) return { shipmentId, delayed: false, unavailable: true, shipment: null, sla: null };
-        const [shipment, sla] = await Promise.all([
+        if (delays.status === 404) return { shipmentId, delayed: false, unavailable: false, shipment: null, sla: null, history: null };
+        if (!delays.ok) return { shipmentId, delayed: false, unavailable: true, shipment: null, sla: null, history: null };
+        const [shipment, sla, history] = await Promise.all([
           mlFetchWithRetry(`https://api.mercadolibre.com/shipments/${encodeURIComponent(shipmentId)}`, accessToken),
           mlFetchWithRetry(`https://api.mercadolibre.com/shipments/${encodeURIComponent(shipmentId)}/sla`, accessToken),
+          mlFetchWithRetry(`https://api.mercadolibre.com/shipments/${encodeURIComponent(shipmentId)}/history`, accessToken),
         ]);
-        return { shipmentId, delayed: true, unavailable: !shipment.ok || !sla.ok, shipment: shipment.ok ? shipment.json : null, sla: sla.ok ? sla.json : null };
+        return { shipmentId, delayed: true, unavailable: !shipment.ok || !sla.ok, shipment: shipment.ok ? shipment.json : null, sla: sla.ok ? sla.json : null, history: history.ok ? history.json : null };
       });
       shipmentChecksUnavailable += checks.filter((check) => check.unavailable).length;
-      for (const check of checks) if (check.delayed && check.shipment) delayedShipments.set(check.shipmentId, { shipment: check.shipment, sla: check.sla });
+      for (const check of checks) if (check.delayed && check.shipment) delayedShipments.set(check.shipmentId, { shipment: check.shipment, sla: check.sla, history: check.history });
 
       orders.push(...pageOrders);
       matchedOrderCount = orders.filter((order) => delayedShipments.has(String(order?.shipping?.id ?? ""))).length;
@@ -217,7 +240,7 @@ export async function GET(req: NextRequest) {
       if (!delayed) return [];
       const serviceData = serviceFromShipment(delayed.shipment);
       const expected = expectedDispatchAt(delayed.sla);
-      const shipped = delayed.shipment?.date_shipped ? String(delayed.shipment.date_shipped) : null;
+      const shipped = dispatchedAt(delayed.shipment, delayed.history, serviceData.serviceKind);
       if (expectedFrom && normalizedDate(expected) < expectedFrom) return [];
       if (expectedTo && normalizedDate(expected) > expectedTo) return [];
       return [{ orderId, shipmentId, ...serviceData, expectedDispatchAt: expected, shippedAt: shipped, impactType: impactType(serviceData.serviceKind, expected, shipped) }];
