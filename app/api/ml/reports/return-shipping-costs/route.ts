@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { authErrorResponse, requireSellerAccess } from "@/lib/apiAuth";
 import { getValidMlAccessToken } from "@/lib/mlToken";
 
-type BillingCharge = {
-  amount: number;
-  currencyId: string;
-  createdAt: string | null;
+type BillingCharge = { amount: number; currencyId: string; createdAt: string | null };
+type ImpactClaim = {
+  claimId: string;
+  saleId: string;
+  status: string | null;
+  stage: string | null;
+  dateCreated: string | null;
+  reason: string | null;
 };
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const CLAIMS_PAGE_SIZE = 100;
+const MAX_CLAIMS_PAGES = 10;
+const AFFECTS_CONCURRENCY = 8;
 
 function asArray(value: any): any[] {
   if (Array.isArray(value)) return value;
@@ -22,8 +24,12 @@ function asArray(value: any): any[] {
 }
 
 function oneOrMany(value: any): any[] {
-  if (Array.isArray(value)) return value;
-  return value ? [value] : [];
+  return Array.isArray(value) ? value : value ? [value] : [];
+}
+
+function positiveNumber(value: any) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
 }
 
 async function mlFetch(url: string, accessToken: string) {
@@ -31,109 +37,161 @@ async function mlFetch(url: string, accessToken: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
-
   return { ok: response.ok, json: await response.json().catch(() => null) };
 }
 
 function isReturnShippingCharge(charge: any) {
-  const text = [
-    charge?.transaction_detail,
-    charge?.detail_description,
-    charge?.description,
-    charge?.label,
-  ]
+  const text = [charge?.transaction_detail, charge?.detail_description, charge?.description, charge?.label]
     .filter(Boolean)
     .join(" ")
     .toLocaleLowerCase("pt-BR");
 
-  const type = String(charge?.detail_type ?? "").toUpperCase();
-  return type === "CHARGE" && /(devolu|return)/.test(text);
+  return String(charge?.detail_type ?? "").toUpperCase() === "CHARGE" && /(devolu|return)/.test(text);
+}
+
+function saleIdFromClaim(claim: any) {
+  const resource = String(claim?.resource ?? "").toLowerCase();
+  const id = claim?.order_id ?? claim?.order?.id ?? (resource === "order" ? claim?.resource_id : null);
+  return id === null || id === undefined || id === "" ? "" : String(id);
+}
+
+async function mapWithConcurrency<T, R>(values: T[], fn: (value: T) => Promise<R>) {
+  const results: R[] = [];
+  let next = 0;
+  const workers = Array.from({ length: Math.min(AFFECTS_CONCURRENCY, values.length) }, async () => {
+    while (next < values.length) {
+      const index = next++;
+      results[index] = await fn(values[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 /**
- * Concilia somente as vendas que já impactam a reputação com os lançamentos
- * financeiros vinculados à própria order no Faturamento do Mercado Livre.
- *
- * Fonte: GET /billing/integration/group/ML/order/details?order_ids=...
- * (máximo oficial de 60 orders por consulta).
+ * A métrica de reputação é agregada e não carrega IDs. Aqui obtemos a relação
+ * real claim -> venda diretamente do Mercado Livre antes da conciliação.
+ */
+async function loadImpactingClaims(accessToken: string) {
+  const me = await mlFetch("https://api.mercadolibre.com/users/me", accessToken);
+  if (!me.ok || !me.json?.id) throw new Error("Não foi possível identificar o seller no Mercado Livre.");
+
+  const reputationMetricCount = positiveNumber(me.json?.seller_reputation?.metrics?.claims?.value);
+  const paramsBase = new URLSearchParams({
+    limit: String(CLAIMS_PAGE_SIZE),
+    site_id: "MLB",
+    "players.role": "respondent",
+    "players.user_id": String(me.json.id),
+  });
+
+  const affecting: any[] = [];
+  const seen = new Set<string>();
+  let claimsScanned = 0;
+  let effectChecksUnavailable = 0;
+  for (let page = 0; page < MAX_CLAIMS_PAGES; page += 1) {
+    const params = new URLSearchParams(paramsBase);
+    params.set("offset", String(page * CLAIMS_PAGE_SIZE));
+    const response = await mlFetch(
+      `https://api.mercadolibre.com/post-purchase/v1/claims/search?${params.toString()}`,
+      accessToken
+    );
+    if (!response.ok) throw new Error("O Mercado Livre não disponibilizou a lista de reclamações do seller.");
+
+    const pageClaims = asArray(response.json);
+    const uniquePageClaims = pageClaims.filter((claim: any) => {
+      const claimId = String(claim?.id ?? "");
+      if (!claimId || seen.has(claimId)) return false;
+      seen.add(claimId);
+      return true;
+    });
+    claimsScanned += uniquePageClaims.length;
+
+    const effects = await mapWithConcurrency(uniquePageClaims, async (claim) => {
+      const claimId = String(claim?.id ?? "");
+      const effect = await mlFetch(
+        `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/affects-reputation`,
+        accessToken
+      );
+      return { claim, available: effect.ok, affected: effect.ok && effect.json?.affects_reputation === "affected" };
+    });
+    effectChecksUnavailable += effects.filter((effect) => !effect.available).length;
+    affecting.push(...effects.filter((effect) => effect.affected).map((effect) => effect.claim));
+
+    // A métrica oficial já informa o total que deve ser encontrado. Ao atingir
+    // esse número não continuamos a chamar endpoints históricos sem necessidade.
+    if (reputationMetricCount > 0 && affecting.length >= reputationMetricCount) break;
+    if (pageClaims.length < CLAIMS_PAGE_SIZE) break;
+  }
+  const impactingClaims = affecting
+    .map((claim: any): ImpactClaim | null => {
+      const saleId = saleIdFromClaim(claim);
+      if (!saleId) return null;
+      return {
+        claimId: String(claim.id),
+        saleId,
+        status: claim?.status ? String(claim.status) : null,
+        stage: claim?.stage ? String(claim.stage) : null,
+        dateCreated: claim?.date_created ? String(claim.date_created) : null,
+        reason: claim?.reason_id ? String(claim.reason_id) : null,
+      };
+    })
+    .filter((claim): claim is ImpactClaim => Boolean(claim));
+
+  return { reputationMetricCount, claimsScanned, effectChecksUnavailable, affectedClaimsFound: affecting.length, impactingClaims };
+}
+
+/**
+ * Confirma impacto com /affects-reputation e, só então, busca a cobrança
+ * vinculada à order em /billing/integration/group/ML/order/details.
  */
 export async function GET(req: NextRequest) {
   try {
     const sellerId = req.nextUrl.searchParams.get("sellerId")?.trim();
-    if (!sellerId) {
-      return NextResponse.json({ ok: false, error: "sellerId é obrigatório" }, { status: 400 });
-    }
+    if (!sellerId) return NextResponse.json({ ok: false, error: "sellerId é obrigatório" }, { status: 400 });
 
     const access = await requireSellerAccess(req, sellerId);
     if (!access.ok) return authErrorResponse(access);
 
-    const { data: impactIssues, error: issuesError } = await supabaseAdmin
-      .from("reputation_issues")
-      .select("external_ref, resource_id, payload, created_at")
-      .eq("seller_id", sellerId)
-      .eq("kind", "impact_claims")
-      .eq("status", "open")
-      .order("created_at", { ascending: false })
-      .limit(500);
-
-    if (issuesError) {
-      return NextResponse.json(
-        { ok: false, error: "Não foi possível consultar as vendas que impactam a reputação." },
-        { status: 500 }
-      );
-    }
-
-    const issues = (impactIssues ?? []).map((issue: any) => {
-      const payload = issue?.payload ?? {};
-      return {
-        claimId: String(issue?.external_ref ?? "").trim(),
-        saleId: issue?.resource_id != null
-          ? String(issue.resource_id)
-          : payload?.resource_id != null
-            ? String(payload.resource_id)
-            : "",
-        payload,
-        createdAt: issue?.created_at ? String(issue.created_at) : null,
-      };
-    }).filter((issue) => issue.claimId && issue.saleId);
-
-    const uniqueOrderIds = Array.from(new Set(issues.map((issue) => issue.saleId)));
-    if (uniqueOrderIds.length === 0) {
-      return NextResponse.json({ ok: true, items: [], impactingClaims: issues.length });
-    }
-
     const { accessToken } = await getValidMlAccessToken(sellerId);
+    const source = await loadImpactingClaims(accessToken);
+    const uniqueOrderIds = Array.from(new Set(source.impactingClaims.map((claim) => claim.saleId)));
+
+    if (uniqueOrderIds.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        items: [],
+        reputationMetricCount: source.reputationMetricCount,
+        impactingClaims: source.affectedClaimsFound,
+        linkedSales: 0,
+        claimsScanned: source.claimsScanned,
+        effectChecksUnavailable: source.effectChecksUnavailable,
+        source: "claims_affects_reputation_then_billing",
+      });
+    }
+
     const chargesByOrder = new Map<string, BillingCharge[]>();
     const seenDetails = new Set<string>();
     let billingAvailable = false;
-
     for (let index = 0; index < uniqueOrderIds.length; index += 60) {
-      const orderIds = uniqueOrderIds.slice(index, index + 60);
       const billing = await mlFetch(
-        `https://api.mercadolibre.com/billing/integration/group/ML/order/details?order_ids=${encodeURIComponent(orderIds.join(","))}`,
+        `https://api.mercadolibre.com/billing/integration/group/ML/order/details?order_ids=${encodeURIComponent(uniqueOrderIds.slice(index, index + 60).join(","))}`,
         accessToken
       );
-
       if (!billing.ok) continue;
       billingAvailable = true;
 
       for (const orderReport of asArray(billing.json)) {
-        const orderId = String(
-          orderReport?.order_id ?? orderReport?.sales_info?.order_id ?? orderReport?.shipping_info?.order?.order_id ?? ""
-        );
+        const orderId = String(orderReport?.order_id ?? orderReport?.shipping_info?.order?.order_id ?? "");
         if (!orderId) continue;
-
         for (const detail of oneOrMany(orderReport?.details)) {
           const charge = detail?.charge_info ?? detail;
           if (!isReturnShippingCharge(charge)) continue;
-
           const amount = Math.abs(Number(charge?.detail_amount));
           if (!Number.isFinite(amount) || amount <= 0) continue;
 
           const detailKey = `${orderId}:${charge?.detail_id ?? ""}:${charge?.creation_date_time ?? ""}:${amount}`;
           if (seenDetails.has(detailKey)) continue;
           seenDetails.add(detailKey);
-
           const charges = chargesByOrder.get(orderId) ?? [];
           charges.push({
             amount,
@@ -146,38 +204,31 @@ export async function GET(req: NextRequest) {
     }
 
     if (!billingAvailable) {
-      return NextResponse.json(
-        { ok: false, error: "O Mercado Livre não disponibilizou o relatório de faturamento para este seller." },
-        { status: 502 }
-      );
+      return NextResponse.json({ ok: false, error: "O Mercado Livre não disponibilizou o relatório de faturamento para este seller." }, { status: 502 });
     }
 
-    const items = issues.flatMap((issue) => {
-      const charges = chargesByOrder.get(issue.saleId) ?? [];
+    const items = source.impactingClaims.flatMap((claim) => {
+      const charges = chargesByOrder.get(claim.saleId) ?? [];
       if (charges.length === 0) return [];
-
       return [{
-        claimId: issue.claimId,
-        saleId: issue.saleId,
+        ...claim,
         amount: charges.reduce((total, charge) => total + charge.amount, 0),
         currencyId: charges[0].currencyId,
-        status: issue.payload?.status ? String(issue.payload.status) : null,
-        stage: issue.payload?.stage ? String(issue.payload.stage) : null,
-        dateCreated: charges[0].createdAt ?? (issue.payload?.date_created ? String(issue.payload.date_created) : issue.createdAt),
-        reason: issue.payload?.reason_id ? String(issue.payload.reason_id) : null,
+        dateCreated: charges[0].createdAt ?? claim.dateCreated,
       }];
     });
 
     return NextResponse.json({
       ok: true,
       items,
-      impactingClaims: issues.length,
-      source: "billing_order_details",
+      reputationMetricCount: source.reputationMetricCount,
+      impactingClaims: source.affectedClaimsFound,
+      linkedSales: uniqueOrderIds.length,
+      claimsScanned: source.claimsScanned,
+      effectChecksUnavailable: source.effectChecksUnavailable,
+      source: "claims_affects_reputation_then_billing",
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message ?? "Erro inesperado ao conciliar cobranças de devolução." },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: error?.message ?? "Erro inesperado ao conciliar cobranças de devolução." }, { status: 500 });
   }
 }

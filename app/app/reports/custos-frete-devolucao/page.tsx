@@ -22,6 +22,10 @@ type ReportResponse = {
   error?: string;
   items?: ReturnShippingCost[];
   impactingClaims?: number;
+  reputationMetricCount?: number;
+  linkedSales?: number;
+  claimsScanned?: number;
+  effectChecksUnavailable?: number;
 };
 
 const money = (amount: number, currency = "BRL") =>
@@ -38,6 +42,10 @@ export default function ReturnShippingCostsReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [impactingClaims, setImpactingClaims] = useState(0);
+  const [reputationMetricCount, setReputationMetricCount] = useState(0);
+  const [linkedSales, setLinkedSales] = useState(0);
+  const [claimsScanned, setClaimsScanned] = useState(0);
+  const [effectChecksUnavailable, setEffectChecksUnavailable] = useState(0);
 
   const selectedItems = useMemo(() => items.filter((item) => selected.has(item.claimId)), [items, selected]);
   const total = useMemo(() => selectedItems.reduce((sum, item) => sum + item.amount, 0), [selectedItems]);
@@ -66,6 +74,10 @@ export default function ReturnShippingCostsReportPage() {
       const newItems = report.items ?? [];
       setItems(newItems);
       setImpactingClaims(Number(report.impactingClaims ?? 0));
+      setReputationMetricCount(Number(report.reputationMetricCount ?? 0));
+      setLinkedSales(Number(report.linkedSales ?? 0));
+      setClaimsScanned(Number(report.claimsScanned ?? 0));
+      setEffectChecksUnavailable(Number(report.effectChecksUnavailable ?? 0));
     } catch (cause: any) {
       setError(cause?.message ?? "Erro ao carregar o relatório.");
       setItems([]);
@@ -136,7 +148,12 @@ export default function ReturnShippingCostsReportPage() {
         <div className="no-print flex flex-col gap-3 border-b border-spv-line p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-spv-ink">Vendas elegíveis</h2>
-            <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.{!loading && impactingClaims > 0 ? ` Analisadas ${impactingClaims} vendas que impactam a reputação.` : ""}</p>
+            <p className="mt-1 text-xs text-spv-muted">
+              Selecione as vendas em que a remoção do impacto está sendo tratada.
+              {!loading && reputationMetricCount > 0 ? ` A métrica de reputação do Mercado Livre indica ${reputationMetricCount} impactos.` : ""}
+              {!loading && claimsScanned > 0 ? ` Foram consultadas ${claimsScanned} reclamações e confirmados ${impactingClaims} impactos; ${linkedSales} vendas foram vinculadas no faturamento.` : ""}
+              {!loading && effectChecksUnavailable > 0 ? ` ${effectChecksUnavailable} confirmações de impacto não foram disponibilizadas pelo Mercado Livre nesta consulta.` : ""}
+            </p>
           </div>
           <button onClick={printReport} disabled={selectedItems.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
             <FileText className="h-4 w-4" /> Gerar relatório
@@ -153,7 +170,11 @@ export default function ReturnShippingCostsReportPage() {
             </thead>
             <tbody className="divide-y divide-spv-line">
               {loading ? <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-spv-muted">Consultando cobranças no Mercado Livre...</td></tr> : null}
-              {!loading && items.length === 0 ? <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-spv-muted">Nenhuma das {impactingClaims} vendas que impactam a reputação teve tarifa de devolução cobrada identificada.</td></tr> : null}
+              {!loading && items.length === 0 ? <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-spv-muted">
+                {linkedSales === 0
+                  ? "Nenhuma das reclamações confirmadas retornou uma venda vinculada para consulta no faturamento. A métrica agregada não é usada como venda fictícia."
+                  : `Nenhuma das ${linkedSales} vendas vinculadas a impactos confirmados teve tarifa de devolução cobrada identificada no faturamento.`}
+              </td></tr> : null}
               {items.map((item) => <tr key={item.claimId} className={`report-row ${selected.has(item.claimId) ? "selected" : ""} text-spv-ink hover:bg-spv-raised/50`}>
                 <td className="px-5 py-4"><input aria-label={`Selecionar venda ${item.saleId ?? item.claimId}`} type="checkbox" checked={selected.has(item.claimId)} onChange={() => toggle(item.claimId)} className="h-4 w-4 accent-emerald-500" /></td>
                 <td className="px-3 py-4 font-mono text-xs font-semibold">{item.saleId ? `#${item.saleId}` : "Venda não informada"}</td>
