@@ -45,21 +45,26 @@ export default function LoginPage() {
 
     if (profile.role !== "admin") {
       const metadata = data.user.user_metadata ?? {};
-      const ensureResponse = await authFetch("/api/seller_accounts/ensure", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          fullName: String(metadata.full_name ?? ""),
-          storeName: String(metadata.store_name ?? ""),
-          couponCode: String(metadata.coupon_code ?? ""),
-        }),
-      });
+      // A criação ou reparação do seller é complementar ao login. Uma falha
+      // temporária nessa etapa não pode encerrar uma sessão já autenticada.
+      // O app continuará tentando obter o seller ativo após o redirecionamento.
+      try {
+        const ensureResponse = await authFetch("/api/seller_accounts/ensure", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            fullName: String(metadata.full_name ?? ""),
+            storeName: String(metadata.store_name ?? ""),
+            couponCode: String(metadata.coupon_code ?? ""),
+          }),
+        });
 
-      const ensured = await ensureResponse.json().catch(() => ({}));
-      if (!ensureResponse.ok || !ensured?.ok) {
-        setLoading(false);
-        return setMsg("Não foi possível preparar sua conta. Tente novamente em instantes.");
+        if (!ensureResponse.ok) {
+          console.warn("Não foi possível preparar o seller durante o login.", ensureResponse.status);
+        }
+      } catch (error) {
+        console.warn("Erro ao preparar o seller durante o login.", error);
       }
     }
 
