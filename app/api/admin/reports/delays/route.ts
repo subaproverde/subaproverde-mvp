@@ -45,14 +45,25 @@ function serviceFromShipment(shipment: any): Pick<DelayRow, "service" | "service
   const carrier = String(
     shipment?.carrier_info?.name ?? shipment?.carrier_info?.carrier_name ?? shipment?.tracking?.carrier ?? ""
   ).trim();
+  const serviceText = [
+    logisticType,
+    shipment?.shipping_option?.name,
+    shipment?.shipping_option?.shipping_method,
+    shipment?.shipping_option?.service_id,
+  ].filter(Boolean).join(" ").toLowerCase();
 
-  if (shippingMode === "me1" || ["default", "custom"].includes(logisticType) || Boolean(carrier)) {
+  // A resposta pode identificar a modalidade pelo tipo legado ou pelo nome do
+  // serviço. O carrier não é critério: envios ME2 também podem carregá-lo.
+  if (/(xd_drop_off|places|agenc|agency|drop_off)/.test(serviceText)) {
+    return { service: logisticType === "xd_drop_off" || serviceText.includes("places") ? "Agências Mercado Livre (Places)" : "Agências Mercado Livre", serviceKind: "agency" };
+  }
+  if (/(cross_docking|coleta|collection|xd_same_day)/.test(serviceText)) {
+    return { service: "Coleta Mercado Livre", serviceKind: "collection" };
+  }
+  if (/(self_service|flex)/.test(serviceText)) return { service: "Flex", serviceKind: "flex" };
+  if (shippingMode === "me1" || ["default", "custom"].includes(logisticType)) {
     return { service: carrier ? `Transportadora · ${carrier}` : "Transportadora", serviceKind: "carrier" };
   }
-  if (logisticType === "drop_off") return { service: "Agências Mercado Livre", serviceKind: "agency" };
-  if (["cross_docking", "xd_same_day"].includes(logisticType)) return { service: "Coleta Mercado Livre", serviceKind: "collection" };
-  if (logisticType === "self_service") return { service: "Flex", serviceKind: "flex" };
-  if (logisticType === "xd_drop_off") return { service: "Places Mercado Livre", serviceKind: "other" };
   if (logisticType === "fulfillment") return { service: "Full", serviceKind: "other" };
   return { service: logisticType ? logisticType : "Não identificado", serviceKind: "other" };
 }
