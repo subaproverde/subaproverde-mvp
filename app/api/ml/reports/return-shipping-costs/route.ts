@@ -13,8 +13,8 @@ type ImpactClaim = {
 };
 
 const CLAIMS_PAGE_SIZE = 100;
-const MAX_CLAIMS_PAGES = 10;
-const AFFECTS_CONCURRENCY = 8;
+const MAX_CLAIMS_PAGES = 4;
+const AFFECTS_CONCURRENCY = 2;
 
 function asArray(value: any): any[] {
   if (Array.isArray(value)) return value;
@@ -37,7 +37,31 @@ async function mlFetch(url: string, accessToken: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store",
   });
-  return { ok: response.ok, json: await response.json().catch(() => null) };
+  return {
+    ok: response.ok,
+    status: response.status,
+    retryAfter: Number(response.headers.get("retry-after") ?? 0),
+    json: await response.json().catch(() => null),
+  };
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function mlFetchWithRateLimit(url: string, accessToken: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = await mlFetch(url, accessToken);
+    if (result.status !== 429 || attempt === 2) return result;
+    await wait(Math.max(800, result.retryAfter * 1000));
+  }
+  throw new Error("Falha inesperada ao consultar o Mercado Livre.");
+}
+
+function reputationPeriodDays(value: any) {
+  const match = String(value ?? "").match(/(\d+)/);
+  const days = match ? Number(match[1]) : 60;
+  return Number.isFinite(days) && days > 0 ? Math.min(days, 365) : 60;
 }
 
 function isReturnShippingCharge(charge: any) {
@@ -77,11 +101,17 @@ async function loadImpactingClaims(accessToken: string) {
   if (!me.ok || !me.json?.id) throw new Error("Não foi possível identificar o seller no Mercado Livre.");
 
   const reputationMetricCount = positiveNumber(me.json?.seller_reputation?.metrics?.claims?.value);
+  const periodDays = reputationPeriodDays(
+    me.json?.seller_reputation?.metrics?.claims?.period ?? me.json?.seller_reputation?.metrics?.sales?.period
+  );
+  const now = new Date();
+  const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
   const paramsBase = new URLSearchParams({
     limit: String(CLAIMS_PAGE_SIZE),
     site_id: "MLB",
     "players.role": "respondent",
     "players.user_id": String(me.json.id),
+    range: `date_created:after:${from.toISOString()},before:${now.toISOString()}`,
   });
 
   const affecting: any[] = [];
@@ -108,7 +138,7 @@ async function loadImpactingClaims(accessToken: string) {
 
     const effects = await mapWithConcurrency(uniquePageClaims, async (claim) => {
       const claimId = String(claim?.id ?? "");
-      const effect = await mlFetch(
+      const effect = await mlFetchWithRateLimit(
         `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}/affects-reputation`,
         accessToken
       );
@@ -122,7 +152,16 @@ async function loadImpactingClaims(accessToken: string) {
     if (reputationMetricCount > 0 && affecting.length >= reputationMetricCount) break;
     if (pageClaims.length < CLAIMS_PAGE_SIZE) break;
   }
-  const impactingClaims = affecting
+  const claimsWithDetails = await mapWithConcurrency(affecting, async (claim) => {
+    const claimId = String(claim?.id ?? "");
+    const detail = await mlFetchWithRateLimit(
+      `https://api.mercadolibre.com/post-purchase/v1/claims/${encodeURIComponent(claimId)}`,
+      accessToken
+    );
+    return detail.ok ? { ...claim, ...detail.json } : claim;
+  });
+
+  const impactingClaims = claimsWithDetails
     .map((claim: any): ImpactClaim | null => {
       const saleId = saleIdFromClaim(claim);
       if (!saleId) return null;
@@ -137,7 +176,14 @@ async function loadImpactingClaims(accessToken: string) {
     })
     .filter((claim): claim is ImpactClaim => Boolean(claim));
 
-  return { reputationMetricCount, claimsScanned, effectChecksUnavailable, affectedClaimsFound: affecting.length, impactingClaims };
+  return {
+    reputationMetricCount,
+    periodDays,
+    claimsScanned,
+    effectChecksUnavailable,
+    affectedClaimsFound: affecting.length,
+    impactingClaims,
+  };
 }
 
 /**
@@ -161,6 +207,7 @@ export async function GET(req: NextRequest) {
         ok: true,
         items: [],
         reputationMetricCount: source.reputationMetricCount,
+        periodDays: source.periodDays,
         impactingClaims: source.affectedClaimsFound,
         linkedSales: 0,
         claimsScanned: source.claimsScanned,
@@ -222,6 +269,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       items,
       reputationMetricCount: source.reputationMetricCount,
+      periodDays: source.periodDays,
       impactingClaims: source.affectedClaimsFound,
       linkedSales: uniqueOrderIds.length,
       claimsScanned: source.claimsScanned,

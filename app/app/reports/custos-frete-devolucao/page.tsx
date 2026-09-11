@@ -26,6 +26,7 @@ type ReportResponse = {
   linkedSales?: number;
   claimsScanned?: number;
   effectChecksUnavailable?: number;
+  periodDays?: number;
 };
 
 const money = (amount: number, currency = "BRL") =>
@@ -46,6 +47,7 @@ export default function ReturnShippingCostsReportPage() {
   const [linkedSales, setLinkedSales] = useState(0);
   const [claimsScanned, setClaimsScanned] = useState(0);
   const [effectChecksUnavailable, setEffectChecksUnavailable] = useState(0);
+  const [periodDays, setPeriodDays] = useState(0);
 
   const selectedItems = useMemo(() => items.filter((item) => selected.has(item.claimId)), [items, selected]);
   const total = useMemo(() => selectedItems.reduce((sum, item) => sum + item.amount, 0), [selectedItems]);
@@ -78,6 +80,7 @@ export default function ReturnShippingCostsReportPage() {
       setLinkedSales(Number(report.linkedSales ?? 0));
       setClaimsScanned(Number(report.claimsScanned ?? 0));
       setEffectChecksUnavailable(Number(report.effectChecksUnavailable ?? 0));
+      setPeriodDays(Number(report.periodDays ?? 0));
     } catch (cause: any) {
       setError(cause?.message ?? "Erro ao carregar o relatório.");
       setItems([]);
@@ -148,12 +151,12 @@ export default function ReturnShippingCostsReportPage() {
         <div className="no-print flex flex-col gap-3 border-b border-spv-line p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-spv-ink">Vendas elegíveis</h2>
-            <p className="mt-1 text-xs text-spv-muted">
-              Selecione as vendas em que a remoção do impacto está sendo tratada.
-              {!loading && reputationMetricCount > 0 ? ` A métrica de reputação do Mercado Livre indica ${reputationMetricCount} impactos.` : ""}
-              {!loading && claimsScanned > 0 ? ` Foram consultadas ${claimsScanned} reclamações e confirmados ${impactingClaims} impactos; ${linkedSales} vendas foram vinculadas no faturamento.` : ""}
-              {!loading && effectChecksUnavailable > 0 ? ` ${effectChecksUnavailable} confirmações de impacto não foram disponibilizadas pelo Mercado Livre nesta consulta.` : ""}
-            </p>
+            <p className="mt-1 text-xs text-spv-muted">Selecione as vendas em que a remoção do impacto está sendo tratada.</p>
+            {!loading && reputationMetricCount > 0 ? <p className="mt-2 text-xs font-medium text-spv-accent-text">
+              {effectChecksUnavailable > 0
+                ? "O Mercado Livre limitou esta consulta. Aguarde alguns minutos e atualize para concluir a conciliação."
+                : `${reputationMetricCount} impactos no período de reputação${periodDays ? ` (${periodDays} dias)` : ""} · ${impactingClaims} confirmados · ${linkedSales} vendas consultadas no faturamento.`}
+            </p> : null}
           </div>
           <button onClick={printReport} disabled={selectedItems.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
             <FileText className="h-4 w-4" /> Gerar relatório
