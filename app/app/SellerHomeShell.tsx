@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, BarChart3, BriefcaseBusiness, CalendarDays, BrainCircuit, CircleDollarSign, KanbanSquare, MessageCircle, ChevronRight, LayoutDashboard, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
+import { ArrowUpRight, BarChart3, BriefcaseBusiness, CalendarDays, BrainCircuit, CircleDollarSign, ClipboardList, KanbanSquare, MessageCircle, ChevronRight, LayoutDashboard, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
 import s from "./seller-home.module.css";
 
 export default function SellerHomeShell({ children, isAdmin, onConnect, mode = "seller", email }: { children: ReactNode; isAdmin: boolean; onConnect?: () => Promise<void>; mode?: "seller" | "admin"; email?: string }) {
@@ -51,6 +51,7 @@ export default function SellerHomeShell({ children, isAdmin, onConnect, mode = "
   ];
   const managementItems = [
     { href: "/admin/dashboard", label: "Administração", icon: ShieldCheck },
+    { href: "/admin/relatorios/atrasos", label: "Relatório de atrasos", icon: ClipboardList },
     { href: "/app/visao-geral", label: "Visão geral", icon: LayoutDashboard },
     { href: "/admin/remocoes", label: "Remoções", icon: BriefcaseBusiness },
     { href: "/app/sellers", label: "Sellers", icon: Users },
