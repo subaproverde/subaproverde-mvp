@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, FileText, RefreshCcw, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, RefreshCcw, ShieldCheck, Truck } from "lucide-react";
 import { authFetch } from "@/lib/authFetch";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 
@@ -38,6 +38,9 @@ const date = (value: string | null) =>
     ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value))
     : "—";
 
+const safeFilename = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+
 export default function ReturnShippingCostsReportPage() {
   const [items, setItems] = useState<ReturnShippingCost[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -50,6 +53,8 @@ export default function ReturnShippingCostsReportPage() {
   const [effectChecksUnavailable, setEffectChecksUnavailable] = useState(0);
   const [returnCostChecksUnavailable, setReturnCostChecksUnavailable] = useState(0);
   const [periodDays, setPeriodDays] = useState(0);
+  const [sellerName, setSellerName] = useState("");
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const selectedItems = useMemo(() => items.filter((item) => selected.has(item.claimId)), [items, selected]);
   const total = useMemo(() => selectedItems.reduce((sum, item) => sum + item.amount, 0), [selectedItems]);
@@ -67,6 +72,7 @@ export default function ReturnShippingCostsReportPage() {
       if (!sellerResponse.ok || !seller?.sellerId) {
         throw new Error(seller?.error ?? "Não foi possível identificar o seller ativo.");
       }
+      setSellerName(String(seller.nickname ?? "Cliente Mercado Livre"));
 
       const response = await authFetch(
         `/api/ml/reports/return-shipping-costs?sellerId=${encodeURIComponent(String(seller.sellerId))}`,
@@ -106,8 +112,119 @@ export default function ReturnShippingCostsReportPage() {
     setSelected(selected.size === items.length ? new Set() : new Set(items.map((item) => item.claimId)));
   }
 
-  function printReport() {
-    window.print();
+  async function downloadReport() {
+    if (selectedItems.length === 0) return;
+    setGeneratingPdf(true);
+
+    try {
+      const { jsPDF } = await import("jspdf");
+      const pdf = new jsPDF({ unit: "mm", format: "a4" });
+      const width = pdf.internal.pageSize.getWidth();
+      const height = pdf.internal.pageSize.getHeight();
+      const generatedAt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeStyle: "short" }).format(new Date());
+      const ink: [number, number, number] = [29, 34, 36];
+      const green: [number, number, number] = [72, 142, 50];
+      const muted: [number, number, number] = [89, 104, 111];
+
+      function header() {
+        pdf.setFillColor(...ink);
+        pdf.rect(0, 0, width, 34, "F");
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(17);
+        pdf.text("SUBA PRO VERDE", 15, 15);
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("RELATÓRIO DE POSSÍVEIS RECUPERAÇÕES", 15, 22);
+        pdf.text("FRETE DE DEVOLUÇÃO", 15, 27);
+        pdf.setTextColor(...ink);
+      }
+
+      function footer(page: number, pages: number) {
+        pdf.setDrawColor(214, 221, 222);
+        pdf.line(15, height - 13, width - 15, height - 13);
+        pdf.setTextColor(...muted);
+        pdf.setFontSize(8);
+        pdf.text("Cenário de recuperação possível. O crédito é definido pelo Mercado Livre após a remoção do impacto.", 15, height - 8);
+        pdf.text(`Página ${page} de ${pages}`, width - 15, height - 8, { align: "right" });
+      }
+
+      header();
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(15);
+      pdf.text("Custos de frete de devolução", 15, 47);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(...muted);
+      pdf.setFontSize(9);
+      pdf.text(`Cliente: ${sellerName || "Cliente Mercado Livre"}`, 15, 55);
+      pdf.text(`Gerado em: ${generatedAt}`, 15, 61);
+
+      pdf.setFillColor(239, 248, 235);
+      pdf.roundedRect(15, 69, width - 30, 25, 3, 3, "F");
+      pdf.setTextColor(...green);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.text("POSSÍVEL RECUPERAÇÃO SELECIONADA", 21, 78);
+      pdf.setTextColor(...ink);
+      pdf.setFontSize(18);
+      pdf.text(money(total), 21, 88);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.text(`${selectedItems.length} ${selectedItems.length === 1 ? "venda selecionada" : "vendas selecionadas"}`, width - 21, 88, { align: "right" });
+
+      let y = 106;
+      const columns = { sale: 15, claim: 57, date: 103, status: 130, amount: width - 15 };
+      function tableHeader() {
+        pdf.setFillColor(...ink);
+        pdf.rect(15, y, width - 30, 9, "F");
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8);
+        pdf.text("VENDA", columns.sale + 3, y + 5.8);
+        pdf.text("RECLAMAÇÃO", columns.claim, y + 5.8);
+        pdf.text("DATA", columns.date, y + 5.8);
+        pdf.text("SITUAÇÃO", columns.status, y + 5.8);
+        pdf.text("TARIFA", columns.amount - 3, y + 5.8, { align: "right" });
+        y += 9;
+      }
+
+      tableHeader();
+      for (const item of selectedItems) {
+        if (y + 12 > height - 19) {
+          pdf.addPage();
+          header();
+          y = 43;
+          tableHeader();
+        }
+        pdf.setDrawColor(224, 229, 230);
+        pdf.line(15, y + 11, width - 15, y + 11);
+        pdf.setTextColor(...ink);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8.5);
+        pdf.text(item.saleId ? `#${item.saleId}` : "Venda não informada", columns.sale + 3, y + 6.7);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`#${item.claimId}`, columns.claim, y + 6.7);
+        pdf.text(date(item.dateCreated), columns.date, y + 6.7);
+        pdf.setTextColor(...green);
+        pdf.text("Impacta reputação", columns.status, y + 6.7);
+        pdf.setTextColor(...ink);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(money(item.amount, item.currencyId), columns.amount - 3, y + 6.7, { align: "right" });
+        y += 12;
+      }
+
+      const pages = pdf.getNumberOfPages();
+      for (let page = 1; page <= pages; page += 1) {
+        pdf.setPage(page);
+        footer(page, pages);
+      }
+
+      pdf.save(`relatorio-frete-devolucao-${safeFilename(sellerName || "cliente")}.pdf`);
+    } catch (cause: any) {
+      setError(cause?.message ?? "Não foi possível gerar o PDF do relatório.");
+    } finally {
+      setGeneratingPdf(false);
+    }
   }
 
   return (
@@ -161,8 +278,8 @@ export default function ReturnShippingCostsReportPage() {
                 : `${reputationMetricCount} impactos no período de reputação${periodDays ? ` (${periodDays} dias)` : ""} · ${impactingClaims} confirmados · ${linkedSales} vendas consultadas no faturamento.`}
             </p> : null}
           </div>
-          <button onClick={printReport} disabled={selectedItems.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
-            <FileText className="h-4 w-4" /> Gerar relatório
+          <button onClick={downloadReport} disabled={selectedItems.length === 0 || generatingPdf} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-spv-ink hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
+            <Download className="h-4 w-4" /> {generatingPdf ? "Gerando PDF..." : "Baixar relatório PDF"}
           </button>
         </div>
 
