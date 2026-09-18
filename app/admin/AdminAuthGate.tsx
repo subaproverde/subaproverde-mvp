@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { isAdminEmail } from "@/lib/adminEmails";
+import { isAdminEmail, isAdminProfileRole } from "@/lib/adminEmails";
 import AdminShell from "./AdminShell";
 
 export default function AdminAuthGate({ children }: { children: React.ReactNode }) {
@@ -29,7 +29,20 @@ export default function AdminAuthGate({ children }: { children: React.ReactNode 
         return;
       }
 
-      if (!isAdminEmail(user.email)) {
+      // A lista de e-mails é um atalho seguro, mas não pode ser a única
+      // fonte de verdade: o login reconhece administradores pelo perfil e
+      // algumas contas administrativas são concedidas pelo RPC do banco.
+      // Consultamos as três fontes que já existem no sistema e só liberamos
+      // quando uma delas confirma o papel administrativo.
+      const adminByEmail = isAdminEmail(user.email);
+      const [{ data: adminByRpc }, { data: profile }] = await Promise.all([
+        supabase.rpc("is_admin"),
+        supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+      ]);
+
+      if (!alive) return;
+
+      if (!adminByEmail && !adminByRpc && !isAdminProfileRole(profile?.role)) {
         router.replace("/app");
         return;
       }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
-import { isAdminEmail } from "@/lib/adminEmails";
+import { isAdminEmail, isAdminProfileRole } from "@/lib/adminEmails";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -71,6 +71,20 @@ async function isAdminByRpc(token: string) {
   }
 }
 
+async function isAdminByProfile(userId: string) {
+  try {
+    const { data, error } = await supabaseApiAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    return !error && isAdminProfileRole(data?.role);
+  } catch {
+    return false;
+  }
+}
+
 export async function requireRequestUser(req: Request): Promise<ApiAuthResult> {
   const token = getBearerToken(req);
 
@@ -85,7 +99,11 @@ export async function requireRequestUser(req: Request): Promise<ApiAuthResult> {
     return { ok: false, status: 401, error: "Sessao invalida." };
   }
 
-  const isAdmin = isAdminEmail(user.email) || (await isAdminByRpc(token));
+  const adminByEmail = isAdminEmail(user.email);
+  const [adminByRpc, adminByProfile] = adminByEmail
+    ? [false, false]
+    : await Promise.all([isAdminByRpc(token), isAdminByProfile(user.id)]);
+  const isAdmin = adminByEmail || adminByRpc || adminByProfile;
   return { ok: true, token, user, isAdmin };
 }
 
