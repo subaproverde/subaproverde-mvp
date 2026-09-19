@@ -54,6 +54,7 @@ export default function SellerHomeShell({ children, isAdmin, onConnect, mode = "
     { href: "/admin/relatorios/atrasos", label: "Relatório de atrasos", icon: ClipboardList },
     { href: "/app/visao-geral", label: "Visão geral", icon: LayoutDashboard },
     { href: "/admin/remocoes", label: "Remoções", icon: BriefcaseBusiness },
+    { href: "/admin/bia", label: "Central da Bia", icon: BrainCircuit },
     { href: "/app/sellers", label: "Sellers", icon: Users },
     { href: "/app/influencers", label: "Influencers", icon: Users },
   ];
