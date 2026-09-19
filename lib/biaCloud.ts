@@ -60,6 +60,18 @@ async function activeMemories() {
   return (data ?? []).map((item) => cleanText(item.instruction, 1200)).filter(Boolean);
 }
 
+async function rememberOperatorRule(message: string, userId: string) {
+  // Uma orientação de caso permanece no histórico. Somente as correções que
+  // Bruno expressa como regra geral devem atravessar atendimentos futuros.
+  if (!/\b(?:sempre|nunca|a partir de agora|n[aã]o volte|n[aã]o retroceda)\b/i.test(message)) return;
+  const instruction = cleanText(message, 1200);
+  const memoryKey = `operator_${Buffer.from(instruction).toString("base64url").slice(0, 72)}`;
+  const { error } = await supabaseApiAdmin
+    .from("bia_cloud_memories")
+    .upsert({ memory_key: memoryKey, instruction, source: "Bruno", created_by: userId, active: true }, { onConflict: "memory_key" });
+  if (error) throw new Error(storageError(error));
+}
+
 export async function sendBiaCloudMessage(input: { caseId?: string; message: string; userId: string }) {
   const message = cleanText(input.message);
   if (!message) throw new Error("Escreva uma mensagem para a Bia.");
@@ -87,6 +99,8 @@ export async function sendBiaCloudMessage(input: { caseId?: string; message: str
     .from("bia_cloud_messages")
     .insert({ case_id: caseId, role: "operator", body: message });
   if (messageError) throw new Error(storageError(messageError));
+
+  await rememberOperatorRule(message, input.userId);
 
   const [history, memories] = await Promise.all([listBiaCloudMessages(caseId), activeMemories()]);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
